@@ -1,0 +1,124 @@
+<div class="container">
+  <section class="dhero">
+    @if (heroImage()) {
+      <img [src]="heroImage() | imageUrl" alt="Odisha landscape" (error)="onHeroImageError()" />
+    }
+    <div class="dhero-inner">
+      <span class="eyebrow">EXPLORE ODISHA</span>
+      <h1>Discover Odisha.<br />Travel. Explore. Experience.</h1>
+      <p>Explore Odisha's mountains, waterfalls, beaches, temples and hidden destinations with Ghumo Odisha.</p>
+      <div class="cta">
+        <button type="button" class="btn" (click)="scrollTo('upcoming-trips')">Explore Trips</button>
+        <button type="button" class="btn ghost" (click)="scrollTo('organizer-contact')">Contact Organizer</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section id="upcoming-trips" class="sect">
+  <div class="container">
+    <h2>Upcoming Trips</h2>
+    <div class="sub">Explore our upcoming journeys across Odisha.</div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <div class="tgrid">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="tcard skel">
+              <div class="shot"></div>
+              <div class="body">
+                <div class="ln" style="width:70%"></div>
+                <div class="ln" style="width:45%"></div>
+                <div class="ln" style="width:55%"></div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+      @case ('error') {
+        <div class="state-panel">
+          <p class="mut" style="margin-bottom:14px">Unable to load upcoming trips.</p>
+          <button class="btn sm" (click)="loadTrips()">Try Again</button>
+        </div>
+      }
+      @case ('ready') {
+        @if (upcomingTrips().length === 0) {
+          <div class="state-panel">
+            <p class="mut" style="margin-bottom:14px">No upcoming trips are available right now.</p>
+            <a class="btn sm" routerLink="/trips">Explore Ghumo Odisha</a>
+          </div>
+        } @else {
+          <div class="tgrid">
+            @for (t of upcomingTrips(); track t.tripId) {
+              <app-trip-card [trip]="t"></app-trip-card>
+            }
+          </div>
+        }
+      }
+    }
+  </div>
+</section>
+
+<section id="destinations" class="sect alt">
+  <div class="container">
+    <h2>Featured Odisha Destinations</h2>
+    <div class="sub">Explore some of the places that make Odisha unforgettable.</div>
+
+    <div class="destgrid">
+      @for (d of destinations; track d.name) {
+        <app-destination-card [name]="d.name" [tagline]="d.tagline" [gradient]="d.gradient"></app-destination-card>
+      }
+    </div>
+  </div>
+</section>
+
+<section id="why-ghumo" class="sect">
+  <div class="container">
+    <h2>Why Travel With Ghumo Odisha</h2>
+    <div class="sub">What to expect when you travel with us.</div>
+
+    <div class="featgrid">
+      @for (f of features; track f.title) {
+        <app-feature-card [icon]="f.icon" [title]="f.title" [description]="f.description"></app-feature-card>
+      }
+    </div>
+  </div>
+</section>
+
+<section id="organizer-contact" class="sect alt">
+  <div class="container">
+    <div class="orgcontact">
+      <div class="oc-text">
+        <h2>Talk to Ghumo Odisha</h2>
+        <p class="mut" style="margin-top:6px">Have a question about a trip or want to book directly? Get in touch with our organizer.</p>
+      </div>
+      <div class="oc-card">
+        <div class="row" style="gap:12px;align-items:center;margin-bottom:10px">
+          @if (contact()?.photoUrl) {
+            <img [src]="contact()!.photoUrl! | imageUrl" alt="{{ contact()?.name }}" style="width:52px;height:52px;border-radius:999px;object-fit:cover;flex-shrink:0" />
+          } @else {
+            <div style="width:52px;height:52px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0">
+              {{ (contact()?.name || 'G')[0] }}
+            </div>
+          }
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px">Travel Organizer</div>
+            <b style="font-size:16px;display:block">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</b>
+          </div>
+        </div>
+        <div class="oc-line">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
+          <span>{{ contact()?.phone || '—' }}</span>
+        </div>
+        <div class="oc-line">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
+          <span>WhatsApp</span>
+        </div>
+        <div class="row" style="gap:10px;margin-top:16px">
+          <a class="btn sm" style="flex:1" [href]="'tel:' + contact()?.phone">Call Now</a>
+          <button type="button" class="btn sm ghost" style="flex:1" (click)="openWhatsApp()">WhatsApp</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

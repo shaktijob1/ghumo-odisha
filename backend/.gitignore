@@ -1,0 +1,13 @@
+# Build output
+bin/
+obj/
+publish/
+*.user
+.vs/
+
+# Local dev runtime artifacts
+GhumoOdisha.Api/logs/
+api-*.log
+api-pid.txt
+test-invoice.pdf
+test.png

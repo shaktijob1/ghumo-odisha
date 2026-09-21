@@ -1,0 +1,70 @@
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load this customer."></app-state-panel>
+  }
+  @case ('ready') {
+    @let c = customer()!;
+
+    <div class="ahead">
+      <div>
+        <h2>{{ c.name }}</h2>
+        <div class="sub">Customer #{{ c.customerId }} · joined {{ c.createdAt | date:'d MMM y' }}</div>
+      </div>
+      <a class="btn sm" [routerLink]="['/admin/bookings/add']">Create booking</a>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <h4>Details</h4>
+        <div class="sub">Account information</div>
+        <div class="kv">
+          <span class="k">Name</span><b>{{ c.name }}</b>
+          <span class="k">Phone</span><b>{{ c.phoneNumber }}</b>
+          <span class="k">Email</span><b>{{ c.email || '—' }}</b>
+          <span class="k">Created</span><b>{{ c.createdAt | date:'d MMM y' }}</b>
+          <span class="k">Last login</span><b>{{ c.lastLoginAt ? (c.lastLoginAt | date:'d MMM y, h:mm a') : '—' }}</b>
+          <span class="k">Verified</span><b>{{ c.isVerified ? 'Yes' : 'No' }}</b>
+        </div>
+      </div>
+      <div class="panel">
+        <h4>Totals</h4>
+        <div class="sub">Across {{ c.totalBookings }} booking(s)</div>
+        <div class="slotstats" style="grid-template-columns:1fr 1fr;margin:0">
+          <div><div class="k">Total booked</div><div class="v">₹{{ c.totalAmount | number:'1.0-0' }}</div></div>
+          <div><div class="k">Advance paid</div><div class="v">₹{{ c.advancePaid | number:'1.0-0' }}</div></div>
+          <div><div class="k">Remaining</div><div class="v">₹{{ c.remaining | number:'1.0-0' }}</div></div>
+          <div><div class="k">Confirmed</div><div class="v">{{ c.confirmedBookingCount }}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h4>Booking history</h4>
+      <div class="sub">All bookings on this customer id</div>
+      @if (bookings().length === 0) {
+        <p class="note">No bookings yet.</p>
+      } @else {
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr><th>Trip</th><th>Date range</th><th>Seats</th><th>Total</th><th>Advance</th><th>Remaining</th><th>Booking</th><th>Payment</th></tr>
+            @for (b of bookings(); track b.bookingId) {
+              <tr>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>{{ b.tripTitle }}</b></a></td>
+                <td>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</td>
+                <td>{{ b.numberOfSeats }}</td>
+                <td>₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                <td>₹{{ b.advanceAmount | number:'1.0-0' }}</td>
+                <td>₹{{ b.remainingAmount | number:'1.0-0' }}</td>
+                <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                <td><app-status-badge kind="payment" [value]="b.paymentStatus"></app-status-badge></td>
+              </tr>
+            }
+          </table>
+        </div>
+      }
+    </div>
+  }
+}

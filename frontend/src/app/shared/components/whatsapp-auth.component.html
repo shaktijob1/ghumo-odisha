@@ -1,0 +1,55 @@
+@switch (step()) {
+  @case ('details') {
+    <h4 style="margin-bottom:14px">{{ title }}</h4>
+
+    <div class="fld">
+      <span class="lbl">WhatsApp Number</span>
+      <input class="inp" [(ngModel)]="whatsAppNumber" placeholder="9876543210" maxlength="10" inputmode="numeric" (keyup.enter)="sendOtp()" />
+    </div>
+
+    @if (errorMessage()) {
+      <div class="errorbox">{{ errorMessage() }}</div>
+    }
+
+    <button class="btn block" [disabled]="submitting()" (click)="sendOtp()">
+      @if (submitting()) { <span class="spin"></span> } @else { {{ mode === 'book' ? 'Verify' : 'Send OTP' }} }
+    </button>
+  }
+  @case ('otp') {
+    <h4 style="margin-bottom:6px">Verify WhatsApp Number</h4>
+    <p class="note" style="margin-bottom:16px">We sent a verification code to <b>+91 {{ whatsAppNumber }}</b></p>
+
+    <div class="lbl">OTP</div>
+    <div class="pinbox" (paste)="onDigitPaste($event)">
+      @for (i of otpDigits(); track $index) {
+        <input
+          #otpBox
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="1"
+          [value]="otpDigits()[$index]"
+          (input)="onDigitInput($index, $event)"
+          (keydown)="onDigitKeydown($index, $event)"
+        />
+      }
+    </div>
+
+    @if (errorMessage()) {
+      <div class="errorbox" style="margin-top:14px">{{ errorMessage() }}</div>
+    }
+
+    <button class="btn block" style="margin-top:16px" [disabled]="submitting()" (click)="verify()">
+      @if (submitting()) { <span class="spin"></span> } @else { Verify & Continue }
+    </button>
+
+    <div class="row sp" style="margin-top:14px">
+      @if (resendCountdown() > 0) {
+        <span class="note">Resend OTP in {{ resendCountdown() }}s</span>
+      } @else {
+        <span class="note" style="cursor:pointer;color:var(--accent);font-weight:600" (click)="resendOtp()">Resend OTP</span>
+      }
+      <span class="note" style="cursor:pointer" (click)="changeNumber()">Change Number</span>
+    </div>
+  }
+}

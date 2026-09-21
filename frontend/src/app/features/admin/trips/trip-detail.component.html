@@ -1,0 +1,79 @@
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load this trip."></app-state-panel>
+  }
+  @case ('ready') {
+    @let t = trip()!;
+
+    <div class="ahead">
+      <div>
+        <h2>{{ t.title }}</h2>
+        <div class="sub">₹{{ t.amountPerPerson | number:'1.0-0' }} per person · {{ t.dateSlots.length }} date slot(s)</div>
+      </div>
+      <div class="row" style="gap:8px">
+        <a class="btn sm ghost" [routerLink]="['/admin/trips', t.tripId, 'edit']">Edit trip</a>
+      </div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <h4>Trip content</h4>
+        <div class="sub">What customers see</div>
+        <div class="kv">
+          <span class="k">Photos</span><b>{{ t.photos.length }}</b>
+          <span class="k">Highlights</span><b>{{ t.highlights.length }} place(s)</b>
+          <span class="k">Itinerary</span><b>{{ t.itineraryDays.length }} day(s)</b>
+          <span class="k">Room photos</span><b>{{ t.roomPhotos.length }}</b>
+        </div>
+      </div>
+      <div class="panel">
+        <h4>Across all date slots</h4>
+        <div class="sub">Seat totals</div>
+        <div class="kv">
+          <span class="k">Total seats</span><b>{{ totalSeats(t) }}</b>
+          <span class="k">Available</span><b>{{ totalAvailable(t) }}</b>
+        </div>
+      </div>
+    </div>
+
+    <h4 style="font-size:15px;margin:22px 0 12px">Date slots</h4>
+    @for (s of t.dateSlots; track s.tripDateSlotId) {
+      <div class="slotpanel">
+        <div class="row sp">
+          <div>
+            <b style="font-size:14px">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b>
+            @if (s.isSoldOut) { <span class="badge bad">Sold out</span> } @else { <span class="badge ok">Open</span> }
+          </div>
+        </div>
+        <div class="slotstats">
+          <div><div class="k">Total seats</div><div class="v">{{ s.totalSeats }}</div></div>
+          <div><div class="k">Available</div><div class="v">{{ s.availableSeats }}</div></div>
+          <div><div class="k">Booked</div><div class="v">{{ bookingsForSlot(s.tripDateSlotId).length }}</div></div>
+        </div>
+        @if (bookingsForSlot(s.tripDateSlotId).length > 0) {
+          <div class="tblwrap">
+            <table class="tbl">
+              <tr><th>Customer</th><th>Phone</th><th>Seats</th><th>Total</th><th>Advance</th><th>Booking</th><th>Payment</th></tr>
+              @for (b of bookingsForSlot(s.tripDateSlotId); track b.bookingId) {
+                <tr>
+                  <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>{{ b.customerName }}</b></a></td>
+                  <td>{{ b.customerPhone }}</td>
+                  <td>{{ b.numberOfSeats }}</td>
+                  <td>₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                  <td>₹{{ b.advanceAmount | number:'1.0-0' }}</td>
+                  <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                  <td><app-status-badge kind="payment" [value]="b.paymentStatus"></app-status-badge></td>
+                </tr>
+              }
+            </table>
+          </div>
+        } @else {
+          <p class="note">No bookings on this slot yet.</p>
+        }
+      </div>
+    }
+  }
+}

@@ -1,0 +1,112 @@
+<div class="ahead">
+  <div>
+    <h2>Dashboard</h2>
+    <div class="sub">Overview of trips, bookings and revenue</div>
+  </div>
+  <a class="btn sm" routerLink="/admin/bookings/add">Create booking</a>
+</div>
+
+<div class="panel" style="margin-bottom:16px">
+  <h4>Organizer photo</h4>
+  <div class="sub">Shown on the customer dashboard's contact section</div>
+  <div class="row" style="gap:14px;align-items:center;margin-top:10px">
+    @if (contact()?.photoUrl) {
+      <img [src]="contact()!.photoUrl! | imageUrl" alt="Organizer" style="width:56px;height:56px;border-radius:999px;object-fit:cover" />
+    } @else {
+      <div style="width:56px;height:56px;border-radius:999px;background:var(--canvas);border:1px dashed var(--line)"></div>
+    }
+    <label class="btn sm ghost" style="cursor:pointer">
+      @if (uploadingPhoto()) { <span class="spin"></span> } @else { {{ contact()?.photoUrl ? 'Change photo' : 'Upload photo' }} }
+      <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onOrganizerPhotoSelected($event)" />
+    </label>
+  </div>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading dashboard…"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load the dashboard."></app-state-panel>
+  }
+  @case ('ready') {
+    @let d = dashboard()!;
+
+    <div class="kpis">
+      <div class="kpi"><div class="k">Total trips</div><div class="v">{{ d.counters.totalTrips }}</div></div>
+      <div class="kpi"><div class="k">Active trips</div><div class="v">{{ d.counters.activeTrips }}</div></div>
+      <div class="kpi"><div class="k">Total customers</div><div class="v">{{ d.counters.totalCustomers }}</div></div>
+      <div class="kpi"><div class="k">Booking requests</div><div class="v">{{ d.counters.bookingRequests }}</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Confirmed bookings</div><div class="v">{{ d.counters.confirmedBookings }}</div></div>
+      <div class="kpi"><div class="k">Upcoming trips</div><div class="v">{{ d.counters.upcomingTripsCount }}</div></div>
+      <div class="kpi"><div class="k">Confirmed revenue</div><div class="v">₹{{ d.counters.confirmedRevenue | number:'1.0-0' }}</div></div>
+      <div class="kpi"><div class="k">Advance collected</div><div class="v">₹{{ d.counters.advanceCollected | number:'1.0-0' }}</div></div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <h4>Recent booking requests</h4>
+        <div class="sub">Awaiting organizer contact</div>
+        @if (d.recentRequests.length === 0) {
+          <p class="note">No open requests right now.</p>
+        } @else {
+          <div class="tblwrap">
+            <table class="tbl">
+              <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Seats</th><th>Status</th></tr>
+              @for (b of d.recentRequests; track b.bookingId) {
+                <tr>
+                  <td><a [routerLink]="['/admin/bookings', b.bookingId]">#GO-{{ b.bookingId }}</a></td>
+                  <td>{{ b.customerName }}</td>
+                  <td>{{ b.tripTitle }}</td>
+                  <td>{{ b.numberOfSeats }}</td>
+                  <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                </tr>
+              }
+            </table>
+          </div>
+        }
+      </div>
+      <div class="panel">
+        <h4>Upcoming trips</h4>
+        <div class="sub">Next departures</div>
+        @if (d.upcomingTrips.length === 0) {
+          <p class="note">No upcoming departures scheduled.</p>
+        } @else {
+          @for (u of d.upcomingTrips; track u.tripId + u.startDate) {
+            <div class="row sp" style="padding:9px 0;border-bottom:1px solid var(--line)">
+              <div><b style="font-size:12.5px">{{ u.tripTitle }}</b><div class="note">{{ u.startDate | date:'d MMM y' }}</div></div>
+              <span class="note">{{ u.availableSeats }} / {{ u.totalSeats }} seats left</span>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="panel">
+      <h4>Recently confirmed</h4>
+      <div class="sub">Seats already deducted</div>
+      @if (d.recentlyConfirmed.length === 0) {
+        <p class="note">No confirmed bookings yet.</p>
+      } @else {
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th></tr>
+            @for (b of d.recentlyConfirmed; track b.bookingId) {
+              <tr>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]">#GO-{{ b.bookingId }}</a></td>
+                <td>{{ b.customerName }}</td>
+                <td>{{ b.tripTitle }}</td>
+                <td>{{ b.startDate | date:'d MMM y' }}</td>
+                <td>{{ b.numberOfSeats }}</td>
+                <td>₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                <td>₹{{ b.advanceAmount | number:'1.0-0' }}</td>
+              </tr>
+            }
+          </table>
+        </div>
+      }
+    </div>
+  }
+}

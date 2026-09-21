@@ -1,0 +1,247 @@
+@if (loading()) {
+  <app-state-panel kind="loading"></app-state-panel>
+} @else {
+  <div class="ahead">
+    <div>
+      <h2>{{ tripId ? 'Edit trip' : 'Add trip' }}</h2>
+      <div class="sub">{{ tripId ? 'Changes to each section save independently.' : 'Save the basics first, then add photos, dates and itinerary.' }}</div>
+    </div>
+    <a class="btn sm ghost" routerLink="/admin/trips">Back to trips</a>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="saveBasicInfo()">
+    <div class="formsec">
+      <h4>Basic information</h4>
+      <div class="sub">Section A</div>
+
+      <div class="fld">
+        <span class="lbl">Trip name</span>
+        <input class="inp" formControlName="title" />
+      </div>
+      <div class="fld">
+        <span class="lbl">Description</span>
+        <textarea class="inp" formControlName="description" rows="3"></textarea>
+      </div>
+      <div class="f3">
+        <div class="fld">
+          <span class="lbl">Price per person (₹)</span>
+          <input class="inp" type="number" formControlName="amountPerPerson" />
+        </div>
+        @if (tripId) {
+          <div class="fld">
+            <span class="lbl">Status</span>
+            <select class="inp" formControlName="status">
+              <option [ngValue]="TripStatus.Active">Active</option>
+              <option [ngValue]="TripStatus.Inactive">Inactive</option>
+            </select>
+          </div>
+        }
+      </div>
+      <div class="fld">
+        <span class="lbl">Included</span>
+        <div class="row wrap" style="gap:14px">
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesBreakfast" /> Breakfast</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesLunch" /> Lunch</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesDinner" /> Dinner</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesStay" /> Stay</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesCoordinator" /> Coordinator</label>
+        </div>
+      </div>
+
+      <button class="btn" type="submit" [disabled]="saving()">
+        {{ tripId ? 'Save basic info' : 'Create trip' }}
+      </button>
+    </div>
+  </form>
+
+  @if (tripId && trip(); as t) {
+    <div class="formsec">
+      <h4>Trip photos</h4>
+      <div class="sub">Section B · first photo is used as the card image</div>
+
+      <label class="drop">
+        Click to choose an image (JPG or PNG, up to 5 MB)
+        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onPhotoSelected($event)" />
+      </label>
+
+      @if (t.photos.length > 0) {
+        <div class="thumbs">
+          @for (p of t.photos; track p.tripPhotoId; let i = $index) {
+            <div class="t">
+              <img [src]="p.imageUrl | imageUrl" alt="" />
+              <button class="x" (click)="deletePhoto(p.tripPhotoId)">×</button>
+              @if (i === 0) { <span class="p">Primary</span> }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="formsec">
+      <h4>Highlights</h4>
+      <div class="sub">Section C · shown as "What you'll see"</div>
+
+      @for (h of t.highlights; track h.tripHighlightId) {
+        <div class="repeat">
+          <div class="rh">
+            <b>{{ h.placeName }}</b>
+            <div class="tools"><button (click)="deleteHighlight(h.tripHighlightId)">×</button></div>
+          </div>
+          <p class="note">{{ h.description }}</p>
+        </div>
+      }
+
+      <div class="repeat">
+        <div class="rh"><b>Add highlight</b></div>
+        <div class="f3">
+          <div class="fld" style="margin:0">
+            <span class="lbl">Place name</span>
+            <input class="inp" [(ngModel)]="newHighlight.placeName" [ngModelOptions]="{standalone: true}" />
+          </div>
+          <div class="fld" style="margin:0">
+            <span class="lbl">Description</span>
+            <input class="inp" [(ngModel)]="newHighlight.description" [ngModelOptions]="{standalone: true}" />
+          </div>
+          <div class="fld" style="margin:0">
+            <span class="lbl">Photo</span>
+            <input class="inp" type="file" accept="image/jpeg,image/png" (change)="onHighlightFileSelected($event)" />
+          </div>
+        </div>
+        <button class="addbtn" style="margin-top:8px" (click)="addHighlight()">+ Add highlight</button>
+      </div>
+    </div>
+
+    <div class="formsec">
+      <h4>Date ranges</h4>
+      <div class="sub">Section D · available seats start equal to total seats</div>
+
+      @for (s of t.dateSlots; track s.tripDateSlotId) {
+        <div class="repeat">
+          <div class="f4">
+            <div><b>{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b><div class="note">{{ s.availableSeats }} / {{ s.totalSeats }} available</div></div>
+            <div></div>
+            <div></div>
+            <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="deleteDateSlot(s.tripDateSlotId)">Remove</button>
+          </div>
+        </div>
+      }
+
+      <div class="repeat">
+        <div class="rh"><b>Add date range</b></div>
+        <div class="f4">
+          <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [(ngModel)]="newSlot.startDate" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [(ngModel)]="newSlot.endDate" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0"><span class="lbl">Total seats</span><input class="inp" type="number" [(ngModel)]="newSlot.totalSeats" [ngModelOptions]="{standalone: true}" /></div>
+          <button class="btn sm" (click)="addDateSlot()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="formsec">
+      <h4>Day-wise itinerary</h4>
+      <div class="sub">Section E</div>
+
+      @for (d of t.itineraryDays; track d.itineraryDayId) {
+        <div class="repeat">
+          <div class="rh">
+            <b>Day {{ d.dayNumber }} · {{ d.title }}</b>
+            <div class="tools"><button (click)="deleteDay(d.itineraryDayId)">×</button></div>
+          </div>
+          <p class="note" style="margin-bottom:8px">{{ d.description }}</p>
+
+          @for (p of d.points; track p.itineraryPointId) {
+            <div class="row" style="gap:10px;margin-bottom:8px">
+              <span class="sel" style="width:110px">{{ p.time }}</span>
+              <span style="flex:1">{{ p.description }}</span>
+              <span class="sel" style="padding:8px 10px;cursor:pointer" (click)="deletePoint(p.itineraryPointId)">×</span>
+            </div>
+          }
+
+          <div class="row" style="gap:10px">
+            <input class="inp" style="width:110px" placeholder="09:00 AM" [(ngModel)]="newPoint[d.itineraryDayId].time" [ngModelOptions]="{standalone: true}" />
+            <input class="inp" placeholder="Point description" [(ngModel)]="newPoint[d.itineraryDayId].description" [ngModelOptions]="{standalone: true}" />
+            <button class="btn sm" (click)="addPoint(d.itineraryDayId)">+ Add point</button>
+          </div>
+        </div>
+      }
+
+      <div class="repeat">
+        <div class="rh"><b>Add day</b></div>
+        <div class="f3">
+          <div class="fld" style="margin:0"><span class="lbl">Day number</span><input class="inp" type="number" [(ngModel)]="newDay.dayNumber" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0"><span class="lbl">Day title</span><input class="inp" [(ngModel)]="newDay.title" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0"><span class="lbl">Description</span><input class="inp" [(ngModel)]="newDay.description" [ngModelOptions]="{standalone: true}" /></div>
+        </div>
+        <button class="addbtn" style="margin-top:8px" (click)="addDay()">+ Add day</button>
+      </div>
+    </div>
+
+    <div class="formsec">
+      <h4>Room photos</h4>
+      <div class="sub">Section F</div>
+
+      <label class="drop">
+        Click to choose an accommodation image
+        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onRoomPhotoSelected($event)" />
+      </label>
+
+      @if (t.roomPhotos.length > 0) {
+        <div class="thumbs">
+          @for (p of t.roomPhotos; track p.roomPhotoId) {
+            <div class="t">
+              <img [src]="p.imageUrl | imageUrl" alt="" />
+              <button class="x" (click)="deleteRoomPhoto(p.roomPhotoId)">×</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="formsec">
+      <h4>Vehicle photos</h4>
+      <div class="sub">Shown on the trip page so customers know what they're travelling in.</div>
+
+      <label class="drop">
+        Click to choose a vehicle image
+        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onVehiclePhotoSelected($event)" />
+      </label>
+
+      @if (t.vehiclePhotos.length > 0) {
+        <div class="thumbs">
+          @for (p of t.vehiclePhotos; track p.vehiclePhotoId) {
+            <div class="t">
+              <img [src]="p.imageUrl | imageUrl" alt="" />
+              <button class="x" (click)="deleteVehiclePhoto(p.vehiclePhotoId)">×</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="formsec">
+      <h4>Pickup points</h4>
+      <div class="sub">Customers choose one of these before paying.</div>
+
+      @if (t.pickupPoints.length > 0) {
+        <div class="repeat">
+          @for (p of t.pickupPoints; track p.pickupPointId) {
+            <div class="row" style="gap:10px;margin-bottom:8px">
+              <span class="sel" style="width:110px">{{ p.time }}</span>
+              <span style="flex:1">{{ p.location }}</span>
+              <span class="sel" style="padding:8px 10px;cursor:pointer" (click)="deletePickupPoint(p.pickupPointId)">×</span>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="repeat">
+        <div class="rh"><b>Add pickup point</b></div>
+        <div class="row" style="gap:10px">
+          <input class="inp" style="width:110px" placeholder="6:00 AM" [(ngModel)]="newPickupPoint.time" [ngModelOptions]="{standalone: true}" />
+          <input class="inp" style="flex:1" placeholder="Pickup location" [(ngModel)]="newPickupPoint.location" [ngModelOptions]="{standalone: true}" />
+          <button class="btn sm" (click)="addPickupPoint()">+ Add</button>
+        </div>
+      </div>
+    </div>
+  }
+}

@@ -1,0 +1,19 @@
+<div class="adm">
+  <div class="aside2">
+    <div class="logo">Ghumo <em>Odisha</em></div>
+    <a routerLink="/admin/dashboard" routerLinkActive="on">Dashboard</a>
+    <a routerLink="/admin/trips" routerLinkActive="on">Trips</a>
+    <a routerLink="/admin/bookings" routerLinkActive="on">Bookings</a>
+    <a routerLink="/admin/customers" routerLinkActive="on">Customers</a>
+    <a routerLink="/admin/coupons" routerLinkActive="on">Coupons</a>
+    <div class="who">
+      Signed in as <b style="color:var(--ink)">{{ auth.currentAdmin()?.username }}</b><br />
+      Administrator
+      <div class="signout mut" (click)="signOut()">Sign out</div>
+    </div>
+  </div>
+  <div class="amain">
+    <router-outlet></router-outlet>
+  </div>
+</div>
+<app-toast-host></app-toast-host>

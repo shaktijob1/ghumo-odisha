@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="GhumoOdisha.Api/GhumoOdisha.Api.csproj" />
+  <Project Path="GhumoOdisha.Application/GhumoOdisha.Application.csproj" />
+  <Project Path="GhumoOdisha.Domain/GhumoOdisha.Domain.csproj" />
+  <Project Path="GhumoOdisha.Infrastructure/GhumoOdisha.Infrastructure.csproj" />
+  <Project Path="GhumoOdisha.Tests/GhumoOdisha.Tests.csproj" />
+</Solution>

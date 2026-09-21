@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ghumo Odisha — page mockups (laptop &amp; mobile)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{ --page-bg:#EEEFEF; --page-ink:#14181A; --page-muted:#5F686C; --page-line:#D9DCDD; --page-card:#fff; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --page-bg:#151718; --page-ink:#EAECED; --page-muted:#99A1A5; --page-line:#2A2D2F; --page-card:#1D2021; } }
+:root[data-theme="dark"]{ --page-bg:#151718; --page-ink:#EAECED; --page-muted:#99A1A5; --page-line:#2A2D2F; --page-card:#1D2021; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--page-bg);color:var(--page-ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1260px;margin:0 auto;padding:0 20px}
+.mast{padding:48px 0 24px;border-bottom:1px solid var(--page-line)}
+.mast h1{margin:0 0 12px;font-size:clamp(26px,3.6vw,38px);letter-spacing:-.02em;font-weight:600}
+.mast p{margin:0 0 20px;max-width:64ch;color:var(--page-muted);line-height:1.6;font-size:15px}
+.idx{display:flex;flex-wrap:wrap;gap:8px}
+.idx a{text-decoration:none;font-size:12.5px;font-weight:500;padding:7px 12px;border-radius:999px;border:1px solid var(--page-line);background:var(--page-card)}
+.idx a:focus-visible{outline:2px solid #0F6F5C;outline-offset:2px}
+.grouphead{margin:46px 0 0;font-size:13px;font-weight:600;color:var(--page-muted)}
+.pagesec{padding:26px 0;border-bottom:1px solid var(--page-line)}
+.pagesec h2{margin:0 0 4px;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.route{font-size:12px;color:var(--page-muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.pagesec .desc{margin:10px 0 20px;max-width:70ch;color:var(--page-muted);font-size:13.5px;line-height:1.6}
+.pair{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:11.5px;color:var(--page-muted);font-weight:600;margin-top:9px;text-align:center}
+
+/* frames */
+.laptop{flex:1 1 640px;min-width:0}
+.lshell{border-radius:10px;overflow:hidden;background:#1B1E1F;box-shadow:0 14px 30px rgba(0,0,0,.18)}
+.chrome{height:30px;display:flex;align-items:center;gap:6px;padding:0 12px}
+.chrome i{width:9px;height:9px;border-radius:50%;background:#474C4E}
+.chrome span{margin-left:10px;font-size:10.5px;color:#868C8F;font-family:ui-monospace,monospace}
+.lview{height:660px;overflow:auto;background:#fff}
+.phone{flex:0 0 auto;width:410px}
+.pshell{width:410px;height:820px;border-radius:40px;padding:10px;background:#1B1E1F;box-shadow:0 14px 30px rgba(0,0,0,.18)}
+.pview{width:100%;height:100%;border-radius:31px;overflow:auto;background:#fff}
+.lview,.pview{scrollbar-width:thin}
+@media (max-width:1080px){ .pair{flex-direction:column} .laptop{width:100%} .phone{width:100%;max-width:410px} }
+
+/* ============ GHUMO ODISHA — VARIATION B DESIGN SYSTEM ============ */
+.vp{container-type:inline-size;font-family:Inter,system-ui,sans-serif;color:#0F1416;font-size:13.5px;line-height:1.45;background:#fff;min-height:100%}
+.vp *{box-sizing:border-box}
+.vp img{max-width:100%}
+.vp{
+  --ink:#0F1416; --muted:#6A7478; --line:#E7E9EA; --acc:#0F6F5C; --acc-soft:#E6F2EE;
+  --canvas:#F7F8F8; --warn-bg:#FDF1DC; --warn:#9A6A11; --dang-bg:#FBEAE7; --dang:#C0483A;
+}
+.vp h1,.vp h2,.vp h3,.vp h4,.vp h5{margin:0;font-weight:600;letter-spacing:-.015em}
+.vp p{margin:0}
+.vp a{color:inherit;text-decoration:none}
+.mut{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--acc);color:#fff;border:none;border-radius:12px;padding:11px 18px;font:600 13px Inter,sans-serif;cursor:pointer}
+.btn.sm{padding:8px 13px;font-size:12px;border-radius:10px}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost.acc{color:var(--acc);border-color:#BFDDD4}
+.btn.dang{background:#fff;color:var(--dang);border:1px solid #F0CFC9}
+.btn.block{width:100%}
+.inp{display:block;width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font:400 13px Inter,sans-serif;color:var(--ink);background:#fff}
+.inp.ph{color:#9AA3A6}
+.lbl{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.fld{margin-bottom:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:600;background:var(--canvas);color:var(--muted)}
+.badge.ok{background:var(--acc-soft);color:var(--acc)}
+.badge.wait{background:var(--warn-bg);color:var(--warn)}
+.badge.bad{background:var(--dang-bg);color:var(--dang)}
+.badge.info{background:#EAF0F6;color:#3A5B7A}
+.card{border:1px solid var(--line);border-radius:14px;background:#fff}
+.pad{padding:16px}
+.row{display:flex;align-items:center;gap:10px}
+.sp{justify-content:space-between}
+.stack{display:grid;gap:12px}
+.hr{height:1px;background:var(--line);margin:14px 0}
+.eyebrow{font-size:11.5px;font-weight:600;color:var(--acc)}
+
+/* ---- customer chrome ---- */
+.cnav{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.94);backdrop-filter:blur(8px)}
+.logo{font-weight:700;font-size:16px;letter-spacing:-.03em}
+.logo em{font-style:normal;color:var(--acc)}
+.cnav nav{display:flex;gap:6px}
+.cnav nav a{padding:8px 12px;border-radius:10px;font-size:12.5px;color:var(--muted);font-weight:500}
+.cnav nav a.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+.burger{display:none;width:34px;height:34px;border:1px solid var(--line);border-radius:10px;place-items:center}
+.container{max-width:1080px;margin:0 auto;padding:0 28px}
+.foot{margin-top:40px;padding:26px 28px;border-top:1px solid var(--line);background:var(--canvas);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* home */
+.hero{padding:42px 0 30px}
+.hero h1{font-size:34px;line-height:1.1;margin-bottom:12px;max-width:16ch}
+.hero p{color:var(--muted);max-width:52ch;margin-bottom:20px;font-size:14px}
+.searchbar{display:flex;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:14px;padding:10px;max-width:640px}
+.searchbar .inp{border:none;flex:1;min-width:130px;padding:6px 8px}
+.tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tcard{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.tcard .shot{position:relative;height:172px;background:var(--canvas)}
+.tcard .dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.tcard .dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55)}
+.tcard .dots i.on{background:#fff;width:14px;border-radius:99px}
+.tcard .arw{position:absolute;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.9);display:grid;place-items:center;font-size:13px;color:#0F1416}
+.tcard .arw.l{left:9px} .tcard .arw.r{right:9px}
+.tcard .seatpill{position:absolute;top:10px;left:10px;background:rgba(15,20,22,.72);color:#fff;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px}
+.tcard .body{padding:14px}
+.tcard h3{font-size:16px;margin-bottom:5px}
+.tcard .meta{font-size:12px;color:var(--muted);margin-bottom:12px}
+.price b{font-size:18px;font-weight:700}
+.price small{display:block;font-size:10.5px;color:var(--muted)}
+.sect{padding:34px 0}
+.sect > h2{font-size:21px;margin-bottom:5px}
+.sect > .sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+/* trip details */
+.thero{position:relative;height:400px;background:var(--canvas)}
+.thero .cap{position:absolute;left:0;right:0;bottom:0;padding:34px 28px;background:linear-gradient(to top,rgba(10,16,18,.9),rgba(10,16,18,.1));color:#fff}
+.thero .cap h1{font-size:32px;margin-bottom:8px}
+.thero .cap .r{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;opacity:.9}
+.tlayout{display:grid;grid-template-columns:1fr 340px;gap:30px;align-items:start;padding:30px 0}
+.aside{position:sticky;top:76px;display:grid;gap:14px}
+.hlgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.hl .shot{height:130px;border-radius:12px;overflow:hidden;background:var(--canvas);margin-bottom:9px}
+.hl b{display:block;font-size:13.5px;margin-bottom:3px}
+.hl p{font-size:12px;color:var(--muted);line-height:1.5}
+.incl{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.incl div{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:12.5px}
+.incl .tick{width:18px;height:18px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-size:10px;font-weight:700}
+.day{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.day .dh{display:flex;gap:11px;align-items:center;margin-bottom:14px}
+.day .dn{background:var(--acc);color:#fff;border-radius:10px;padding:5px 10px;font-size:11px;font-weight:700}
+.day .dh b{font-size:14.5px}
+.tl{position:relative;padding-left:20px}
+.tl:before{content:"";position:absolute;left:5px;top:5px;bottom:5px;width:2px;background:var(--line)}
+.tl .it{position:relative;padding-bottom:13px}
+.tl .it:last-child{padding-bottom:0}
+.tl .it:before{content:"";position:absolute;left:-19px;top:5px;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--acc)}
+.tl .it b{font-size:12px;color:var(--acc);display:block;margin-bottom:2px}
+.tl .it span{font-size:12.5px;color:var(--ink)}
+.gal{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;height:190px}
+.gal div{border-radius:12px;overflow:hidden;background:var(--canvas)}
+.slot{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+.slot.on{border-color:var(--acc);background:var(--acc-soft)}
+.slot.out{opacity:.62}
+.slot b{display:block;font-size:13px}
+.slot small{font-size:11.5px;color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;width:fit-content}
+.stepper i{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);display:grid;place-items:center;font-style:normal;font-weight:600}
+.stepper b{min-width:22px;text-align:center;font-size:15px}
+.sumrow{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0}
+.sumrow.total{font-size:15px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:12px}
+.orgbox{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--canvas)}
+.pinbox{display:flex;gap:8px}
+.pinbox i{flex:1;height:44px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;font-style:normal;font-size:18px;background:#fff}
+.note{font-size:11.5px;color:var(--muted);line-height:1.5}
+.successcard{border:1px solid #BFDDD4;background:var(--acc-soft);border-radius:14px;padding:20px}
+.successcard .tick{width:38px;height:38px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:18px;margin-bottom:12px}
+.stickycta{display:none}
+
+/* auth / account */
+.authwrap{max-width:400px;margin:0 auto;padding:54px 0}
+.bkcard{border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:96px 1fr auto;gap:16px;align-items:center;margin-bottom:12px}
+.bkcard .shot{height:76px;border-radius:10px;overflow:hidden;background:var(--canvas)}
+.money{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.money b{display:block;color:var(--ink);font-size:13.5px}
+
+/* ---- admin ---- */
+.adm{display:flex;min-height:660px;background:var(--canvas)}
+.aside2{width:212px;flex:0 0 auto;background:#fff;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:3px}
+.aside2 .logo{margin:4px 10px 18px}
+.aside2 a{padding:9px 11px;border-radius:10px;font-size:12.5px;color:var(--muted);font-weight:500}
+.aside2 a.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+.aside2 .who{margin-top:auto;border-top:1px solid var(--line);padding:12px 10px 2px;font-size:11.5px;color:var(--muted)}
+.amain{flex:1;min-width:0;padding:22px 26px 34px}
+.ahead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.ahead h2{font-size:20px;margin-bottom:4px}
+.ahead .sub{font-size:12px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.kpi .k{font-size:11.5px;color:var(--muted);margin-bottom:7px}
+.kpi .v{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.kpi .d{font-size:11px;color:var(--acc);margin-top:5px}
+.panels{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.panel h4{font-size:14px;margin-bottom:3px}
+.panel .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:0 10px 9px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .num{text-align:right;padding-right:0}
+.filters{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+.sel{border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;background:#fff;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sel b{color:var(--ink);font-weight:600}
+.srch{flex:1;min-width:180px}
+.pager{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:12px;color:var(--muted)}
+.pager .pg{display:flex;gap:5px}
+.pager .pg i{width:28px;height:28px;border:1px solid var(--line);border-radius:9px;display:grid;place-items:center;font-style:normal;background:#fff}
+.pager .pg i.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.formsec{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.formsec > h4{font-size:14.5px;margin-bottom:2px}
+.formsec > .sub{font-size:11.5px;color:var(--muted);margin-bottom:16px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.f4{display:grid;grid-template-columns:1.2fr 1fr 1fr auto;gap:12px;align-items:end}
+.drop{border:1.5px dashed #CFD5D6;border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:12px;background:var(--canvas)}
+.thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}
+.thumbs .t{position:relative;height:74px;border-radius:10px;overflow:hidden;background:var(--canvas);border:1px solid var(--line)}
+.thumbs .t .x{position:absolute;top:5px;right:5px;width:19px;height:19px;border-radius:50%;background:rgba(15,20,22,.72);color:#fff;font-size:11px;display:grid;place-items:center}
+.thumbs .t .p{position:absolute;bottom:5px;left:5px;background:var(--acc);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:99px}
+.repeat{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:11px;background:var(--canvas)}
+.repeat .rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.repeat .rh b{font-size:12.5px}
+.repeat .tools{display:flex;gap:6px;color:var(--muted);font-size:12px}
+.repeat .tools i{width:26px;height:26px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;font-style:normal;background:#fff}
+.addbtn{border:1px dashed #C6CDCE;border-radius:11px;padding:10px;text-align:center;font-size:12.5px;font-weight:600;color:var(--acc);background:#fff}
+.slotpanel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.slotstats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 14px}
+.slotstats div{background:var(--canvas);border-radius:10px;padding:10px 12px}
+.slotstats .k{font-size:10.5px;color:var(--muted);margin-bottom:4px}
+.slotstats .v{font-size:17px;font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;font-size:12.5px}
+.kv .k{color:var(--muted)}
+.modalstage{position:relative;background:rgba(15,20,22,.4);padding:26px;border-radius:14px}
+.modal{max-width:420px;margin:0 auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal h4{font-size:16px;margin-bottom:14px}
+.warnbox{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:11.5px;margin-bottom:14px}
+.statecol{display:grid;gap:10px}
+.state{border:1px solid var(--line);border-radius:12px;padding:14px;font-size:12.5px;display:flex;gap:10px;align-items:center}
+.state i{width:26px;height:26px;border-radius:8px;background:var(--canvas);display:grid;place-items:center;font-style:normal;font-size:12px;flex:0 0 auto}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--acc)}
+
+/* ======== CONTAINER QUERIES: mobile layout ======== */
+@container (max-width: 640px){
+  .cnav{padding:12px 16px}
+  .cnav nav{display:none}
+  .burger{display:grid}
+  .container{padding:0 16px}
+  .hero{padding:26px 0 20px}
+  .hero h1{font-size:25px}
+  .tgrid{grid-template-columns:1fr}
+  .sect{padding:24px 0}
+  .thero{height:260px}
+  .thero .cap{padding:20px 16px}
+  .thero .cap h1{font-size:23px}
+  .tlayout{grid-template-columns:1fr;gap:22px;padding:20px 0 0}
+  .aside{position:static}
+  .hlgrid{grid-template-columns:1fr 1fr;gap:10px}
+  .hl .shot{height:96px}
+  .incl{grid-template-columns:1fr}
+  .gal{grid-template-columns:1fr 1fr;height:auto;grid-auto-rows:110px}
+  .gal div:first-child{grid-column:1 / -1}
+  .stickycta{display:flex;position:sticky;bottom:0;z-index:6;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:11px 16px 15px;margin-top:18px}
+  .bkcard{grid-template-columns:76px 1fr;gap:12px}
+  .bkcard .act{grid-column:1 / -1}
+  .authwrap{padding:30px 16px}
+  .adm{flex-direction:column;min-height:0}
+  .aside2{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:10px 12px;gap:6px;align-items:center}
+  .aside2 .logo{margin:0 8px 0 4px;white-space:nowrap}
+  .aside2 a{white-space:nowrap}
+  .aside2 .who{display:none}
+  .amain{padding:16px}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .panels{grid-template-columns:1fr}
+  .f2,.f3,.f4{grid-template-columns:1fr}
+  .thumbs{grid-template-columns:repeat(3,1fr)}
+  .slotstats{grid-template-columns:1fr 1fr}
+  .tblwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
+  .tbl{min-width:560px}
+  .modalstage{padding:14px}
+  .ahead .btn{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="mast">
+  <h1>Ghumo Odisha — every page, laptop and mobile</h1>
+  <p>Variation B applied across the whole product. Each screen is shown twice: a laptop viewport and a 390-wide phone. These are the same markup rendered at two widths, so the responsive behaviour you see — three columns to one, sidebar to scroll strip, booking panel to sticky bar, tables to horizontal scroll — is what gets built. Data follows your spec: Koraput Escape at ₹4,999, three date slots, Deomali / Talamali / Punjisil.</p>
+  <nav class="idx" id="idx"></nav>
+</header>
+<main id="out"></main>
+<footer style="padding:30px 0 60px;color:var(--page-muted);font-size:13px;line-height:1.6">
+  Scenes stand in for photography. Every screen scrolls inside its frame.
+</footer>
+</div>
+
+<script>
+const C = {
+  trip:{ name:"Koraput Escape", price:"₹4,999", dur:"3 Days / 2 Nights" },
+  slots:[
+    {d:"16 Sep → 18 Sep 2026", s:"10 seats available", state:"on"},
+    {d:"23 Sep → 25 Sep 2026", s:"16 seats available", state:""},
+    {d:"30 Sep → 02 Oct 2026", s:"Sold out", state:"out"}
+  ],
+  highlights:[
+    ["Deomali","Odisha's highest peak, best reached before the mist lifts at 7 am.","hill"],
+    ["Talamali","Open grassland ridge with valley views on both sides.","valley"],
+    ["Punjisil Waterfall","A short forest walk down to the pool at the base.","fall"]
+  ],
+  incl:["Breakfast","Dinner","Stay","Trip coordinator"],
+  days:[
+    ["Day 1","Bhubaneswar → Koraput & sightseeing",[
+      ["08:00 PM","Depart from Jaydev Vihar"],["06:00 AM","Reach Koraput"],
+      ["08:00 AM","Visit Deomali"],["10:30 AM","Explore Talamali"],["07:30 PM","Dinner and check-in"]
+    ]],
+    ["Day 2","Waterfalls, Gupteswar & return journey",[
+      ["07:00 AM","Breakfast at the stay"],["09:00 AM","Punjisil Waterfall trek"],
+      ["01:00 PM","Gupteswar Caves"],["05:00 PM","Begin return journey"]
+    ]]
+  ],
+  trips:[
+    {n:"Koraput Escape", d:"3 Days / 2 Nights", p:"₹4,999", nx:"Next: 16 Sep 2026", seats:"10 seats left", art:"hill"},
+    {n:"Puri Konark Escape", d:"2 Days / 1 Night", p:"₹3,499", nx:"Next: 20 Sep 2026", seats:"16 seats left", art:"temple"},
+    {n:"Mahendragiri Adventure", d:"3 Days / 2 Nights", p:"₹5,999", nx:"Next: 27 Sep 2026", seats:"4 seats left", art:"valley"}
+  ],
+  bookings:[
+    ["#GO-1042","Koraput Escape","16 Sep → 18 Sep 2026","2","₹9,998","₹3,000","₹6,998","Confirmed","ok","Advance paid"],
+    ["#GO-1051","Puri Konark Escape","20 Sep → 21 Sep 2026","1","₹3,499","₹0","₹3,499","Requested","wait","Unpaid"],
+    ["#GO-0987","Mahendragiri Adventure","12 Aug → 14 Aug 2026","2","₹11,998","₹11,998","₹0","Completed","info","Paid"]
+  ],
+  adminBookings:[
+    ["#GO-1051","Rahul Das","9876543210","Puri Konark Escape","20 Sep 2026","1","₹3,499","₹0","Requested","wait","Unpaid","WhatsApp"],
+    ["#GO-1050","Sneha Mishra","9861002233","Koraput Escape","16 Sep 2026","4","₹19,996","₹5,000","Confirmed","ok","Advance paid","WhatsApp"],
+    ["#GO-1049","Amit Pradhan","9937112244","Koraput Escape","23 Sep 2026","2","₹9,998","₹0","Requested","wait","Unpaid","Phone"],
+    ["#GO-1048","Meera Nayak","9090887766","Mahendragiri Adventure","27 Sep 2026","2","₹11,998","₹4,000","Confirmed","ok","Advance paid","Offline"],
+    ["#GO-1047","Joydeep Rout","9438556677","Koraput Escape","16 Sep 2026","3","₹14,997","₹0","Cancelled","bad","Refunded","Website"]
+  ],
+  customers:[
+    ["Rahul Das","9876543210","rahul@example.com","3","2","₹25,493","₹8,000","₹17,493"],
+    ["Sneha Mishra","9861002233","sneha@example.com","1","1","₹19,996","₹5,000","₹14,996"],
+    ["Amit Pradhan","9937112244","amit@example.com","2","0","₹9,998","₹0","₹9,998"],
+    ["Meera Nayak","9090887766","meera@example.com","1","1","₹11,998","₹4,000","₹7,998"]
+  ]
+};
+
+function art(kind,h){
+  const H=h||200;
+  const s=`<svg viewBox="0 0 400 ${H}" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg">`;
+  const sky=`<rect width="400" height="${H}" fill="#DCE5E2"/>`;
+  if(kind==="temple") return s+sky+`<circle cx="300" cy="${H*.3}" r="34" fill="#0F6F5C" opacity=".25"/>
+    <path d="M0 ${H} L0 ${H*.66} L70 ${H*.66} L110 ${H*.3} L150 ${H*.66} L230 ${H*.66} L230 ${H} Z" fill="#2A3B38"/>
+    <g transform="translate(150 ${H*.74})" stroke="#0F6F5C" stroke-width="2.5" fill="none">
+    <circle r="40"/><circle r="26"/>${Array.from({length:12},(_,i)=>`<line x1="0" y1="0" x2="${(40*Math.cos(i*Math.PI/6)).toFixed(1)}" y2="${(40*Math.sin(i*Math.PI/6)).toFixed(1)}"/>`).join("")}</g>
+    <rect y="${H*.9}" width="400" height="${H*.1}" fill="#2A3B38"/></svg>`;
+  if(kind==="valley") return s+sky+`<path d="M0 ${H} L0 ${H*.62} L100 ${H*.34} L200 ${H*.64} L300 ${H*.3} L400 ${H*.6} L400 ${H} Z" fill="#B4C9C2"/>
+    <path d="M0 ${H} L0 ${H*.8} L110 ${H*.62} L230 ${H*.84} L330 ${H*.68} L400 ${H*.82} L400 ${H} Z" fill="#2A3B38"/>
+    <circle cx="326" cy="${H*.26}" r="24" fill="#0F6F5C" opacity=".3"/></svg>`;
+  if(kind==="fall") return s+sky+`<path d="M0 ${H} L0 ${H*.3} L150 ${H*.3} L150 ${H} Z" fill="#2A3B38"/>
+    <path d="M400 ${H} L400 ${H*.34} L250 ${H*.34} L250 ${H} Z" fill="#2A3B38"/>
+    <rect x="160" y="${H*.3}" width="84" height="${H*.55}" fill="#fff" opacity=".8"/>
+    <ellipse cx="200" cy="${H*.9}" rx="120" ry="20" fill="#B4C9C2"/></svg>`;
+  if(kind==="room") return s+`<rect width="400" height="${H}" fill="#E7EAE8"/>
+    <rect x="40" y="${H*.42}" width="180" height="${H*.34}" rx="8" fill="#B4C9C2"/>
+    <rect x="52" y="${H*.32}" width="60" height="${H*.14}" rx="7" fill="#fff"/>
+    <rect x="250" y="${H*.2}" width="110" height="${H*.3}" rx="6" fill="#0F6F5C" opacity=".22"/>
+    <rect y="${H*.76}" width="400" height="${H*.24}" fill="#CFD6D3"/></svg>`;
+  return s+sky+`<path d="M0 ${H} L0 ${H*.58} L120 ${H*.26} L240 ${H*.62} L400 ${H*.34} L400 ${H} Z" fill="#B4C9C2"/>
+    <path d="M0 ${H} L0 ${H*.78} L130 ${H*.56} L260 ${H*.8} L400 ${H*.64} L400 ${H} Z" fill="#2A3B38"/>
+    <circle cx="70" cy="${H*.24}" r="22" fill="#0F6F5C" opacity=".3"/></svg>`;
+}
+
+const nav = (on) => `<div class="cnav">
+  <div class="logo">Ghumo <em>Odisha</em></div>
+  <nav>${["Home","Trips","Cars","Hotels","My Bookings","Profile"].map(x=>`<a class="${x===on?"on":""}">${x}</a>`).join("")}</nav>
+  <div class="row" style="gap:8px">
+    <div class="burger">☰</div>
+    <button class="btn sm ghost">Sign in</button>
+  </div>
+</div>`;
+const foot = `<div class="foot"><div>Ghumo Odisha · Bhubaneswar, Odisha</div><div>Call 9XXXXXXXXX · hello@ghumoodisha.in</div></div>`;
+
+/* ---------------- CUSTOMER ---------------- */
+function pHome(){
+  return `<div class="vp">${nav("Home")}
+  <div class="container">
+    <section class="hero">
+      <h1>Small group trips across Odisha</h1>
+      <p>Fixed departures with seats you can actually check. Pick a date, request your seats, and our organizer calls you back the same day.</p>
+      <div class="searchbar">
+        <div class="inp ph" style="flex:1.4">Where to? Koraput, Puri, Mahendragiri…</div>
+        <div class="inp ph">Any month</div>
+        <button class="btn">Find trips</button>
+      </div>
+    </section>
+    <section class="sect" style="padding-top:8px">
+      <h2>Upcoming departures</h2>
+      <div class="sub">3 trips with seats open this month</div>
+      <div class="tgrid">${C.trips.map((t,i)=>`
+        <article class="tcard">
+          <div class="shot">${art(t.art,172)}
+            <span class="seatpill">${t.seats}</span>
+            <div class="arw l">‹</div><div class="arw r">›</div>
+            <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="body">
+            <h3>${t.n}</h3>
+            <div class="meta">${t.d} · ${t.nx}</div>
+            <div class="row sp">
+              <div class="price"><b>${t.p}</b><small>per person</small></div>
+              <button class="btn sm">View full itinerary</button>
+            </div>
+          </div>
+        </article>`).join("")}
+      </div>
+    </section>
+  </div>${foot}</div>`;
+}
+
+function pTrip(){
+  return `<div class="vp">${nav("Trips")}
+  <div class="thero">${art("hill",400)}
+    <div class="cap">
+      <h1>${C.trip.name}</h1>
+      <div class="r"><span>Koraput, Odisha</span><span>${C.trip.dur}</span><span>10 seats available on the next departure</span><span>From ${C.trip.price} per person</span></div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="tlayout">
+      <div>
+        <section style="margin-bottom:30px">
+          <h2 style="font-size:19px;margin-bottom:8px">About this trip</h2>
+          <p class="mut" style="font-size:13.5px;line-height:1.65">Two nights in the Koraput hills — sunrise at Deomali, the open ridge at Talamali, a forest walk to Punjisil, and the Gupteswar caves on the way back. Overnight bus both ways from Bhubaneswar, so you only spend two working days away.</p>
+        </section>
+
+        <section style="margin-bottom:30px">
+          <h2 style="font-size:19px;margin-bottom:14px">What you'll see</h2>
+          <div class="hlgrid">${C.highlights.map(h=>`
+            <div class="hl"><div class="shot">${art(h[2],130)}</div><b>${h[0]}</b><p>${h[1]}</p></div>`).join("")}
+          </div>
+        </section>
+
+        <section style="margin-bottom:30px">
+          <h2 style="font-size:19px;margin-bottom:14px">What's included</h2>
+          <div class="incl">${C.incl.map(i=>`<div><span class="tick">✓</span>${i}</div>`).join("")}</div>
+          <p class="note" style="margin-top:10px">Lunch is not included on this trip, so it isn't listed.</p>
+        </section>
+
+        <section style="margin-bottom:30px">
+          <h2 style="font-size:19px;margin-bottom:14px">Day-wise itinerary</h2>
+          ${C.days.map(d=>`<div class="day">
+            <div class="dh"><span class="dn">${d[0]}</span><b>${d[1]}</b></div>
+            <div class="tl">${d[2].map(p=>`<div class="it"><b>${p[0]}</b><span>${p[1]}</span></div>`).join("")}</div>
+          </div>`).join("")}
+        </section>
+
+        <section style="margin-bottom:30px">
+          <h2 style="font-size:19px;margin-bottom:5px">Where you'll stay</h2>
+          <div class="sub mut" style="font-size:13px;margin-bottom:14px">Twin-sharing rooms at a hillside guest house in Koraput town</div>
+          <div class="gal"><div>${art("room",190)}</div><div>${art("room",95)}</div><div>${art("valley",95)}</div></div>
+        </section>
+      </div>
+
+      <aside class="aside">
+        <div class="card pad">
+          <div class="row sp" style="margin-bottom:14px">
+            <div class="price"><b>${C.trip.price}</b><small>per person</small></div>
+            <span class="badge ok">Seats open</span>
+          </div>
+          <div class="lbl">Choose your date</div>
+          ${C.slots.map(s=>`<div class="slot ${s.state}">
+            <div><b>${s.d}</b><small>${s.s}</small></div>
+            ${s.state==="out"?`<span class="badge bad">Sold out</span>`:s.state==="on"?`<span class="badge ok">Selected</span>`:`<button class="btn sm ghost">Select</button>`}
+          </div>`).join("")}
+          <div class="hr"></div>
+          <div class="lbl">Number of seats</div>
+          <div class="stepper"><i>−</i><b>2</b><i>+</i></div>
+          <p class="note" style="margin-top:8px">Maximum 10 on this date</p>
+          <div class="hr"></div>
+          <div class="sumrow"><span class="mut">₹4,999 × 2 seats</span><span>₹9,998</span></div>
+          <div class="sumrow"><span class="mut">Advance due now</span><span>₹0</span></div>
+          <div class="sumrow total"><span>Total</span><span>₹9,998</span></div>
+          <p class="note" style="margin:10px 0 14px">Final amount is confirmed by our team. No payment is taken on this page.</p>
+          <button class="btn block">Book via WhatsApp</button>
+          <button class="btn block ghost" style="margin-top:8px">Call organizer</button>
+        </div>
+
+        <div class="card pad">
+          <div class="lbl">Your details</div>
+          <div class="fld"><input class="inp" value="Rahul Das" readonly></div>
+          <div class="fld"><input class="inp" value="9876543210" readonly></div>
+          <div class="fld" style="margin-bottom:0"><div class="inp ph">Anything we should know? (optional)</div></div>
+          <p class="note" style="margin-top:10px">Signed in as Rahul Das · <span style="color:var(--acc);font-weight:600">Not you?</span></p>
+        </div>
+
+        <div class="orgbox">
+          <div class="eyebrow" style="margin-bottom:6px">Need help or want to book directly?</div>
+          <b style="font-size:14px;display:block">Ghumo Odisha Organizer</b>
+          <p class="note" style="margin:2px 0 12px">Travel consultant · 9XXXXXXXXX</p>
+          <div class="row" style="gap:8px"><button class="btn sm ghost" style="flex:1">Call now</button><button class="btn sm" style="flex:1">WhatsApp</button></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div class="stickycta">
+    <div class="price"><b>₹9,998</b><small>2 seats · 16 Sep</small></div>
+    <button class="btn">Book via WhatsApp</button>
+  </div>
+  ${foot}</div>`;
+}
+
+function pSuccess(){
+  return `<div class="vp">${nav("Trips")}
+  <div class="container" style="max-width:560px;padding-top:44px;padding-bottom:44px">
+    <div class="successcard">
+      <div class="tick">✓</div>
+      <h2 style="font-size:20px;margin-bottom:6px">Booking request submitted</h2>
+      <p style="font-size:13.5px;color:#2A4F45;line-height:1.6;margin-bottom:16px">Our Ghumo Odisha team will contact you on 9876543210 to collect the advance and confirm your seats.</p>
+      <div class="card pad" style="background:#fff">
+        <div class="kv">
+          <span class="k">Trip</span><b>Koraput Escape</b>
+          <span class="k">Date</span><b>16 Sep → 18 Sep 2026</b>
+          <span class="k">Seats</span><b>2</b>
+          <span class="k">Total</span><b>₹9,998</b>
+          <span class="k">Status</span><span><span class="badge wait">Requested</span></span>
+        </div>
+      </div>
+      <p class="note" style="margin-top:14px">Seats are held only after the team confirms your booking.</p>
+    </div>
+    <div class="row" style="gap:10px;margin-top:16px"><button class="btn" style="flex:1">Open WhatsApp</button><button class="btn ghost" style="flex:1">View my bookings</button></div>
+  </div>${foot}</div>`;
+}
+
+function pLogin(){
+  return `<div class="vp">${nav("")}
+  <div class="container"><div class="authwrap">
+    <h2 style="font-size:22px;margin-bottom:6px">Create your PIN</h2>
+    <p class="mut" style="font-size:13px;margin-bottom:22px">We didn't find an account for 9876543210. Set a 6-digit PIN — you'll use your phone number and this PIN to sign in next time.</p>
+    <div class="fld"><span class="lbl">Full name</span><input class="inp" value="Rahul Das"></div>
+    <div class="fld"><span class="lbl">Phone number</span><input class="inp" value="9876543210" readonly></div>
+    <div class="fld"><span class="lbl">Email</span><input class="inp" value="rahul@example.com"></div>
+    <div class="fld"><span class="lbl">Create PIN</span><div class="pinbox">${"••••••".split("").map(()=>`<i>•</i>`).join("")}</div></div>
+    <div class="fld"><span class="lbl">Confirm PIN</span><div class="pinbox">${"••••  ".split("").map((c,i)=>`<i>${i<4?"•":""}</i>`).join("")}</div></div>
+    <button class="btn block" style="margin-top:6px">Create account &amp; continue</button>
+    <p class="note" style="margin-top:14px;text-align:center">Forgot your PIN? Call Ghumo Odisha on 9XXXXXXXXX — PIN reset by OTP isn't available yet.</p>
+    <div class="hr"></div>
+    <div class="statecol">
+      <div class="state"><i style="background:var(--dang-bg);color:var(--dang)">!</i><div><b>Wrong PIN</b><div class="note">Phone number or PIN is incorrect. 3 attempts left.</div></div></div>
+      <div class="state"><i style="background:var(--warn-bg);color:var(--warn)">⏱</i><div><b>Locked</b><div class="note">Too many attempts. Try again in 15 minutes.</div></div></div>
+    </div>
+  </div></div>${foot}</div>`;
+}
+
+function pMyBookings(){
+  return `<div class="vp">${nav("My Bookings")}
+  <div class="container" style="padding-top:30px">
+    <h2 style="font-size:22px;margin-bottom:5px">My bookings</h2>
+    <p class="mut" style="font-size:13px;margin-bottom:20px">3 bookings · showing newest first</p>
+    <div class="filters">${["All","Requested","Confirmed","Cancelled","Completed"].map((f,i)=>`<div class="sel">${i===0?"<b>All</b>":f}</div>`).join("")}</div>
+    ${C.bookings.map((b,i)=>`<div class="bkcard">
+      <div class="shot">${art(i===0?"hill":i===1?"temple":"valley",76)}</div>
+      <div>
+        <div class="row" style="gap:8px;margin-bottom:5px"><b style="font-size:14.5px">${b[1]}</b><span class="badge ${b[8]}">${b[7]}</span><span class="badge">${b[9]}</span></div>
+        <div class="mut" style="font-size:12px;margin-bottom:9px">${b[0]} · ${b[2]} · ${b[3]} ${b[3]==="1"?"seat":"seats"}</div>
+        <div class="money">
+          <span>Total<b>${b[4]}</b></span><span>Advance<b>${b[5]}</b></span><span>Remaining<b>${b[6]}</b></span>
+        </div>
+      </div>
+      <div class="act"><button class="btn sm ghost">View details</button></div>
+    </div>`).join("")}
+    <div class="card pad" style="text-align:center;margin-top:16px;background:var(--canvas)">
+      <p class="note">Nothing here yet? <span style="color:var(--acc);font-weight:600">Browse upcoming trips</span></p>
+    </div>
+  </div>${foot}</div>`;
+}
+
+function pProfile(){
+  return `<div class="vp">${nav("Profile")}
+  <div class="container" style="padding-top:30px;max-width:720px">
+    <h2 style="font-size:22px;margin-bottom:20px">Profile</h2>
+    <div class="card pad" style="margin-bottom:14px">
+      <div class="row sp" style="margin-bottom:16px"><h4 style="font-size:15px">Your details</h4><button class="btn sm ghost">Edit</button></div>
+      <div class="f2">
+        <div class="fld"><span class="lbl">Full name</span><input class="inp" value="Rahul Das" readonly></div>
+        <div class="fld"><span class="lbl">Phone number</span><input class="inp" value="9876543210" readonly></div>
+        <div class="fld"><span class="lbl">Email</span><input class="inp" value="rahul@example.com" readonly></div>
+        <div class="fld"><span class="lbl">Member since</span><input class="inp" value="12 Mar 2026" readonly></div>
+      </div>
+    </div>
+    <div class="card pad" style="margin-bottom:14px">
+      <h4 style="font-size:15px;margin-bottom:4px">Change PIN</h4>
+      <p class="note" style="margin-bottom:16px">Your current PIN is never shown. Enter it once to set a new one.</p>
+      <div class="f3">
+        <div class="fld"><span class="lbl">Current PIN</span><input class="inp" value="••••••" readonly></div>
+        <div class="fld"><span class="lbl">New PIN</span><div class="inp ph">6 digits</div></div>
+        <div class="fld"><span class="lbl">Confirm new PIN</span><div class="inp ph">6 digits</div></div>
+      </div>
+      <button class="btn sm">Update PIN</button>
+    </div>
+    <button class="btn ghost dang" style="color:var(--dang);border-color:#F0CFC9">Sign out</button>
+  </div>${foot}</div>`;
+}
+
+/* ---------------- ADMIN ---------------- */
+const aside = (on) => `<div class="aside2">
+  <div class="logo">Ghumo <em>Odisha</em></div>
+  ${["Dashboard","Trips","Bookings","Customers"].map(x=>`<a class="${x===on?"on":""}">${x}</a>`).join("")}
+  <div class="who">Signed in as <b style="color:var(--ink)">admin</b><br>Administrator</div>
+</div>`;
+
+function pAdminLogin(){
+  return `<div class="vp"><div style="min-height:660px;display:grid;place-items:center;background:var(--canvas);padding:40px 20px">
+    <div class="card pad" style="width:100%;max-width:380px;padding:26px">
+      <div class="logo" style="margin-bottom:6px">Ghumo <em>Odisha</em></div>
+      <p class="note" style="margin-bottom:22px">Admin panel · staff access only</p>
+      <div class="fld"><span class="lbl">Username</span><input class="inp" value="admin"></div>
+      <div class="fld"><span class="lbl">Password</span><input class="inp" value="••••••••••" type="text"></div>
+      <button class="btn block" style="margin-top:6px">Sign in</button>
+      <div class="state" style="margin-top:14px"><i style="background:var(--dang-bg);color:var(--dang)">!</i><div class="note">Invalid username or password.</div></div>
+    </div>
+  </div></div>`;
+}
+
+function pDash(){
+  const k=[["Total trips","12",""],["Active trips","8","3 departing this week"],["Total customers","486","+24 this month"],["Booking requests","37","11 awaiting contact"],["Confirmed bookings","142",""],["Upcoming trips","6",""],["Confirmed revenue","₹8.42L","+12% vs Aug"],["Advance collected","₹2.19L","₹6.23L outstanding"]];
+  return `<div class="vp"><div class="adm">${aside("Dashboard")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Dashboard</h2><div class="sub">1 – 19 September 2026</div></div>
+      <div class="row" style="gap:8px"><div class="sel">Period <b>This month</b></div><button class="btn sm">Create booking</button></div></div>
+    <div class="kpis">${k.slice(0,4).map(x=>`<div class="kpi"><div class="k">${x[0]}</div><div class="v">${x[1]}</div>${x[2]?`<div class="d">${x[2]}</div>`:""}</div>`).join("")}</div>
+    <div class="kpis">${k.slice(4).map(x=>`<div class="kpi"><div class="k">${x[0]}</div><div class="v">${x[1]}</div>${x[2]?`<div class="d">${x[2]}</div>`:""}</div>`).join("")}</div>
+    <div class="panels">
+      <div class="panel">
+        <h4>Recent booking requests</h4><div class="sub">Awaiting organizer contact</div>
+        <div class="tblwrap"><table class="tbl">
+          <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Seats</th><th>Status</th></tr>
+          ${C.adminBookings.slice(0,4).map(b=>`<tr><td>${b[0]}</td><td>${b[1]}</td><td>${b[3]}</td><td>${b[5]}</td><td><span class="badge ${b[9]}">${b[8]}</span></td></tr>`).join("")}
+        </table></div>
+      </div>
+      <div class="panel">
+        <h4>Upcoming trips</h4><div class="sub">Next 30 days</div>
+        ${[["Koraput Escape","16 Sep","6 / 16 seats left"],["Puri Konark Escape","20 Sep","16 / 16 seats left"],["Koraput Escape","23 Sep","14 / 16 seats left"],["Mahendragiri Adventure","27 Sep","4 / 12 seats left"]].map(u=>`
+          <div class="row sp" style="padding:9px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:12.5px">${u[0]}</b><div class="note">${u[1]}</div></div><span class="note">${u[2]}</span></div>`).join("")}
+      </div>
+    </div>
+    <div class="panel">
+      <h4>Recently confirmed</h4><div class="sub">Seats already deducted</div>
+      <div class="tblwrap"><table class="tbl">
+        <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th><th>Payment</th></tr>
+        ${C.adminBookings.filter(b=>b[8]==="Confirmed").map(b=>`<tr><td>${b[0]}</td><td>${b[1]}</td><td>${b[3]}</td><td>${b[4]}</td><td>${b[5]}</td><td>${b[6]}</td><td>${b[7]}</td><td><span class="badge ok">${b[10]}</span></td></tr>`).join("")}
+      </table></div>
+    </div>
+  </div></div></div>`;
+}
+
+function pAdminTrips(){
+  const rows=[["Koraput Escape","₹4,999","16 Sep 2026","16","6","9","Active","ok"],
+              ["Puri Konark Escape","₹3,499","20 Sep 2026","16","16","3","Active","ok"],
+              ["Mahendragiri Adventure","₹5,999","27 Sep 2026","12","4","7","Active","ok"],
+              ["Daringbadi Winter","₹6,499","—","0","0","0","Inactive","bad"]];
+  return `<div class="vp"><div class="adm">${aside("Trips")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Trips</h2><div class="sub">12 trips · 8 active</div></div><button class="btn sm">Add trip</button></div>
+    <div class="filters">
+      <div class="sel srch">Search by trip name…</div>
+      <div class="sel">Status <b>All</b></div>
+      <div class="sel">Sort <b>Next departure</b></div>
+    </div>
+    <div class="panel" style="padding:16px">
+      <div class="tblwrap"><table class="tbl">
+        <tr><th>Trip</th><th>Price / person</th><th>Next date</th><th>Total seats</th><th>Available</th><th>Confirmed bookings</th><th>Status</th><th></th></tr>
+        ${rows.map(r=>`<tr>
+          <td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td>
+          <td><span class="badge ${r[7]}">${r[6]}</span></td>
+          <td class="num"><div class="row" style="gap:5px;justify-content:flex-end"><span class="sel" style="padding:5px 9px">View</span><span class="sel" style="padding:5px 9px">Edit</span><span class="sel" style="padding:5px 9px">Dates</span><span class="sel" style="padding:5px 9px">⋯</span></div></td>
+        </tr>`).join("")}
+      </table></div>
+      <div class="pager"><span>Showing 1–4 of 12</span><div class="pg"><i>‹</i><i class="on">1</i><i>2</i><i>3</i><i>›</i></div></div>
+    </div>
+  </div></div></div>`;
+}
+
+function pAddTrip(){
+  return `<div class="vp"><div class="adm">${aside("Trips")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Add trip</h2><div class="sub">All sections are saved together when you press Save trip</div></div>
+      <div class="row" style="gap:8px"><button class="btn sm ghost">Cancel</button><button class="btn sm">Save trip</button></div></div>
+
+    <div class="formsec"><h4>Basic information</h4><div class="sub">Section A</div>
+      <div class="fld"><span class="lbl">Trip name</span><input class="inp" value="Koraput Escape"></div>
+      <div class="fld"><span class="lbl">Description</span><div class="inp" style="height:76px;padding-top:11px">Two nights in the Koraput hills — Deomali at sunrise, Talamali ridge, Punjisil waterfall and Gupteswar caves.</div></div>
+      <div class="f3">
+        <div class="fld"><span class="lbl">Price per person (₹)</span><input class="inp" value="4999"></div>
+        <div class="fld"><span class="lbl">Status</span><input class="inp" value="Active"></div>
+        <div class="fld"><span class="lbl">Included</span><input class="inp" value="Breakfast, Dinner, Stay, Coordinator"></div>
+      </div>
+    </div>
+
+    <div class="formsec"><h4>Trip photos</h4><div class="sub">Section B · first photo is used as the card image</div>
+      <div class="drop">Drop images here or <b style="color:var(--acc)">browse</b><br><span class="note">JPG or PNG, up to 5 MB each</span></div>
+      <div class="thumbs">
+        <div class="t">${art("hill",74)}<span class="x">×</span><span class="p">Primary</span></div>
+        <div class="t">${art("valley",74)}<span class="x">×</span></div>
+        <div class="t">${art("fall",74)}<span class="x">×</span></div>
+        <div class="t">${art("temple",74)}<span class="x">×</span></div>
+        <div class="t" style="display:grid;place-items:center;color:var(--muted);font-size:11px">Drag to reorder</div>
+      </div>
+    </div>
+
+    <div class="formsec"><h4>Highlights</h4><div class="sub">Section C · shown as "What you'll see"</div>
+      ${["Deomali","Talamali"].map((h,i)=>`<div class="repeat">
+        <div class="rh"><b>Highlight ${i+1}</b><div class="tools"><i>↑</i><i>↓</i><i>×</i></div></div>
+        <div class="f3">
+          <div class="fld" style="margin:0"><span class="lbl">Place name</span><input class="inp" value="${h}"></div>
+          <div class="fld" style="margin:0"><span class="lbl">Description</span><input class="inp" value="${i?"Open grassland ridge":"Odisha's highest peak"}"></div>
+          <div class="fld" style="margin:0"><span class="lbl">Photo</span><div class="inp ph">Choose file</div></div>
+        </div>
+      </div>`).join("")}
+      <div class="addbtn">+ Add highlight</div>
+    </div>
+
+    <div class="formsec"><h4>Date ranges</h4><div class="sub">Section D · available seats start equal to total seats</div>
+      ${[["16/09/2026","18/09/2026","16"],["23/09/2026","25/09/2026","16"],["30/09/2026","02/10/2026","16"]].map(d=>`
+        <div class="repeat"><div class="f4">
+          <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" value="${d[0]}"></div>
+          <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" value="${d[1]}"></div>
+          <div class="fld" style="margin:0"><span class="lbl">Total seats</span><input class="inp" value="${d[2]}"></div>
+          <button class="btn sm ghost dang" style="color:var(--dang);border-color:#F0CFC9">Remove</button>
+        </div></div>`).join("")}
+      <div class="addbtn">+ Add date range</div>
+    </div>
+
+    <div class="formsec"><h4>Day-wise itinerary</h4><div class="sub">Section E</div>
+      ${C.days.map((d,i)=>`<div class="repeat">
+        <div class="rh"><b>Day ${i+1}</b><div class="tools"><i>↑</i><i>↓</i><i>×</i></div></div>
+        <div class="fld"><span class="lbl">Day title</span><input class="inp" value="${d[1]}"></div>
+        ${d[2].slice(0,3).map(p=>`<div class="row" style="gap:10px;margin-bottom:8px">
+          <input class="inp" style="width:120px" value="${p[0]}"><input class="inp" value="${p[1]}"><span class="sel" style="padding:8px 10px">×</span></div>`).join("")}
+        <div class="addbtn" style="margin-top:4px">+ Add point</div>
+      </div>`).join("")}
+      <div class="addbtn">+ Add day</div>
+    </div>
+
+    <div class="formsec"><h4>Room photos</h4><div class="sub">Section F</div>
+      <div class="drop">Drop accommodation images here or <b style="color:var(--acc)">browse</b></div>
+      <div class="thumbs"><div class="t">${art("room",74)}<span class="x">×</span></div><div class="t">${art("room",74)}<span class="x">×</span></div><div class="t">${art("valley",74)}<span class="x">×</span></div></div>
+    </div>
+
+    <div class="row" style="gap:10px"><button class="btn">Save trip</button><button class="btn ghost">Cancel</button>
+      <div class="row" style="gap:8px;margin-left:auto"><span class="spin"></span><span class="note">Saving…</span></div></div>
+  </div></div></div>`;
+}
+
+function pAdminTripDetails(){
+  const slots=[["16 Sep → 18 Sep 2026","16","6","8","2","5"],["23 Sep → 25 Sep 2026","16","14","2","0","1"],["30 Sep → 02 Oct 2026","16","0","16","3","9"]];
+  return `<div class="vp"><div class="adm">${aside("Trips")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Koraput Escape</h2><div class="sub">₹4,999 per person · Active · 3 date slots · created 04 Aug 2026</div></div>
+      <div class="row" style="gap:8px"><button class="btn sm ghost">Edit trip</button><button class="btn sm">Add date range</button></div></div>
+
+    <div class="panels">
+      <div class="panel"><h4>Trip content</h4><div class="sub">What customers see</div>
+        <div class="thumbs" style="grid-template-columns:repeat(4,1fr);margin:0 0 14px"><div class="t">${art("hill",74)}</div><div class="t">${art("valley",74)}</div><div class="t">${art("fall",74)}</div><div class="t">${art("room",74)}</div></div>
+        <div class="kv"><span class="k">Highlights</span><b>3 places</b><span class="k">Itinerary</span><b>2 days · 9 points</b><span class="k">Room photos</span><b>3</b><span class="k">Included</span><b>Breakfast, Dinner, Stay, Coordinator</b></div>
+      </div>
+      <div class="panel"><h4>This trip at a glance</h4><div class="sub">Across all date slots</div>
+        <div class="kv"><span class="k">Total seats</span><b>48</b><span class="k">Available</span><b>20</b><span class="k">Confirmed seats</span><b>26</b><span class="k">Requested seats</span><b>5</b><span class="k">Confirmed revenue</span><b>₹1,29,974</b><span class="k">Advance collected</span><b>₹38,000</b></div>
+      </div>
+    </div>
+
+    <h4 style="font-size:15px;margin:22px 0 12px">Date slots</h4>
+    ${slots.map((s,i)=>`<div class="slotpanel">
+      <div class="row sp"><div><b style="font-size:14px">${s[0]}</b> ${i===2?`<span class="badge bad">Sold out</span>`:`<span class="badge ok">Open</span>`}</div>
+        <div class="row" style="gap:6px"><span class="sel" style="padding:6px 10px">Edit</span><span class="sel" style="padding:6px 10px">Bookings</span><span class="sel" style="padding:6px 10px;color:var(--dang)">Delete</span></div></div>
+      <div class="slotstats">
+        <div><div class="k">Total seats</div><div class="v">${s[1]}</div></div>
+        <div><div class="k">Available</div><div class="v">${s[2]}</div></div>
+        <div><div class="k">Confirmed</div><div class="v">${s[3]}</div></div>
+        <div><div class="k">Requested</div><div class="v">${s[4]}</div></div>
+      </div>
+      ${i===0?`<div class="tblwrap"><table class="tbl">
+        <tr><th>Customer</th><th>Phone</th><th>Seats</th><th>Total</th><th>Advance</th><th>Remaining</th><th>Booking</th><th>Payment</th></tr>
+        ${[["Sneha Mishra","9861002233","4","₹19,996","₹5,000","₹14,996","Confirmed","ok","Advance paid"],
+           ["Joydeep Rout","9438556677","2","₹9,998","₹9,998","₹0","Confirmed","ok","Paid"],
+           ["Rahul Das","9876543210","2","₹9,998","₹0","₹9,998","Requested","wait","Unpaid"]].map(r=>`
+          <tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td>
+          <td><span class="badge ${r[7]}">${r[6]}</span></td><td><span class="badge">${r[8]}</span></td></tr>`).join("")}
+      </table></div>`:`<p class="note">${s[5]} booking${s[5]==="1"?"":"s"} on this slot — open Bookings to see them.</p>`}
+    </div>`).join("")}
+  </div></div></div>`;
+}
+
+function pAdminBookings(){
+  return `<div class="vp"><div class="adm">${aside("Bookings")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Bookings</h2><div class="sub">37 requests · 142 confirmed</div></div><button class="btn sm">Create booking</button></div>
+    <div class="filters">
+      <div class="sel srch">Search customer, phone or trip…</div>
+      <div class="sel">Booking status <b>All</b></div>
+      <div class="sel">Payment <b>All</b></div>
+      <div class="sel">Trip <b>All</b></div>
+      <div class="sel">Date <b>Sep 2026</b></div>
+    </div>
+    <div class="panel" style="padding:16px">
+      <div class="tblwrap"><table class="tbl">
+        <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th><th>Booking</th><th>Payment</th><th>Source</th></tr>
+        ${C.adminBookings.map(b=>`<tr>
+          <td><b>${b[0]}</b></td><td>${b[1]}<div class="note">${b[2]}</div></td><td>${b[3]}</td><td>${b[4]}</td><td>${b[5]}</td><td>${b[6]}</td><td>${b[7]}</td>
+          <td><span class="badge ${b[9]}">${b[8]}</span></td><td><span class="badge">${b[10]}</span></td><td class="note">${b[11]}</td></tr>`).join("")}
+      </table></div>
+      <div class="pager"><span>Showing 1–5 of 179</span><div class="pg"><i>‹</i><i class="on">1</i><i>2</i><i>3</i><i>›</i></div></div>
+    </div>
+  </div></div></div>`;
+}
+
+function pBookingDetails(){
+  return `<div class="vp"><div class="adm">${aside("Bookings")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Booking #GO-1049</h2><div class="sub">Requested 14 Sep 2026, 6:42 PM · source Phone</div></div>
+      <div class="row" style="gap:8px"><button class="btn sm ghost dang" style="color:var(--dang);border-color:#F0CFC9">Reject</button><button class="btn sm ghost">Cancel</button><button class="btn sm">Confirm booking</button></div></div>
+    <div class="panels">
+      <div class="panel"><h4>Booking</h4><div class="sub">Amounts are recalculated by the server on confirm</div>
+        <div class="kv">
+          <span class="k">Trip</span><b>Koraput Escape</b>
+          <span class="k">Date range</span><b>23 Sep → 25 Sep 2026</b>
+          <span class="k">Seats</span><b>2</b>
+          <span class="k">Price per person</span><b>₹4,999</b>
+          <span class="k">Total amount</span><b>₹9,998</b>
+          <span class="k">Advance</span><b>₹0</b>
+          <span class="k">Remaining</span><b>₹9,998</b>
+          <span class="k">Booking status</span><span><span class="badge wait">Requested</span></span>
+          <span class="k">Payment status</span><span><span class="badge">Unpaid</span></span>
+          <span class="k">Source</span><b>Phone</b>
+          <span class="k">Requested at</span><b>14 Sep 2026, 6:42 PM</b>
+          <span class="k">Confirmed at</span><b class="mut">—</b>
+          <span class="k">Cancelled at</span><b class="mut">—</b>
+        </div>
+        <div class="hr"></div>
+        <div class="lbl">Customer notes</div>
+        <p class="note">Travelling with my brother, prefer lower berth on the bus.</p>
+        <div class="hr"></div>
+        <div class="lbl">Admin notes</div>
+        <div class="inp ph" style="height:60px;padding-top:10px">Add an internal note…</div>
+      </div>
+      <div class="panel"><h4>Customer</h4><div class="sub">2 bookings on record</div>
+        <div class="kv"><span class="k">Name</span><b>Amit Pradhan</b><span class="k">Phone</span><b>9937112244</b><span class="k">Email</span><b>amit@example.com</b><span class="k">Joined</span><b>02 Sep 2026</b></div>
+        <div class="row" style="gap:8px;margin-top:14px"><button class="btn sm ghost" style="flex:1">Call</button><button class="btn sm ghost" style="flex:1">WhatsApp</button></div>
+        <div class="hr"></div>
+        <h4 style="font-size:13.5px;margin-bottom:10px">Seat availability on this slot</h4>
+        <div class="slotstats" style="grid-template-columns:1fr 1fr;margin:0">
+          <div><div class="k">Available</div><div class="v">14</div></div>
+          <div><div class="k">This booking</div><div class="v">2</div></div>
+        </div>
+        <p class="note" style="margin-top:12px">Seats are deducted only when you confirm.</p>
+      </div>
+    </div>
+
+    <h4 style="font-size:15px;margin:22px 0 12px">Confirm booking modal</h4>
+    <div class="modalstage"><div class="modal">
+      <h4>Confirm booking</h4>
+      <div class="kv" style="margin-bottom:14px">
+        <span class="k">Customer</span><b>Amit Pradhan</b>
+        <span class="k">Trip</span><b>Koraput Escape</b>
+        <span class="k">Date</span><b>23 Sep → 25 Sep 2026</b>
+        <span class="k">Seats</span><b>2</b>
+        <span class="k">Price</span><b>₹4,999</b>
+        <span class="k">Total</span><b>₹9,998</b>
+      </div>
+      <div class="fld"><span class="lbl">Advance collected offline (₹)</span><input class="inp" value="3000"></div>
+      <div class="row sp" style="font-size:14px;font-weight:700;margin-bottom:14px"><span>Remaining</span><span>₹6,998</span></div>
+      <div class="warnbox">Confirming deducts 2 seats from this date slot. This cannot be undone except by cancelling the booking.</div>
+      <div class="row" style="gap:8px"><button class="btn ghost" style="flex:1">Cancel</button><button class="btn" style="flex:1">Confirm booking</button></div>
+      <div class="state" style="margin-top:12px"><i style="background:var(--dang-bg);color:var(--dang)">!</i><div class="note">Only 1 seat is currently available. Booking stays Requested.</div></div>
+    </div></div>
+  </div></div></div>`;
+}
+
+function pCreateBooking(){
+  return `<div class="vp"><div class="adm">${aside("Bookings")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Create booking</h2><div class="sub">For customers who called or walked in</div></div>
+      <div class="row" style="gap:8px"><button class="btn sm ghost">Cancel</button><button class="btn sm">Create booking</button></div></div>
+    <div class="formsec" style="max-width:720px">
+      <h4>Customer</h4><div class="sub">Search an existing customer, or add a new one</div>
+      <div class="fld"><span class="lbl">Search by phone or name</span><input class="inp" value="9876543210 — Rahul Das"></div>
+      <div class="row" style="gap:8px;margin-bottom:4px"><span class="badge ok">Existing customer</span><span class="note">3 previous bookings</span></div>
+    </div>
+    <div class="formsec" style="max-width:720px">
+      <h4>Trip and date</h4><div class="sub">Seats are checked against the slot when you confirm</div>
+      <div class="f2">
+        <div class="fld"><span class="lbl">Trip</span><input class="inp" value="Koraput Escape"></div>
+        <div class="fld"><span class="lbl">Date slot</span><input class="inp" value="23 Sep → 25 Sep 2026 (14 available)"></div>
+        <div class="fld"><span class="lbl">Number of seats</span><input class="inp" value="2"></div>
+        <div class="fld"><span class="lbl">Advance collected (₹)</span><input class="inp" value="3000"></div>
+        <div class="fld"><span class="lbl">Booking source</span><input class="inp" value="Phone"></div>
+        <div class="fld"><span class="lbl">Booking status on create</span><input class="inp" value="Requested"></div>
+      </div>
+      <div class="fld"><span class="lbl">Admin notes</span><div class="inp ph" style="height:60px;padding-top:10px">Called on the office line, wants window seats</div></div>
+      <div class="card pad" style="background:var(--canvas)">
+        <div class="sumrow"><span class="mut">₹4,999 × 2 seats</span><span>₹9,998</span></div>
+        <div class="sumrow"><span class="mut">Advance</span><span>₹3,000</span></div>
+        <div class="sumrow total"><span>Remaining</span><span>₹6,998</span></div>
+        <p class="note" style="margin-top:10px">This is a preview. The server recalculates from the stored trip price when the booking is confirmed.</p>
+      </div>
+    </div>
+  </div></div></div>`;
+}
+
+function pCustomers(){
+  return `<div class="vp"><div class="adm">${aside("Customers")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Customers</h2><div class="sub">486 customers</div></div></div>
+    <div class="filters"><div class="sel srch">Search name, phone or email…</div><div class="sel">Sort <b>Most recent</b></div></div>
+    <div class="panel" style="padding:16px">
+      <div class="tblwrap"><table class="tbl">
+        <tr><th>Customer</th><th>Phone</th><th>Email</th><th>Trips</th><th>Confirmed</th><th>Total amount</th><th>Advance paid</th><th>Remaining</th></tr>
+        ${C.customers.map(c=>`<tr><td><b>${c[0]}</b></td><td>${c[1]}</td><td class="note">${c[2]}</td><td>${c[3]}</td><td>${c[4]}</td><td>${c[5]}</td><td>${c[6]}</td><td>${c[7]}</td></tr>`).join("")}
+      </table></div>
+      <div class="pager"><span>Showing 1–4 of 486</span><div class="pg"><i>‹</i><i class="on">1</i><i>2</i><i>3</i><i>›</i></div></div>
+    </div>
+  </div></div></div>`;
+}
+
+function pCustomerDetails(){
+  const hist=[["Koraput Escape","16 Sep → 18 Sep 2026","2","₹9,998","₹3,000","₹6,998","Confirmed","ok","Advance paid"],
+              ["Puri Konark Escape","20 Sep → 21 Sep 2026","1","₹3,499","₹0","₹3,499","Requested","wait","Unpaid"],
+              ["Mahendragiri Adventure","12 Aug → 14 Aug 2026","2","₹11,998","₹11,998","₹0","Completed","info","Paid"]];
+  return `<div class="vp"><div class="adm">${aside("Customers")}
+  <div class="amain">
+    <div class="ahead"><div><h2>Rahul Das</h2><div class="sub">Customer #482 · joined 12 Mar 2026</div></div>
+      <div class="row" style="gap:8px"><button class="btn sm ghost">Call</button><button class="btn sm ghost">WhatsApp</button><button class="btn sm">Create booking</button></div></div>
+    <div class="panels">
+      <div class="panel"><h4>Details</h4><div class="sub">Account information</div>
+        <div class="kv"><span class="k">Name</span><b>Rahul Das</b><span class="k">Phone</span><b>9876543210</b><span class="k">Email</span><b>rahul@example.com</b><span class="k">Created</span><b>12 Mar 2026</b><span class="k">Last login</span><b>18 Sep 2026, 9:12 PM</b><span class="k">Verified</span><b>Yes</b></div>
+      </div>
+      <div class="panel"><h4>Totals</h4><div class="sub">Across 3 bookings</div>
+        <div class="slotstats" style="grid-template-columns:1fr 1fr;margin:0">
+          <div><div class="k">Total booked</div><div class="v">₹25,495</div></div>
+          <div><div class="k">Advance paid</div><div class="v">₹14,998</div></div>
+          <div><div class="k">Remaining</div><div class="v">₹10,497</div></div>
+          <div><div class="k">Confirmed</div><div class="v">2</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px"><h4>Booking history</h4><div class="sub">All bookings on this customer id</div>
+      <div class="tblwrap"><table class="tbl">
+        <tr><th>Trip</th><th>Date range</th><th>Seats</th><th>Total</th><th>Advance</th><th>Remaining</th><th>Booking</th><th>Payment</th></tr>
+        ${hist.map(h=>`<tr><td><b>${h[0]}</b></td><td>${h[1]}</td><td>${h[2]}</td><td>${h[3]}</td><td>${h[4]}</td><td>${h[5]}</td><td><span class="badge ${h[7]}">${h[6]}</span></td><td><span class="badge">${h[8]}</span></td></tr>`).join("")}
+      </table></div>
+    </div>
+  </div></div></div>`;
+}
+
+/* ---------------- render ---------------- */
+const PAGES = [
+  {g:"Customer", id:"home", t:"Home / Trips", r:"/ and /trips", d:"Hero, search, and the trip grid — three columns on laptop, one on phone. Each card carries the photo carousel, seats-left pill, duration, next date and price.", fn:pHome},
+  {g:"Customer", id:"trip", t:"Trip details", r:"/trips/:id", d:"The full §77 order in one scroll. On laptop the booking panel is a sticky right column; on phone it drops inline and a sticky bar with the live total and WhatsApp button takes over the bottom edge.", fn:pTrip},
+  {g:"Customer", id:"success", t:"Booking request success", r:"/trips/:id → success", d:"Status reads Requested, never Confirmed, and the copy says seats are held only after the team confirms.", fn:pSuccess},
+  {g:"Customer", id:"login", t:"Phone + PIN account", r:"/login", d:"Phone is entered first; this is the new-customer branch. Wrong-PIN and lockout states are shown below the form.", fn:pLogin},
+  {g:"Customer", id:"mybookings", t:"My bookings", r:"/my-bookings", d:"Status filters plus a card per booking with total, advance and remaining. Action button moves below the card on phone.", fn:pMyBookings},
+  {g:"Customer", id:"profile", t:"Profile", r:"/profile", d:"Details, change PIN, sign out. The current PIN is never displayed — the field is a masked placeholder only.", fn:pProfile},
+  {g:"Admin", id:"alogin", t:"Admin login", r:"/admin/login", d:"Separate from customer auth: username and password, no PIN.", fn:pAdminLogin},
+  {g:"Admin", id:"dash", t:"Dashboard", r:"/admin/dashboard", d:"All eight §24 counters, recent requests, upcoming trips, recently confirmed. Sidebar becomes a scrolling strip on phone; tables scroll sideways rather than squashing.", fn:pDash},
+  {g:"Admin", id:"atrips", t:"Trips", r:"/admin/trips", d:"Search, status filter, and the seat columns that matter — total, available, confirmed bookings.", fn:pAdminTrips},
+  {g:"Admin", id:"addtrip", t:"Add / edit trip", r:"/admin/trips/add · /admin/trips/:id/edit", d:"All seven §27 sections with repeatable rows for highlights, date ranges, itinerary days and points. Same screen serves edit.", fn:pAddTrip},
+  {g:"Admin", id:"atripdetails", t:"Trip details &amp; date slots", r:"/admin/trips/:id", d:"Per-slot totals — total, available, confirmed, requested — and the booked-customers table under the first slot.", fn:pAdminTripDetails},
+  {g:"Admin", id:"abookings", t:"Bookings", r:"/admin/bookings", d:"Five filters, search, and both status badges plus booking source on every row.", fn:pAdminBookings},
+  {g:"Admin", id:"bkdetails", t:"Booking details + confirm modal", r:"/admin/bookings/:id", d:"Every field from §30, with the confirm modal below it: advance input, live remaining, the seat-deduction warning, and the insufficient-seats error.", fn:pBookingDetails},
+  {g:"Admin", id:"createbk", t:"Create booking", r:"/admin/bookings/add", d:"Manual phone or offline booking. Goes through the same confirmation service as a WhatsApp request.", fn:pCreateBooking},
+  {g:"Admin", id:"acust", t:"Customers", r:"/admin/customers", d:"Aggregates per customer: trips, confirmed bookings, totals, advance, remaining.", fn:pCustomers},
+  {g:"Admin", id:"acustd", t:"Customer details", r:"/admin/customers/:id", d:"Profile, money totals, and the full booking history on one customer id.", fn:pCustomerDetails}
+];
+
+document.getElementById("idx").innerHTML = PAGES.map(p=>`<a href="#${p.id}">${p.t}</a>`).join("");
+
+let lastGroup = "";
+document.getElementById("out").innerHTML = PAGES.map(p=>{
+  const html = p.fn();
+  const head = p.g !== lastGroup ? `<h3 class="grouphead">${p.g==="Customer"?"Customer website":"Admin panel"}</h3>` : "";
+  lastGroup = p.g;
+  return head + `<section class="pagesec" id="${p.id}">
+    <h2>${p.t}</h2>
+    <div class="route">${p.r}</div>
+    <p class="desc">${p.d}</p>
+    <div class="pair">
+      <div class="laptop">
+        <div class="lshell">
+          <div class="chrome"><i></i><i></i><i></i><span>ghumoodisha.in</span></div>
+          <div class="lview">${html}</div>
+        </div>
+        <div class="cap">Laptop</div>
+      </div>
+      <div class="phone">
+        <div class="pshell"><div class="pview">${html}</div></div>
+        <div class="cap">Mobile · 390 wide</div>
+      </div>
+    </div>
+  </section>`;
+}).join("");
+</script>
+</body>
+</html>

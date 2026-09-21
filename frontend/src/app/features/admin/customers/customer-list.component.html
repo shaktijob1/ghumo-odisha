@@ -1,0 +1,52 @@
+<div class="ahead">
+  <div>
+    <h2>Customers</h2>
+    <div class="sub">{{ result()?.totalCount ?? 0 }} customers</div>
+  </div>
+</div>
+
+<div class="filters">
+  <input class="sel srch" placeholder="Search name, phone or email…" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load customers."></app-state-panel>
+  }
+  @case ('ready') {
+    @let r = result()!;
+    @if (r.items.length === 0) {
+      <app-state-panel kind="empty" message="No customers match your search."></app-state-panel>
+    } @else {
+      <div class="panel" style="padding:16px">
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr><th>Customer</th><th>Phone</th><th>Email</th><th>Trips</th><th>Confirmed</th><th>Total amount</th><th>Advance paid</th><th>Remaining</th></tr>
+            @for (c of r.items; track c.customerId) {
+              <tr>
+                <td><a [routerLink]="['/admin/customers', c.customerId]"><b>{{ c.name }}</b></a></td>
+                <td>{{ c.phoneNumber }}</td>
+                <td class="note">{{ c.email || '—' }}</td>
+                <td>{{ c.tripCount }}</td>
+                <td>{{ c.confirmedBookingCount }}</td>
+                <td>₹{{ c.totalAmount | number:'1.0-0' }}</td>
+                <td>₹{{ c.advancePaid | number:'1.0-0' }}</td>
+                <td>₹{{ c.remaining | number:'1.0-0' }}</td>
+              </tr>
+            }
+          </table>
+        </div>
+        <div class="pager">
+          <span>Page {{ page() }} of {{ totalPages }}</span>
+          <div class="pg">
+            <button (click)="goToPage(page() - 1)" [disabled]="page() <= 1">‹</button>
+            <button (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages">›</button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+}

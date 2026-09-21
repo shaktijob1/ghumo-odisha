@@ -1,0 +1,282 @@
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading trip…"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load this trip."></app-state-panel>
+  }
+  @case ('ready') {
+    @let t = trip()!;
+
+    <div class="container">
+      <section class="dhero">
+        @if (t.photos.length > 0) {
+          <img [src]="t.photos[heroIndex()].imageUrl | imageUrl" alt="{{ t.title }}" />
+        }
+        @if (t.photos.length > 1) {
+          <button class="btn sm ghost" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:2" (click)="prevHero()">‹</button>
+          <button class="btn sm ghost" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:2" (click)="nextHero()">›</button>
+        }
+        <div class="dhero-inner">
+          <span class="eyebrow">TRIP DETAILS</span>
+          <h1>{{ t.title }}</h1>
+          <p>
+            @if (selectedSlot()) {
+              {{ selectedSlot()!.availableSeats }} seats available on the next departure ·
+            }
+            From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <div class="container">
+      <div class="tlayout">
+        <div>
+          <section style="margin-bottom:30px">
+            <h2 style="font-size:19px;margin-bottom:8px">About this trip</h2>
+            <p class="mut" style="font-size:13.5px;line-height:1.65">{{ t.description }}</p>
+          </section>
+
+          @if (t.highlights.length > 0) {
+            <section style="margin-bottom:30px">
+              <h2 style="font-size:19px;margin-bottom:14px">What you'll see</h2>
+              <div class="hlgrid">
+                @for (h of t.highlights; track h.tripHighlightId) {
+                  <div class="hl">
+                    <div class="shot"><img [src]="h.photoUrl | imageUrl" alt="{{ h.placeName }}" /></div>
+                    <b>{{ h.placeName }}</b>
+                    <p>{{ h.description }}</p>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          @if (includedItems().length > 0) {
+            <section style="margin-bottom:30px">
+              <h2 style="font-size:19px;margin-bottom:14px">What's included</h2>
+              <div class="incl">
+                @for (item of includedItems(); track item) {
+                  <div><span class="tick">✓</span>{{ item }}</div>
+                }
+              </div>
+            </section>
+          }
+
+          @if (t.itineraryDays.length > 0) {
+            <section style="margin-bottom:30px">
+              <h2 style="font-size:19px;margin-bottom:14px">Day-wise itinerary</h2>
+              @for (d of t.itineraryDays; track d.itineraryDayId) {
+                <div class="day">
+                  <div class="dh"><span class="dn">Day {{ d.dayNumber }}</span><b>{{ d.title }}</b></div>
+                  <div class="tl">
+                    @for (p of d.points; track p.itineraryPointId) {
+                      <div class="it"><b>{{ p.time }}</b><span>{{ p.description }}</span></div>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (t.roomPhotos.length > 0) {
+            <section style="margin-bottom:30px">
+              <h2 style="font-size:19px;margin-bottom:5px">Where you'll stay</h2>
+              <div class="gal">
+                @for (p of t.roomPhotos; track p.roomPhotoId) {
+                  <div><img [src]="p.imageUrl | imageUrl" alt="" /></div>
+                }
+              </div>
+            </section>
+          }
+
+          @if (t.vehiclePhotos.length > 0) {
+            <section style="margin-bottom:30px">
+              <h2 style="font-size:19px;margin-bottom:5px">How you'll travel</h2>
+              <div class="gal">
+                @for (p of t.vehiclePhotos; track p.vehiclePhotoId) {
+                  <div><img [src]="p.imageUrl | imageUrl" alt="" /></div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <aside class="aside">
+          @if (paymentConfirmed()) {
+            <div class="successcard">
+              <div class="tick">✓</div>
+              <h2 style="font-size:20px;margin-bottom:6px">Seat booked!</h2>
+              <p style="font-size:13.5px;color:#2A4F45;line-height:1.6;margin-bottom:16px">Your payment was verified and your seats are confirmed.</p>
+              <div class="card pad" style="background:#fff">
+                <div class="kv">
+                  <span class="k">Trip</span><b>{{ confirmedBooking()!.tripTitle }}</b>
+                  <span class="k">Date</span><b>{{ confirmedBooking()!.startDate | date:'d MMM y' }} → {{ confirmedBooking()!.endDate | date:'d MMM y' }}</b>
+                  <span class="k">Seats</span><b>{{ confirmedBooking()!.numberOfSeats }}</b>
+                  <span class="k">Paid now</span><b>₹{{ confirmedBooking()!.advanceAmount | number:'1.0-0' }}</b>
+                  <span class="k">Status</span><span><span class="badge ok">Confirmed</span></span>
+                </div>
+              </div>
+              @if (confirmedBooking()!.remainingAmount > 0) {
+                <p class="note" style="margin-top:14px">Balance ₹{{ confirmedBooking()!.remainingAmount | number:'1.0-0' }} is due before the trip — our team will follow up.</p>
+              } @else {
+                <p class="note" style="margin-top:14px">Fully paid — nothing else is due.</p>
+              }
+              <div class="row" style="gap:10px;margin-top:16px">
+                <button class="btn" style="flex:1" [disabled]="downloadingInvoice()" (click)="downloadInvoice()">
+                  @if (downloadingInvoice()) { <span class="spin"></span> } @else { Download Invoice }
+                </button>
+                <a class="btn ghost" style="flex:1" routerLink="/my-bookings">View my bookings</a>
+              </div>
+            </div>
+          } @else if (bookingResult() && !skippedPayment()) {
+            <app-payment-panel
+              [booking]="bookingResult()!.booking"
+              (confirmed)="onPaymentConfirmed()"
+              (skip)="skippedPayment.set(true)"
+            ></app-payment-panel>
+          } @else if (bookingResult(); as result) {
+            <div class="successcard">
+              <div class="tick">✓</div>
+              <h2 style="font-size:20px;margin-bottom:6px">Booking request submitted</h2>
+              <p style="font-size:13.5px;color:#2A4F45;line-height:1.6;margin-bottom:16px">Our Ghumo Odisha team will contact you to collect the advance and confirm your seats.</p>
+              <div class="card pad" style="background:#fff">
+                <div class="kv">
+                  <span class="k">Trip</span><b>{{ result.booking.tripTitle }}</b>
+                  <span class="k">Date</span><b>{{ result.booking.startDate | date:'d MMM y' }} → {{ result.booking.endDate | date:'d MMM y' }}</b>
+                  <span class="k">Seats</span><b>{{ result.booking.numberOfSeats }}</b>
+                  <span class="k">Total</span><b>₹{{ result.booking.totalAmount | number:'1.0-0' }}</b>
+                  <span class="k">Status</span><span><span class="badge wait">Requested</span></span>
+                </div>
+              </div>
+              <p class="note" style="margin-top:14px">Seats are held only after the team confirms your booking.</p>
+              <div class="row" style="gap:10px;margin-top:16px">
+                <button class="btn" style="flex:1" (click)="openWhatsApp()">Open WhatsApp</button>
+                <a class="btn ghost" style="flex:1" routerLink="/my-bookings">View my bookings</a>
+              </div>
+            </div>
+          } @else {
+            <div class="card pad">
+              <div class="row sp" style="margin-bottom:14px">
+                <div class="price"><b>₹{{ t.amountPerPerson | number:'1.0-0' }}</b><small>per person</small></div>
+                @if (selectedSlot()) { <span class="badge ok">Seats open</span> }
+              </div>
+
+              <div class="lbl">Choose your date</div>
+              @if (t.dateSlots.length === 0) {
+                <p class="note">No upcoming dates yet — check back soon.</p>
+              }
+              @for (s of t.dateSlots; track s.tripDateSlotId) {
+                <button class="slot" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut" (click)="selectSlot(s)">
+                  <div><b>{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b><small>{{ s.isSoldOut ? 'Sold out' : s.availableSeats + ' seats available' }}</small></div>
+                  @if (s.isSoldOut) {
+                    <span class="badge bad">Sold out</span>
+                  } @else if (s.tripDateSlotId === selectedSlotId()) {
+                    <span class="badge ok">Selected</span>
+                  }
+                </button>
+              }
+
+              @if (selectedSlot(); as slot) {
+                <div class="hr"></div>
+                <div class="lbl">Number of seats</div>
+                <app-seat-selector [(value)]="seats" [max]="slot.availableSeats"></app-seat-selector>
+                <p class="note" style="margin-top:8px">Maximum {{ slot.availableSeats }} on this date</p>
+
+                @if (t.pickupPoints.length > 0) {
+                  <div class="hr"></div>
+                  <div class="lbl">Choose your pickup point</div>
+                  @for (p of t.pickupPoints; track p.pickupPointId) {
+                    <button class="slot" [class.on]="p.pickupPointId === selectedPickupPointId()" (click)="selectPickupPoint(p.pickupPointId)">
+                      <div><b>{{ p.location }}</b><small>{{ p.time }}</small></div>
+                      @if (p.pickupPointId === selectedPickupPointId()) {
+                        <span class="badge ok">Selected</span>
+                      }
+                    </button>
+                  }
+                }
+
+                <div class="hr"></div>
+                <div class="sumrow"><span class="mut">₹{{ t.amountPerPerson | number:'1.0-0' }} × {{ seats() }} seat(s)</span><span>₹{{ totalAmount() | number:'1.0-0' }}</span></div>
+                <div class="sumrow"><span class="mut">Advance due now</span><span>₹0</span></div>
+                <div class="sumrow total"><span>Total</span><span>₹{{ totalAmount() | number:'1.0-0' }}</span></div>
+                <p class="note" style="margin:10px 0 14px">Final amount is confirmed by our team. No payment is taken on this page.</p>
+
+                @if (auth.isAuthenticated()) {
+                  <div class="fld">
+                    <span class="lbl">Anything we should know? (optional)</span>
+                    <textarea class="inp" rows="2" [ngModel]="customerNotes()" (ngModelChange)="customerNotes.set($event)"></textarea>
+                  </div>
+                }
+
+                @if (submitError()) {
+                  <div class="errorbox">{{ submitError() }}</div>
+                }
+
+                <button class="btn block" [disabled]="submitting()" (click)="submitBooking()">
+                  @if (submitting()) { <span class="spin"></span> } @else if (auth.isAuthenticated()) { Continue } @else { Sign in to book }
+                </button>
+              }
+            </div>
+
+            @if (auth.isAuthenticated()) {
+              <div class="card pad">
+                <p class="note">Signed in as <b>{{ auth.currentCustomer()?.name }}</b> · <a routerLink="/profile" style="color:var(--accent);font-weight:600">Not you?</a></p>
+              </div>
+            }
+
+            <div class="orgbox">
+              <div class="eyebrow" style="margin-bottom:6px">Need help or want to book directly?</div>
+              <b style="font-size:14px;display:block">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</b>
+              <p class="note" style="margin:2px 0 12px">{{ contact()?.role }} · {{ contact()?.phone }}</p>
+              <div class="row" style="gap:8px">
+                <a class="btn sm ghost" style="flex:1" [href]="'tel:' + contact()?.phone">Call now</a>
+                <a class="btn sm" style="flex:1" [href]="'https://wa.me/' + contact()?.whatsAppNumber" target="_blank">WhatsApp</a>
+              </div>
+            </div>
+          }
+        </aside>
+      </div>
+    </div>
+
+    @if (!bookingResult() && selectedSlot(); as slot) {
+      <div class="stickycta">
+        <div class="price"><b>₹{{ totalAmount() | number:'1.0-0' }}</b><small>{{ seats() }} seat(s) · {{ slot.startDate | date:'d MMM' }}</small></div>
+        <button class="btn" [disabled]="submitting()" (click)="submitBooking()">
+          {{ auth.isAuthenticated() ? 'Continue' : 'Sign in to book' }}
+        </button>
+      </div>
+    }
+
+    @if (showAuthModal()) {
+      <div class="modal-backdrop" (click)="onAuthCancelled()">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <app-whatsapp-auth mode="book" title="Book this trip" (authenticated)="onAuthenticated($event)" (cancelled)="onAuthCancelled()"></app-whatsapp-auth>
+        </div>
+      </div>
+    }
+
+    @if (showNamePrompt()) {
+      <div class="modal-backdrop" (click)="cancelNamePrompt()">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <h4>What's your name?</h4>
+          <p class="note" style="margin-bottom:14px">We'll use this on your booking and invoice.</p>
+          <div class="fld">
+            <span class="lbl">Full name</span>
+            <input class="inp" [ngModel]="namePromptValue()" (ngModelChange)="namePromptValue.set($event)" placeholder="e.g. Priya Sahoo" />
+          </div>
+          @if (namePromptError()) {
+            <div class="errorbox">{{ namePromptError() }}</div>
+          }
+          <div class="row" style="gap:10px;margin-top:6px">
+            <button class="btn ghost" style="flex:1" (click)="cancelNamePrompt()">Cancel</button>
+            <button class="btn" style="flex:1" [disabled]="namePromptSubmitting()" (click)="submitNamePrompt()">
+              @if (namePromptSubmitting()) { <span class="spin"></span> } @else { Continue }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+}

@@ -1,0 +1,34 @@
+<div class="container">
+  <section class="hero">
+    <h1>Small group trips across Odisha</h1>
+    <p>Fixed departures with seats you can actually check. Pick a date, request your seats, and our organizer calls you back the same day.</p>
+    <div class="searchbar">
+      <input class="inp" placeholder="Where to? Koraput, Puri, Mahendragiri…" [ngModel]="search()" (ngModelChange)="search.set($event)" style="flex:1.4" />
+    </div>
+  </section>
+
+  <section class="sect" style="padding-top:8px">
+    <h2>Upcoming departures</h2>
+    <div class="sub">{{ filteredTrips().length }} trip(s) available</div>
+
+    @switch (state()) {
+      @case ('loading') {
+        <app-state-panel kind="loading" message="Loading trips…"></app-state-panel>
+      }
+      @case ('error') {
+        <app-state-panel kind="error" message="Could not load trips. Please try again."></app-state-panel>
+      }
+      @case ('ready') {
+        @if (filteredTrips().length === 0) {
+          <app-state-panel kind="empty" message="No trips match your search."></app-state-panel>
+        } @else {
+          <div class="tgrid">
+            @for (t of filteredTrips(); track t.tripId) {
+              <app-trip-card [trip]="t"></app-trip-card>
+            }
+          </div>
+        }
+      }
+    }
+  </section>
+</div>

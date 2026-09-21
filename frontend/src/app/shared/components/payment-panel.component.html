@@ -1,0 +1,64 @@
+<div class="card pad">
+  <h2 style="font-size:17px;margin-bottom:4px">Secure your seats</h2>
+  <p class="note" style="margin-bottom:16px">Your booking is requested. Pay now to lock it in instantly.</p>
+
+  <div class="paycard" [class.on]="paymentPlan() === PaymentPlan.Partial" (click)="selectPaymentPlan(PaymentPlan.Partial)">
+    <div class="radio" [class.on]="paymentPlan() === PaymentPlan.Partial"></div>
+    <div style="flex:1">
+      <div class="row sp">
+        <b style="font-size:14px">Pay ₹99 per seat now</b>
+        <b style="font-size:14px">₹{{ 99 * booking.numberOfSeats | number:'1.0-0' }}</b>
+      </div>
+      <p class="note" style="margin-top:4px">Reserve instantly. Pay the rest before the trip date.</p>
+    </div>
+  </div>
+
+  <div class="paycard" [class.on]="paymentPlan() === PaymentPlan.Full" (click)="selectPaymentPlan(PaymentPlan.Full)">
+    <span class="savebadge">SAVE ₹{{ fullPaymentDiscount() | number:'1.0-0' }}</span>
+    <div class="radio" [class.on]="paymentPlan() === PaymentPlan.Full"></div>
+    <div style="flex:1">
+      <div class="row sp" style="align-items:baseline">
+        <b style="font-size:14px">Pay full amount now</b>
+        <span><small style="text-decoration:line-through;color:var(--muted);margin-right:6px">₹{{ totalAmount() | number:'1.0-0' }}</small><b style="font-size:14px;color:var(--accent)">₹{{ totalAmount() - fullPaymentDiscount() | number:'1.0-0' }}</b></span>
+      </div>
+      <p class="note" style="margin-top:4px">Get instant confirmation — no balance due later (₹199/seat off).</p>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div class="lbl">Have a coupon code?</div>
+  @if (appliedCoupon(); as coupon) {
+    <div class="row sp" style="background:var(--accent-soft);border-radius:10px;padding:10px 12px">
+      <span style="font-size:13px;color:var(--accent);font-weight:600">{{ coupon.code }} applied — ₹{{ coupon.discountAmount | number:'1.0-0' }} off</span>
+      <button type="button" class="btn sm ghost" (click)="removeCoupon()">Remove</button>
+    </div>
+  } @else {
+    <div class="row" style="gap:8px">
+      <input class="inp" style="flex:1" placeholder="Enter coupon code" [ngModel]="couponInput()" (ngModelChange)="couponInput.set($event.toUpperCase())" />
+      <button type="button" class="btn sm ghost" [disabled]="couponChecking() || !couponInput().trim()" (click)="applyCoupon()">
+        @if (couponChecking()) { <span class="spin"></span> } @else { Apply }
+      </button>
+    </div>
+    @if (couponError()) {
+      <p class="note" style="color:var(--danger);margin-top:6px">{{ couponError() }}</p>
+    }
+  }
+
+  <div class="hr"></div>
+  <div class="sumrow"><span class="mut">You pay now</span><span>₹{{ payNowAmount() | number:'1.0-0' }}</span></div>
+  @if (payLaterAmount() > 0) {
+    <div class="sumrow"><span class="mut">Balance due later</span><span>₹{{ payLaterAmount() | number:'1.0-0' }}</span></div>
+  }
+
+  @if (paymentError()) {
+    <div class="errorbox" style="margin-top:12px">{{ paymentError() }}</div>
+  }
+
+  <button class="btn block" style="margin-top:16px" [disabled]="payingNow()" (click)="payNow()">
+    @if (payingNow()) { <span class="spin"></span> } @else { Pay Securely }
+  </button>
+  @if (showSkip) {
+    <button type="button" class="btn sm ghost" style="width:100%;margin-top:10px" (click)="skip.emit()">I'll arrange payment via WhatsApp instead</button>
+  }
+</div>

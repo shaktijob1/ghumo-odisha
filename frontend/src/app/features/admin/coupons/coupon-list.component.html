@@ -1,0 +1,76 @@
+<div class="ahead">
+  <div>
+    <h2>Coupons</h2>
+    <div class="sub">{{ coupons().length }} coupon code(s)</div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:16px">
+  <h4>Create a coupon</h4>
+  <div class="sub">Each customer can redeem a given code once.</div>
+
+  <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <div class="fld" style="flex:1;min-width:160px">
+      <span class="lbl">Code</span>
+      <input class="inp" placeholder="GHUMO199" [ngModel]="code()" (ngModelChange)="code.set($event.toUpperCase())" />
+    </div>
+    <div class="fld" style="width:140px">
+      <span class="lbl">Discount (₹)</span>
+      <input class="inp" type="number" min="1" [ngModel]="discountAmount()" (ngModelChange)="discountAmount.set($event)" />
+    </div>
+    <div class="fld" style="width:160px">
+      <span class="lbl">Valid from</span>
+      <input class="inp" type="date" [ngModel]="validFrom()" (ngModelChange)="validFrom.set($event)" />
+    </div>
+    <div class="fld" style="width:160px">
+      <span class="lbl">Valid until</span>
+      <input class="inp" type="date" [ngModel]="validUntil()" (ngModelChange)="validUntil.set($event)" />
+    </div>
+    <div class="fld">
+      <button class="btn" [disabled]="creating()" (click)="create()">
+        @if (creating()) { <span class="spin"></span> } @else { Create coupon }
+      </button>
+    </div>
+  </div>
+  @if (createError()) {
+    <div class="errorbox">{{ createError() }}</div>
+  }
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load coupons."></app-state-panel>
+  }
+  @case ('ready') {
+    @if (coupons().length === 0) {
+      <app-state-panel kind="empty" message="No coupons yet."></app-state-panel>
+    } @else {
+      <div class="panel" style="padding:16px">
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr><th>Code</th><th>Discount</th><th>Valid from</th><th>Valid until</th><th>Redeemed</th><th>Status</th><th></th></tr>
+            @for (c of coupons(); track c.couponCodeId) {
+              <tr>
+                <td><b>{{ c.code }}</b></td>
+                <td>₹{{ c.discountAmount | number:'1.0-0' }}</td>
+                <td class="note">{{ c.validFrom ? (c.validFrom | date:'d MMM y') : 'Any time' }}</td>
+                <td class="note">{{ c.validUntil ? (c.validUntil | date:'d MMM y') : 'No expiry' }}</td>
+                <td>{{ c.redemptionCount }}</td>
+                <td><span class="badge" [class]="c.isActive ? 'ok' : 'bad'">{{ c.isActive ? 'Active' : 'Inactive' }}</span></td>
+                <td>
+                  <div class="row" style="gap:8px;justify-content:flex-end">
+                    <button class="btn sm ghost" (click)="toggleActive(c)">{{ c.isActive ? 'Deactivate' : 'Activate' }}</button>
+                    <button class="btn sm ghost" (click)="remove(c)">Remove</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </table>
+        </div>
+      </div>
+    }
+  }
+}

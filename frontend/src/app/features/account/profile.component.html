@@ -1,0 +1,48 @@
+<div class="container" style="padding-top:30px;max-width:720px">
+  <h2 style="font-size:22px;margin-bottom:20px">Profile</h2>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-state-panel kind="loading"></app-state-panel>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load your profile."></app-state-panel>
+    }
+    @case ('ready') {
+      @let p = profile()!;
+
+      <div class="card pad" style="margin-bottom:14px">
+        <div class="row sp" style="margin-bottom:16px">
+          <h4 style="font-size:15px">Your details</h4>
+          @if (!editing()) {
+            <button class="btn sm ghost" (click)="startEdit()">Edit</button>
+          }
+        </div>
+
+        @if (!editing()) {
+          <div class="f2">
+            <div class="fld"><span class="lbl">Full name</span><input class="inp" [value]="p.name" readonly /></div>
+            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber" readonly /></div>
+            <div class="fld"><span class="lbl">Email</span><input class="inp" [value]="p.email || '—'" readonly /></div>
+            <div class="fld"><span class="lbl">Member since</span><input class="inp" [value]="p.createdAt | date:'d MMM y'" readonly /></div>
+          </div>
+        } @else {
+          <div class="f2">
+            <div class="fld"><span class="lbl">Full name</span><input class="inp" [(ngModel)]="editName" /></div>
+            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber" readonly /></div>
+            <div class="fld"><span class="lbl">Email</span><input class="inp" [(ngModel)]="editEmail" /></div>
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="btn sm ghost" (click)="editing.set(false)">Cancel</button>
+            <button class="btn sm" [disabled]="savingProfile()" (click)="saveProfile()">Save</button>
+          </div>
+        }
+      </div>
+
+      <div class="card pad">
+        <span class="lbl">Account actions</span>
+        <button class="btn ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="signOut()">Sign out</button>
+      </div>
+    }
+  }
+</div>

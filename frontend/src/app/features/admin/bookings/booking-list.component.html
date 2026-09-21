@@ -1,0 +1,71 @@
+<div class="ahead">
+  <div>
+    <h2>Bookings</h2>
+    <div class="sub">{{ result()?.totalCount ?? 0 }} bookings</div>
+  </div>
+  <a class="btn sm" routerLink="/admin/bookings/add">Create booking</a>
+</div>
+
+<div class="filters">
+  <input class="sel srch" placeholder="Search customer, phone or trip…" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+  <select class="sel" [ngModel]="bookingStatus()" (ngModelChange)="onBookingStatusChange($event)">
+    <option [ngValue]="null">Booking status: All</option>
+    <option [ngValue]="BookingStatus.Requested">Requested</option>
+    <option [ngValue]="BookingStatus.Pending">Pending</option>
+    <option [ngValue]="BookingStatus.Confirmed">Confirmed</option>
+    <option [ngValue]="BookingStatus.Rejected">Rejected</option>
+    <option [ngValue]="BookingStatus.Cancelled">Cancelled</option>
+    <option [ngValue]="BookingStatus.Completed">Completed</option>
+  </select>
+  <select class="sel" [ngModel]="paymentStatus()" (ngModelChange)="onPaymentStatusChange($event)">
+    <option [ngValue]="null">Payment: All</option>
+    <option [ngValue]="PaymentStatus.Unpaid">Unpaid</option>
+    <option [ngValue]="PaymentStatus.AdvancePaid">Advance paid</option>
+    <option [ngValue]="PaymentStatus.Paid">Paid</option>
+    <option [ngValue]="PaymentStatus.Refunded">Refunded</option>
+  </select>
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load bookings."></app-state-panel>
+  }
+  @case ('ready') {
+    @let r = result()!;
+    @if (r.items.length === 0) {
+      <app-state-panel kind="empty" message="No bookings match your filters."></app-state-panel>
+    } @else {
+      <div class="panel" style="padding:16px">
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th><th>Booking</th><th>Payment</th><th>Source</th></tr>
+            @for (b of r.items; track b.bookingId) {
+              <tr>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#GO-{{ b.bookingId }}</b></a></td>
+                <td>{{ b.customerName }}<div class="note">{{ b.customerPhone }}</div></td>
+                <td>{{ b.tripTitle }}</td>
+                <td>{{ b.startDate | date:'d MMM y' }}</td>
+                <td>{{ b.numberOfSeats }}</td>
+                <td>₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                <td>₹{{ b.advanceAmount | number:'1.0-0' }}</td>
+                <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                <td><app-status-badge kind="payment" [value]="b.paymentStatus"></app-status-badge></td>
+                <td class="note">{{ BookingSourceLabels[b.bookingSource] }}</td>
+              </tr>
+            }
+          </table>
+        </div>
+        <div class="pager">
+          <span>Page {{ page() }} of {{ totalPages }}</span>
+          <div class="pg">
+            <button (click)="goToPage(page() - 1)" [disabled]="page() <= 1">‹</button>
+            <button (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages">›</button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+}

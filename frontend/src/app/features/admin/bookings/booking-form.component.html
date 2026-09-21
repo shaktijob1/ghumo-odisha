@@ -1,0 +1,105 @@
+<div class="ahead">
+  <div>
+    <h2>Create booking</h2>
+    <div class="sub">For customers who called or walked in</div>
+  </div>
+  <a class="btn sm ghost" routerLink="/admin/bookings">Cancel</a>
+</div>
+
+<div class="formsec" style="max-width:720px">
+  <h4>Customer</h4>
+  <div class="sub">Search an existing customer, or add a new one</div>
+
+  <div class="row" style="gap:8px;margin-bottom:14px">
+    <button class="btn sm" [class.ghost]="isNewCustomer" (click)="isNewCustomer = false">Existing customer</button>
+    <button class="btn sm" [class.ghost]="!isNewCustomer" (click)="isNewCustomer = true">New customer</button>
+  </div>
+
+  @if (!isNewCustomer) {
+    <div class="fld" style="position:relative">
+      <span class="lbl">Search by phone or name</span>
+      <input class="inp" [(ngModel)]="customerSearch" (ngModelChange)="onCustomerSearchChange()" placeholder="9876543210 or name" />
+      @if (customerResults().length > 0) {
+        <div class="card" style="position:absolute;z-index:5;width:100%;margin-top:4px;max-height:220px;overflow-y:auto">
+          @for (c of customerResults(); track c.customerId) {
+            <div class="row sp" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)" (click)="pickCustomer(c)">
+              <span>{{ c.name }}</span><span class="note">{{ c.phoneNumber }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+    @if (selectedCustomer) {
+      <div class="row" style="gap:8px"><span class="badge ok">Selected</span><span class="note">{{ selectedCustomer.tripCount }} previous trip(s)</span></div>
+    }
+  } @else {
+    <div class="f3">
+      <div class="fld" style="margin:0"><span class="lbl">Name</span><input class="inp" [(ngModel)]="newCustomerName" /></div>
+      <div class="fld" style="margin:0"><span class="lbl">Phone number</span><input class="inp" [(ngModel)]="newCustomerPhoneNumber" /></div>
+      <div class="fld" style="margin:0"><span class="lbl">Email (optional)</span><input class="inp" [(ngModel)]="newCustomerEmail" /></div>
+    </div>
+  }
+</div>
+
+<div class="formsec" style="max-width:720px">
+  <h4>Trip and date</h4>
+  <div class="sub">Seats are checked against the slot when you confirm</div>
+
+  <div class="f2">
+    <div class="fld">
+      <span class="lbl">Trip</span>
+      <select class="inp" [(ngModel)]="selectedTripId" (ngModelChange)="onTripChange()">
+        <option [ngValue]="null">Select a trip…</option>
+        @for (t of trips(); track t.tripId) {
+          <option [ngValue]="t.tripId">{{ t.title }} (₹{{ t.amountPerPerson | number:'1.0-0' }})</option>
+        }
+      </select>
+    </div>
+    <div class="fld">
+      <span class="lbl">Date slot</span>
+      <select class="inp" [(ngModel)]="selectedSlotId" [disabled]="!selectedTripId">
+        <option [ngValue]="null">Select a date…</option>
+        @for (s of slots(); track s.tripDateSlotId) {
+          <option [ngValue]="s.tripDateSlotId">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }} ({{ s.availableSeats }} available)</option>
+        }
+      </select>
+    </div>
+    <div class="fld">
+      <span class="lbl">Number of seats</span>
+      <input class="inp" type="number" min="1" [(ngModel)]="numberOfSeats" />
+    </div>
+    <div class="fld">
+      <span class="lbl">Advance collected (₹)</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="advanceAmount" />
+    </div>
+    <div class="fld">
+      <span class="lbl">Booking source</span>
+      <select class="inp" [(ngModel)]="bookingSource">
+        <option [ngValue]="BookingSource.Phone">Phone</option>
+        <option [ngValue]="BookingSource.WhatsApp">WhatsApp</option>
+        <option [ngValue]="BookingSource.Offline">Offline</option>
+        <option [ngValue]="BookingSource.Website">Website</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="fld">
+    <span class="lbl">Admin notes</span>
+    <textarea class="inp" rows="2" [(ngModel)]="adminNotes" placeholder="Called on the office line, wants window seats"></textarea>
+  </div>
+
+  <div class="card pad" style="background:var(--canvas)">
+    <div class="row sp" style="padding:6px 0"><span class="mut">₹{{ selectedTripPrice | number:'1.0-0' }} × {{ numberOfSeats }} seat(s)</span><span>₹{{ totalAmount | number:'1.0-0' }}</span></div>
+    <div class="row sp" style="padding:6px 0"><span class="mut">Advance</span><span>₹{{ advanceAmount | number:'1.0-0' }}</span></div>
+    <div class="row sp" style="font-size:15px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:12px"><span>Remaining</span><span>₹{{ remaining | number:'1.0-0' }}</span></div>
+    <p class="note" style="margin-top:10px">This is a preview. The server recalculates from the stored trip price, and seats are only deducted once you confirm the booking afterward.</p>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="errorbox" style="margin-top:14px">{{ errorMessage() }}</div>
+  }
+
+  <button class="btn" style="margin-top:14px" [disabled]="submitting()" (click)="submit()">
+    @if (submitting()) { <span class="spin"></span> } @else { Create booking }
+  </button>
+</div>

@@ -1,0 +1,6 @@
+@GhumoOdisha.Api_HostAddress = http://localhost:5255
+
+GET {{GhumoOdisha.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

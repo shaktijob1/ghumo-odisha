@@ -1,0 +1,125 @@
+<div class="container" style="padding-top:30px">
+  <h2 style="font-size:22px;margin-bottom:5px">My bookings</h2>
+  <p class="mut" style="font-size:13px;margin-bottom:20px">{{ bookings().length }} booking(s) · showing newest first</p>
+
+  <div class="filters">
+    @for (f of filters; track f.label) {
+      <div class="sel" [style.cursor]="'pointer'" [style.fontWeight]="filter() === f.value ? 700 : 400" (click)="filter.set(f.value)">
+        @if (filter() === f.value) { <b>{{ f.label }}</b> } @else { {{ f.label }} }
+      </div>
+    }
+  </div>
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-state-panel kind="loading"></app-state-panel>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load your bookings."></app-state-panel>
+    }
+    @case ('ready') {
+      @if (filtered().length === 0) {
+        <div class="card pad" style="text-align:center;margin-top:16px;background:var(--canvas)">
+          <p class="note">Nothing here yet? <a routerLink="/trips" style="color:var(--accent);font-weight:600">Browse upcoming trips</a></p>
+        </div>
+      } @else {
+        @for (b of filtered(); track b.bookingId) {
+          <div class="bkcard">
+            <div class="shot" style="background:var(--canvas)">
+              @if (b.tripCoverImageUrl) {
+                <img [src]="b.tripCoverImageUrl | imageUrl" alt="{{ b.tripTitle }}" />
+              }
+            </div>
+            <div>
+              <div class="row" style="gap:8px;margin-bottom:5px;flex-wrap:wrap">
+                <b style="font-size:14.5px">{{ b.tripTitle }}</b>
+                <span class="badge" [class]="bookingStatusBadgeClass(b.bookingStatus)">{{ BookingStatusLabels[b.bookingStatus] }}</span>
+                <span class="badge">{{ PaymentStatusLabels[b.paymentStatus] }}</span>
+              </div>
+              <div class="mut" style="font-size:12px;margin-bottom:9px">#GO-{{ b.bookingId }} · {{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }} · {{ b.numberOfSeats }} seat(s)</div>
+              <div class="money">
+                <span>Total<b>₹{{ b.totalAmount | number:'1.0-0' }}</b></span>
+                <span>Advance<b>₹{{ b.advanceAmount | number:'1.0-0' }}</b></span>
+                <span>Remaining<b>₹{{ b.remainingAmount | number:'1.0-0' }}</b></span>
+              </div>
+            </div>
+            <div class="act" style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn sm ghost" (click)="selected.set(b)">View details</button>
+              @if (canPayNow(b)) {
+                <button class="btn sm" (click)="selected.set(b)">Pay now</button>
+              }
+              @if (canDownloadInvoice(b)) {
+                <button class="btn sm" [disabled]="downloadingInvoiceId() === b.bookingId" (click)="downloadInvoice(b)">
+                  @if (downloadingInvoiceId() === b.bookingId) { <span class="spin"></span> } @else { Download Invoice }
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>
+
+@if (selected(); as b) {
+  <div class="modal-backdrop" (click)="selected.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>{{ b.tripTitle }}</h4>
+      <div class="kv">
+        <span class="k">Booking</span><b>#GO-{{ b.bookingId }}</b>
+        <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
+        <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
+        <span class="k">Price per person</span><b>₹{{ b.amountPerPerson | number:'1.0-0' }}</b>
+        <span class="k">Total</span><b>₹{{ b.totalAmount | number:'1.0-0' }}</b>
+        <span class="k">Advance</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
+        <span class="k">Remaining</span><b>₹{{ b.remainingAmount | number:'1.0-0' }}</b>
+        <span class="k">Status</span><span class="badge" [class]="bookingStatusBadgeClass(b.bookingStatus)">{{ BookingStatusLabels[b.bookingStatus] }}</span>
+        <span class="k">Payment</span><b>{{ PaymentStatusLabels[b.paymentStatus] }}</b>
+        <span class="k">Requested</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
+      </div>
+      @if (b.customerNotes) {
+        <div class="hr"></div>
+        <div class="lbl">Your notes</div>
+        <p class="note">{{ b.customerNotes }}</p>
+      }
+
+      @if (canPayNow(b)) {
+        <div class="hr"></div>
+        <app-payment-panel [booking]="b" [showSkip]="false" (confirmed)="onPaymentConfirmed(b)"></app-payment-panel>
+      }
+
+      @if (canCancel(b)) {
+        <div class="hr"></div>
+        @if (confirmingCancelId() === b.bookingId) {
+          @if (b.bookingStatus === BookingStatus.Confirmed) {
+            <p class="note" style="margin-bottom:10px">Cancel this booking? Cancellations are only allowed up to 72 hours before the trip starts, and any online payment is refunded in full.</p>
+          } @else {
+            <p class="note" style="margin-bottom:10px">Withdraw this booking request? Nothing has been charged, so there's nothing to refund.</p>
+          }
+          @if (cancelError()) {
+            <div class="errorbox" style="margin-bottom:10px">{{ cancelError() }}</div>
+          }
+          <div class="row" style="gap:10px">
+            <button class="btn" style="flex:1;background:var(--danger)" [disabled]="cancellingId() === b.bookingId" (click)="confirmCancel(b)">
+              @if (cancellingId() === b.bookingId) { <span class="spin"></span> } @else if (b.bookingStatus === BookingStatus.Confirmed) { Yes, cancel booking } @else { Yes, withdraw request }
+            </button>
+            <button class="btn ghost" style="flex:1" (click)="cancelCancelConfirmation()">Never mind</button>
+          </div>
+        } @else {
+          <button class="btn sm ghost" style="width:100%" (click)="requestCancelConfirmation(b)">
+            {{ b.bookingStatus === BookingStatus.Confirmed ? 'Cancel booking' : 'Withdraw request' }}
+          </button>
+        }
+      }
+
+      <div class="row" style="gap:10px;margin-top:16px">
+        @if (canDownloadInvoice(b)) {
+          <button class="btn" style="flex:1" [disabled]="downloadingInvoiceId() === b.bookingId" (click)="downloadInvoice(b)">
+            @if (downloadingInvoiceId() === b.bookingId) { <span class="spin"></span> } @else { Download Invoice }
+          </button>
+        }
+        <button class="btn ghost" style="flex:1" (click)="selected.set(null)">Close</button>
+      </div>
+    </div>
+  </div>
+}

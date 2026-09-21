@@ -1,0 +1,41 @@
+using GhumoOdisha.Application.Common;
+using GhumoOdisha.Application.Coupons;
+using GhumoOdisha.Application.Coupons.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace GhumoOdisha.Api.Controllers;
+
+[ApiController]
+[Route("api/admin/coupons")]
+[Authorize(Roles = "Admin")]
+public class AdminCouponsController(ICouponService couponService) : ControllerBase
+{
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<AdminCouponDto>>>> GetCoupons(CancellationToken cancellationToken)
+    {
+        var result = await couponService.GetAllAsync(cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<AdminCouponDto>>.Ok(result));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<object>>> CreateCoupon(AdminCreateCouponRequest request, CancellationToken cancellationToken)
+    {
+        var couponCodeId = await couponService.CreateAsync(request, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { couponCodeId }, "Coupon created."));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateCoupon(int id, AdminUpdateCouponRequest request, CancellationToken cancellationToken)
+    {
+        await couponService.UpdateAsync(id, request, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Coupon updated."));
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteCoupon(int id, CancellationToken cancellationToken)
+    {
+        await couponService.DeleteAsync(id, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Coupon removed."));
+    }
+}
