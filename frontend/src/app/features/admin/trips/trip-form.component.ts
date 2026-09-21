@@ -68,8 +68,12 @@ export class TripFormComponent implements OnInit {
     }
   }
 
-  loadTrip(id: number): void {
-    this.loading.set(true);
+  // `silent` skips the full-page loading state — used after add/delete actions so the
+  // form doesn't collapse to a spinner and reset scroll to top on every refresh.
+  loadTrip(id: number, silent = false): void {
+    if (!silent) {
+      this.loading.set(true);
+    }
     this.tripService.getTrip(id).subscribe({
       next: (t) => {
         this.trip.set(t);
@@ -107,7 +111,7 @@ export class TripFormComponent implements OnInit {
         next: () => {
           this.saving.set(false);
           this.toast.success('Trip updated.');
-          this.loadTrip(this.tripId!);
+          this.loadTrip(this.tripId!, true);
         },
         error: () => this.saving.set(false),
       });
@@ -132,14 +136,14 @@ export class TripFormComponent implements OnInit {
     this.tripService.addTripPhoto(this.tripId, file).subscribe({
       next: () => {
         this.toast.success('Photo added.');
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
     (event.target as HTMLInputElement).value = '';
   }
 
   deletePhoto(id: number): void {
-    this.tripService.deleteTripPhoto(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteTripPhoto(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   movePhoto(index: number, direction: -1 | 1): void {
@@ -149,7 +153,7 @@ export class TripFormComponent implements OnInit {
     if (!target) return;
 
     this.tripService.updateTripPhotoOrder(photos[index].tripPhotoId, target.displayOrder).subscribe(() => {
-      this.tripService.updateTripPhotoOrder(target.tripPhotoId, photos[index].displayOrder).subscribe(() => this.loadTrip(this.tripId!));
+      this.tripService.updateTripPhotoOrder(target.tripPhotoId, photos[index].displayOrder).subscribe(() => this.loadTrip(this.tripId!, true));
     });
   }
 
@@ -170,13 +174,13 @@ export class TripFormComponent implements OnInit {
         this.toast.success('Highlight added.');
         this.newHighlight = { placeName: '', description: '' };
         this.newHighlightFile = null;
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
   }
 
   deleteHighlight(id: number): void {
-    this.tripService.deleteHighlight(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteHighlight(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   // ---------- date slots ----------
@@ -191,13 +195,13 @@ export class TripFormComponent implements OnInit {
       next: () => {
         this.toast.success('Date slot added.');
         this.newSlot = { startDate: '', endDate: '', totalSeats: 10 };
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
   }
 
   deleteDateSlot(id: number): void {
-    this.tripService.deleteDateSlot(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteDateSlot(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   // ---------- itinerary ----------
@@ -212,13 +216,13 @@ export class TripFormComponent implements OnInit {
       next: () => {
         this.toast.success('Itinerary day added.');
         this.newDay = { dayNumber: (this.trip()?.itineraryDays.length ?? 0) + 2, title: '', description: '' };
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
   }
 
   deleteDay(id: number): void {
-    this.tripService.deleteItineraryDay(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteItineraryDay(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   addPoint(dayId: number): void {
@@ -231,13 +235,13 @@ export class TripFormComponent implements OnInit {
     this.tripService.addItineraryPoint(dayId, draft).subscribe({
       next: () => {
         this.newPoint[dayId] = { time: '', description: '' };
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
   }
 
   deletePoint(id: number): void {
-    this.tripService.deleteItineraryPoint(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteItineraryPoint(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   // ---------- room photos ----------
@@ -249,14 +253,14 @@ export class TripFormComponent implements OnInit {
     this.tripService.addRoomPhoto(this.tripId, file).subscribe({
       next: () => {
         this.toast.success('Room photo added.');
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
     (event.target as HTMLInputElement).value = '';
   }
 
   deleteRoomPhoto(id: number): void {
-    this.tripService.deleteRoomPhoto(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteRoomPhoto(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   // ---------- vehicle photos ----------
@@ -268,14 +272,14 @@ export class TripFormComponent implements OnInit {
     this.tripService.addVehiclePhoto(this.tripId, file).subscribe({
       next: () => {
         this.toast.success('Vehicle photo added.');
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
     (event.target as HTMLInputElement).value = '';
   }
 
   deleteVehiclePhoto(id: number): void {
-    this.tripService.deleteVehiclePhoto(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deleteVehiclePhoto(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
   // ---------- pickup points ----------
@@ -290,12 +294,12 @@ export class TripFormComponent implements OnInit {
       next: () => {
         this.toast.success('Pickup point added.');
         this.newPickupPoint = { location: '', time: '' };
-        this.loadTrip(this.tripId!);
+        this.loadTrip(this.tripId!, true);
       },
     });
   }
 
   deletePickupPoint(id: number): void {
-    this.tripService.deletePickupPoint(id).subscribe(() => this.loadTrip(this.tripId!));
+    this.tripService.deletePickupPoint(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 }
