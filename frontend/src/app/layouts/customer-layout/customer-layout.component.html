@@ -3,8 +3,6 @@
   <nav>
     <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Home</a>
     <a routerLink="/trips" routerLinkActive="on">Trips</a>
-    <a routerLink="/cars" routerLinkActive="on">Cars</a>
-    <a routerLink="/hotels" routerLinkActive="on">Hotels</a>
     @if (auth.isAuthenticated()) {
       <a routerLink="/my-bookings" routerLinkActive="on">My Bookings</a>
       <a routerLink="/profile" routerLinkActive="on">Profile</a>
@@ -24,8 +22,6 @@
   <div class="card" style="margin:0 16px;border-top:none;border-radius:0 0 14px 14px">
     <a routerLink="/" (click)="toggleMenu()" style="display:block;padding:12px 16px">Home</a>
     <a routerLink="/trips" (click)="toggleMenu()" style="display:block;padding:12px 16px">Trips</a>
-    <a routerLink="/cars" (click)="toggleMenu()" style="display:block;padding:12px 16px">Cars</a>
-    <a routerLink="/hotels" (click)="toggleMenu()" style="display:block;padding:12px 16px">Hotels</a>
     @if (auth.isAuthenticated()) {
       <a routerLink="/my-bookings" (click)="toggleMenu()" style="display:block;padding:12px 16px">My Bookings</a>
       <a routerLink="/profile" (click)="toggleMenu()" style="display:block;padding:12px 16px">Profile</a>
@@ -37,7 +33,7 @@
 
 <footer>
   
-  <div class="footbar">&copy; {{ year }} Ghumo Odisha. All rights reserved.</div>
+  <div class="footbar">&copy; {{ year }} Ghumo Odisha. All rights reserved. · <a routerLink="/terms" style="color:inherit;text-decoration:underline">Terms &amp; Conditions</a></div>
 </footer>
 
 <app-toast-host></app-toast-host>

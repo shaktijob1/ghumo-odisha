@@ -7,44 +7,133 @@ namespace GhumoOdisha.Infrastructure.Persistence.Seed;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(GhumoOdishaDbContext context, IPinHasher pinHasher)
+    /// <param name="admin">Credentials for the first admin. Null skips admin seeding entirely.</param>
+    /// <param name="overwriteExistingAdmin">
+    /// Development only: rewrites an existing admin whose username differs back to the configured
+    /// credentials. Production passes false so a live admin account is only ever created, never reset.
+    /// </param>
+    public static async Task SeedAsync(
+        GhumoOdishaDbContext context,
+        IPinHasher pinHasher,
+        AdminSeed? admin,
+        bool overwriteExistingAdmin,
+        bool seedDemoContent)
     {
         var now = DateTime.UtcNow;
 
-        const string adminUsername = "gobook";
-        const string adminPassword = "gobook";
-
-        var existingAdmin = await context.AdminUsers.FirstOrDefaultAsync();
-        if (existingAdmin is null)
+        if (admin is not null)
         {
-            context.AdminUsers.Add(new AdminUser
+            var existingAdmin = await context.AdminUsers.OrderBy(a => a.AdminUserId).FirstOrDefaultAsync();
+            if (existingAdmin is null)
             {
-                Username = adminUsername,
-                Email = "admin@ghumoodisha.in",
-                PasswordHash = pinHasher.Hash(adminPassword),
-                Role = "Admin",
-                CreatedAt = now
-            });
+                context.AdminUsers.Add(new AdminUser
+                {
+                    Username = admin.Username,
+                    Email = admin.Email,
+                    PasswordHash = pinHasher.Hash(admin.Password),
+                    Role = "Admin",
+                    CreatedAt = now
+                });
 
-            await context.SaveChangesAsync();
-        }
-        else if (existingAdmin.Username != adminUsername)
-        {
-            existingAdmin.Username = adminUsername;
-            existingAdmin.PasswordHash = pinHasher.Hash(adminPassword);
-            await context.SaveChangesAsync();
+                await context.SaveChangesAsync();
+            }
+            else if (overwriteExistingAdmin && existingAdmin.Username != admin.Username)
+            {
+                existingAdmin.Username = admin.Username;
+                existingAdmin.PasswordHash = pinHasher.Hash(admin.Password);
+                await context.SaveChangesAsync();
+            }
         }
 
-        if (await context.Trips.AnyAsync())
+        if (!seedDemoContent)
         {
             return;
         }
 
-        context.Trips.AddRange(
-            BuildKoraputEscape(now),
-            BuildPuriKonarkEscape(now),
-            BuildMahendragiriAdventure(now));
+        if (!await context.Trips.AnyAsync())
+        {
+            context.Trips.AddRange(
+                BuildKoraputEscape(now),
+                BuildPuriKonarkEscape(now),
+                BuildMahendragiriAdventure(now));
 
+            await context.SaveChangesAsync();
+        }
+
+        await SeedDestinationsAsync(context, now);
+    }
+
+    private static async Task SeedDestinationsAsync(GhumoOdishaDbContext context, DateTime now)
+    {
+        if (await context.Destinations.AnyAsync())
+        {
+            return;
+        }
+
+        var trips = await context.Trips.ToListAsync();
+
+        var koraput = new Destination
+        {
+            Name = "Koraput",
+            Slug = "koraput",
+            Tagline = "Mountains • Waterfalls • Culture",
+            Region = "Eastern Ghats, Odisha",
+            AboutText = "Tucked into the Eastern Ghats, Koraput is one of Odisha's quietest hill destinations — "
+                + "coffee plantations, tribal markets and waterfalls like Duduma, best visited between October and "
+                + "February when the hills stay cool and the valleys are green.",
+            BestSeason = "Oct – Feb",
+            DistanceFromBhubaneswar = "~440 km",
+            IdealDuration = "2–4 days",
+            KnownFor = "Hills & coffee",
+            DisplayOrder = 0,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var koraputTrip = trips.FirstOrDefault(t => t.Title == "Koraput Escape");
+        if (koraputTrip is not null) koraput.Trips.Add(koraputTrip);
+
+        var puriKonark = new Destination
+        {
+            Name = "Puri & Konark",
+            Slug = "puri-konark",
+            Tagline = "Temple • Beach • Heritage",
+            Region = "Coastal Odisha",
+            AboutText = "Odisha's best-known coastline — the Jagannath Temple and golden sands at Puri, and the "
+                + "UNESCO-listed Sun Temple down the coast at Konark, both an easy overnight trip from Bhubaneswar.",
+            BestSeason = "Oct – Mar",
+            DistanceFromBhubaneswar = "~60 km",
+            IdealDuration = "1–2 days",
+            KnownFor = "Temples & beaches",
+            DisplayOrder = 1,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var puriTrip = trips.FirstOrDefault(t => t.Title == "Puri Konark Escape");
+        if (puriTrip is not null) puriKonark.Trips.Add(puriTrip);
+
+        var mahendragiri = new Destination
+        {
+            Name = "Mahendragiri",
+            Slug = "mahendragiri",
+            Tagline = "Mountains • Nature • Adventure",
+            Region = "Eastern Ghats, Odisha",
+            AboutText = "Odisha's second-highest peak, wrapped in dense Eastern Ghats forest — a trekking "
+                + "destination with waterfalls, forest trails and an overnight camp under the stars.",
+            BestSeason = "Sep – Feb",
+            DistanceFromBhubaneswar = "~450 km",
+            IdealDuration = "2–3 days",
+            KnownFor = "Trekking & camping",
+            DisplayOrder = 2,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var mahendragiriTrip = trips.FirstOrDefault(t => t.Title == "Mahendragiri Adventure");
+        if (mahendragiriTrip is not null) mahendragiri.Trips.Add(mahendragiriTrip);
+
+        context.Destinations.AddRange(koraput, puriKonark, mahendragiri);
         await context.SaveChangesAsync();
     }
 

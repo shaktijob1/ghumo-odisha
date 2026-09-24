@@ -13,6 +13,8 @@ using GhumoOdisha.Application.Coupons;
 using GhumoOdisha.Application.Customers;
 using GhumoOdisha.Application.Company;
 using GhumoOdisha.Application.Dashboard;
+using GhumoOdisha.Application.Destinations;
+using GhumoOdisha.Application.Homepage;
 using GhumoOdisha.Application.Invoices;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Application.Trips;
@@ -76,6 +78,7 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<ICustomerAuthService, CustomerAuthService>();
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<ITripService, TripService>();
+builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 
@@ -91,18 +94,37 @@ builder.Services.AddHostedService<BookingCompletionBackgroundService>();
 
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
+builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
 builder.Services.AddScoped<IInvoiceService, QuestPdfInvoiceService>();
 
+// Persistent storage root (uploaded photos, and anywhere else the app writes at runtime) lives
+// outside the deployed application directory — see Storage:RootPath / Storage__RootPath — so a
+// redeploy of the app can never wipe it. Fails fast if it's not configured rather than silently
+// falling back to somewhere inside the app folder.
+var storageRootPath = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>()?.RootPath;
+if (string.IsNullOrWhiteSpace(storageRootPath))
+{
+    throw new InvalidOperationException(
+        "Storage:RootPath is not configured. Set it in appsettings.Development.json for local development, " +
+        "or via the Storage__RootPath environment variable in production.");
+}
+
+var uploadsBasePath = Path.Combine(storageRootPath, "Uploads");
+foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero" })
+{
+    Directory.CreateDirectory(Path.Combine(uploadsBasePath, category));
+}
+
+// Reserved for future use (e.g. persisted booking documents) — created now so the full
+// persistent tree exists from day one and callers never need to worry about a missing folder.
+Directory.CreateDirectory(Path.Combine(storageRootPath, "Documents"));
+Directory.CreateDirectory(Path.Combine(storageRootPath, "Invoices"));
+Directory.CreateDirectory(Path.Combine(storageRootPath, "Temp"));
+
 builder.Services.Configure<ImageStorageOptions>(options =>
 {
-    var webRootPath = builder.Environment.WebRootPath;
-    if (string.IsNullOrEmpty(webRootPath))
-    {
-        webRootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
-    }
-
-    options.BasePath = Path.Combine(webRootPath, "uploads");
+    options.BasePath = uploadsBasePath;
     options.PublicUrlPrefix = "/uploads";
 });
 builder.Services.AddScoped<IImageStorage, LocalImageStorage>();
@@ -159,21 +181,46 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<GhumoOdishaDbContext>();
-    var pinHasher = scope.ServiceProvider.GetRequiredService<IPinHasher>();
-    try
-    {
-        await DbSeeder.SeedAsync(db, pinHasher);
-    }
-    catch (Exception ex)
-    {
-        scope.ServiceProvider.GetRequiredService<ILogger<Program>>()
-            .LogWarning(ex, "Skipping database seed — database is not reachable.");
-    }
 }
 
+// Schema migration + first-admin seed, in every environment.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<GhumoOdishaDbContext>();
+    var pinHasher = scope.ServiceProvider.GetRequiredService<IPinHasher>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (app.Configuration.GetValue("Database:AutoMigrate", true))
+    {
+        // Deliberately not caught: serving bookings against a missing or half-migrated schema is
+        // worse than failing to start, so a migration error stops the app here.
+        logger.LogInformation("Applying pending database migrations.");
+        await db.Database.MigrateAsync();
+    }
+
+    // Admin credentials come from config (user-secrets / environment variables), never from code.
+    // Missing credentials just skip admin creation; they never fall back to a default password.
+    var adminUsername = app.Configuration["Seed:AdminUsername"];
+    var adminPassword = app.Configuration["Seed:AdminPassword"];
+    AdminSeed? adminSeed = null;
+    if (!string.IsNullOrWhiteSpace(adminUsername) && !string.IsNullOrWhiteSpace(adminPassword))
+    {
+        adminSeed = new AdminSeed(adminUsername, adminPassword, app.Configuration["Seed:AdminEmail"] ?? "admin@ghumoodisha.in");
+    }
+    else
+    {
+        logger.LogWarning("Seed:AdminUsername / Seed:AdminPassword not configured; skipping admin account seed.");
+    }
+
+    await DbSeeder.SeedAsync(
+        db,
+        pinHasher,
+        adminSeed,
+        overwriteExistingAdmin: app.Environment.IsDevelopment(),
+        seedDemoContent: app.Configuration.GetValue<bool>("Seed:DemoContent"));
+}
+
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();
@@ -184,5 +231,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Angular SPA fallback: any GET without a file extension and not under /api
+// (e.g. /trips, /booking, /trip/123 on a hard refresh) serves index.html so
+// the Angular router can take over client-side. Extensioned paths (missing
+// static assets) and unmatched /api/* requests still fall through to a 404.
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api).*$)}", "index.html");
 
 app.Run();

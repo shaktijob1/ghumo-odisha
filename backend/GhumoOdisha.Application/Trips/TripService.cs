@@ -11,14 +11,30 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png"];
     private const long MaxImageSizeBytes = 5 * 1024 * 1024;
+    private const long MaxItineraryPdfSizeBytes = 10 * 1024 * 1024;
 
     // ---------- Public ----------
 
-    public async Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default)
     {
         var query = db.Trips
             .Where(t => t.Status == TripStatus.Active)
-            .OrderBy(t => t.Title);
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(t => t.Title.Contains(search));
+        }
+
+        if (fromDate.HasValue || toDate.HasValue)
+        {
+            query = query.Where(t => t.TripDateSlots.Any(s =>
+                s.Status == TripDateSlotStatus.Active &&
+                (!fromDate.HasValue || s.EndDate >= fromDate.Value) &&
+                (!toDate.HasValue || s.StartDate <= toDate.Value)));
+        }
+
+        query = query.OrderBy(t => t.Title);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -27,6 +43,9 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             .Take(pageSize)
             .Include(t => t.TripPhotos)
             .Include(t => t.TripDateSlots)
+            .Include(t => t.TripHighlights)
+            .Include(t => t.Destinations)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
         var items = trips.Select(MapToSummary).ToList();
@@ -120,6 +139,17 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             UpdatedAt = now
         };
 
+        if (request.DestinationIds is { Count: > 0 })
+        {
+            var destinations = await db.Destinations
+                .Where(d => request.DestinationIds.Contains(d.DestinationId))
+                .ToListAsync(cancellationToken);
+            foreach (var destination in destinations)
+            {
+                trip.Destinations.Add(destination);
+            }
+        }
+
         db.Trips.Add(trip);
         await db.SaveChangesAsync(cancellationToken);
         return trip.TripId;
@@ -127,7 +157,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 
     public async Task UpdateTripAsync(int tripId, UpdateTripRequest request, CancellationToken cancellationToken = default)
     {
-        var trip = await db.Trips.FirstOrDefaultAsync(t => t.TripId == tripId, cancellationToken)
+        var trip = await db.Trips.Include(t => t.Destinations).FirstOrDefaultAsync(t => t.TripId == tripId, cancellationToken)
             ?? throw new NotFoundException("Trip not found.");
 
         trip.Title = request.Title;
@@ -140,6 +170,26 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         trip.IncludesCoordinator = request.IncludesCoordinator;
         trip.Status = request.Status;
         trip.UpdatedAt = DateTime.UtcNow;
+
+        var desiredIds = (request.DestinationIds ?? []).ToHashSet();
+        var currentIds = trip.Destinations.Select(d => d.DestinationId).ToHashSet();
+
+        foreach (var destination in trip.Destinations.Where(d => !desiredIds.Contains(d.DestinationId)).ToList())
+        {
+            trip.Destinations.Remove(destination);
+        }
+
+        var idsToAdd = desiredIds.Except(currentIds).ToList();
+        if (idsToAdd.Count > 0)
+        {
+            var destinationsToAdd = await db.Destinations
+                .Where(d => idsToAdd.Contains(d.DestinationId))
+                .ToListAsync(cancellationToken);
+            foreach (var destination in destinationsToAdd)
+            {
+                trip.Destinations.Add(destination);
+            }
+        }
 
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -501,6 +551,61 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    // ---------- Admin: itinerary PDF ----------
+
+    public async Task UploadItineraryPdfAsync(int tripId, UploadedImage pdf, CancellationToken cancellationToken = default)
+    {
+        var trip = await db.Trips.FirstOrDefaultAsync(t => t.TripId == tripId, cancellationToken)
+            ?? throw new NotFoundException("Trip not found.");
+
+        ValidateItineraryPdf(pdf);
+
+        var oldUrl = trip.ItineraryPdfUrl;
+        trip.ItineraryPdfUrl = await imageStorage.SaveAsync(pdf.Content, pdf.FileName, pdf.ContentType, "itineraries", cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(oldUrl))
+        {
+            imageStorage.Delete(oldUrl);
+        }
+    }
+
+    public async Task DeleteItineraryPdfAsync(int tripId, CancellationToken cancellationToken = default)
+    {
+        var trip = await db.Trips.FirstOrDefaultAsync(t => t.TripId == tripId, cancellationToken)
+            ?? throw new NotFoundException("Trip not found.");
+
+        var url = trip.ItineraryPdfUrl;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        trip.ItineraryPdfUrl = null;
+        await db.SaveChangesAsync(cancellationToken);
+        imageStorage.Delete(url);
+    }
+
+    private static void ValidateItineraryPdf(UploadedImage pdf)
+    {
+        var errors = new List<string>();
+
+        if (!string.Equals(pdf.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add("Only PDF files are allowed.");
+        }
+
+        if (pdf.Length <= 0 || pdf.Length > MaxItineraryPdfSizeBytes)
+        {
+            errors.Add("Itinerary PDF must be no larger than 10 MB.");
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationAppException(errors);
+        }
+    }
+
     // ---------- Admin: pickup points ----------
 
     public async Task<int> AddPickupPointAsync(int tripId, AddPickupPointRequest request, CancellationToken cancellationToken = default)
@@ -560,6 +665,8 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             .Include(t => t.TripDateSlots)
             .Include(t => t.ItineraryDays)
                 .ThenInclude(d => d.ItineraryPoints)
+            .Include(t => t.Destinations)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(t => t.TripId == tripId, cancellationToken);
 
     private static async Task<int> NextDisplayOrderAsync<T>(IQueryable<T> query, CancellationToken cancellationToken)
@@ -589,7 +696,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         }
     }
 
-    private static TripSummaryDto MapToSummary(Trip trip)
+    internal static TripSummaryDto MapToSummary(Trip trip)
     {
         var coverImage = trip.TripPhotos.OrderBy(p => p.DisplayOrder).FirstOrDefault()?.ImageUrl;
         var nextSlot = trip.TripDateSlots
@@ -607,7 +714,10 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             nextSlot?.EndDate,
             nextSlot?.AvailableSeats,
             nextSlot?.TotalSeats,
-            MapPhotos(trip));
+            MapInclusions(trip),
+            trip.TripHighlights.OrderBy(h => h.DisplayOrder).Select(h => h.PlaceName).ToList(),
+            MapPhotos(trip),
+            trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList());
     }
 
     private static AdminTripListItemDto MapToAdminListItem(Trip trip, int confirmedBookingCount)
@@ -638,7 +748,8 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         MapRoomPhotos(trip),
         MapVehiclePhotos(trip),
         MapPickupPoints(trip),
-        trip.TripDateSlots.Where(s => s.Status == TripDateSlotStatus.Active).OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList());
+        trip.TripDateSlots.Where(s => s.Status == TripDateSlotStatus.Active).OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
+        trip.ItineraryPdfUrl);
 
     private static AdminTripDetailDto MapToAdminDetail(Trip trip) => new(
         trip.TripId,
@@ -655,7 +766,10 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         MapRoomPhotos(trip),
         MapVehiclePhotos(trip),
         MapPickupPoints(trip),
-        trip.TripDateSlots.OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList());
+        trip.TripDateSlots.OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
+        trip.Destinations.Select(d => d.DestinationId).ToList(),
+        trip.Destinations.Select(d => d.Name).ToList(),
+        trip.ItineraryPdfUrl);
 
     private static TripInclusionsDto MapInclusions(Trip trip) => new(
         trip.IncludesBreakfast, trip.IncludesLunch, trip.IncludesDinner, trip.IncludesStay, trip.IncludesCoordinator);

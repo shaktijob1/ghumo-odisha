@@ -9,6 +9,12 @@ public class CouponRedemption
     public int CustomerId { get; set; }
     public int BookingId { get; set; }
     public decimal DiscountAmount { get; set; }
+
+    // Snapshotted at redemption time so a later change to the coupon's commission rate, or the
+    // customer's later bookings, never rewrite what the coupon holder earned on this booking.
+    public int NumberOfSeats { get; set; }
+    public bool IsNewCustomer { get; set; }
+    public decimal CommissionAmount { get; set; }
     public DateTime RedeemedAt { get; set; }
 
     public CouponCode CouponCode { get; set; } = null!;

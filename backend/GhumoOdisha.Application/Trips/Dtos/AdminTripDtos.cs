@@ -28,4 +28,7 @@ public record AdminTripDetailDto(
     IReadOnlyList<RoomPhotoDto> RoomPhotos,
     IReadOnlyList<VehiclePhotoDto> VehiclePhotos,
     IReadOnlyList<PickupPointDto> PickupPoints,
-    IReadOnlyList<DateSlotDto> DateSlots);
+    IReadOnlyList<DateSlotDto> DateSlots,
+    IReadOnlyList<int> DestinationIds,
+    IReadOnlyList<string> DestinationNames,
+    string? ItineraryPdfUrl);

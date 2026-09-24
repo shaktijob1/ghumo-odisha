@@ -1,0 +1,8 @@
+# wwwroot holds only the compiled Angular output (copied here by
+# frontend/scripts/copy-to-wwwroot.mjs) - an artifact, not source, so ignore everything.
+#
+# Uploaded photos no longer live under wwwroot/uploads - they're written to persistent storage
+# outside the app (see Storage:RootPath in appsettings / GhumoOdisha.Infrastructure.Storage) so a
+# deploy can never overwrite them. Nothing under wwwroot is ever committed.
+*
+!.gitignore

@@ -18,6 +18,8 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<VehiclePhoto> VehiclePhotos => Set<VehiclePhoto>();
     public DbSet<PickupPoint> PickupPoints => Set<PickupPoint>();
     public DbSet<OrganizerPhoto> OrganizerPhotos => Set<OrganizerPhoto>();
+    public DbSet<SiteHeroPhoto> SiteHeroPhotos => Set<SiteHeroPhoto>();
+    public DbSet<TermsAcceptance> TermsAcceptances => Set<TermsAcceptance>();
     public DbSet<ItineraryDay> ItineraryDays => Set<ItineraryDay>();
     public DbSet<ItineraryPoint> ItineraryPoints => Set<ItineraryPoint>();
     public DbSet<TripDateSlot> TripDateSlots => Set<TripDateSlot>();
@@ -28,6 +30,7 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<CustomerRefreshToken> CustomerRefreshTokens => Set<CustomerRefreshToken>();
     public DbSet<CouponCode> CouponCodes => Set<CouponCode>();
     public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
+    public DbSet<Destination> Destinations => Set<Destination>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

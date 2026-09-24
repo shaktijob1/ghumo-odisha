@@ -2,7 +2,14 @@ using GhumoOdisha.Domain.Enums;
 
 namespace GhumoOdisha.Application.Bookings.Dtos;
 
-public record CreateBookingRequest(int TripId, int TripDateSlotId, int NumberOfSeats, string? CustomerNotes, Guid? ClientRequestId = null, int? PickupPointId = null);
+public record CreateBookingRequest(
+    int TripId,
+    int TripDateSlotId,
+    int NumberOfSeats,
+    string? CustomerNotes,
+    Guid? ClientRequestId = null,
+    int? PickupPointId = null,
+    bool AgreedToTerms = false);
 
 public record ConfirmBookingRequest(decimal AdvanceAmount, decimal DiscountAmount = 0, string? RazorpayPaymentId = null);
 

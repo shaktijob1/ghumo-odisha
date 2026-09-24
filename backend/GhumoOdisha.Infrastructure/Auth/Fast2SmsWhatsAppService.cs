@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -18,22 +19,37 @@ public class Fast2SmsWhatsAppService(HttpClient httpClient, IOptions<Fast2SmsOpt
     private readonly Fast2SmsOptions _options = options.Value;
 
     public Task SendOtpAsync(string phoneNumber, string customerName, string otp, CancellationToken cancellationToken = default) =>
-        SendAsync(phoneNumber, customerName, otp, isOtp: true, cancellationToken);
+        SendAsync(phoneNumber, _options.MessageId, [AfterGreeting(customerName), otp], "OTP", cancellationToken);
 
     public Task SendTemplateAsync(string phoneNumber, string variable1, string variable2, CancellationToken cancellationToken = default) =>
-        SendAsync(phoneNumber, variable1, variable2, isOtp: false, cancellationToken);
+        SendAsync(phoneNumber, _options.MessageId, [AfterGreeting(variable1), variable2], "template message", cancellationToken);
 
-    private async Task SendAsync(string phoneNumber, string variable1, string variable2, bool isOtp, CancellationToken cancellationToken)
+    // The shared MessageId template was approved as "Hello{{1}}" with no space before the variable,
+    // so the space has to travel inside the value or the message reads "Hellothere" / "HelloRahul".
+    private static string AfterGreeting(string value) => " " + value.Trim();
+
+    public async Task<bool> SendBookingConfirmedAsync(string phoneNumber, BookingConfirmedWhatsAppMessage message, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.MessageId))
+        if (string.IsNullOrWhiteSpace(_options.BookingConfirmedMessageId))
         {
-            logger.LogError("Fast2SMS is not configured (missing API key or message id) — cannot send WhatsApp message.");
+            return false;
+        }
+
+        await SendAsync(phoneNumber, _options.BookingConfirmedMessageId, message.ToTemplateVariables().Select(v => v.Trim()).ToList(), "booking-confirmed message", cancellationToken);
+        return true;
+    }
+
+    private async Task SendAsync(string phoneNumber, string messageId, IReadOnlyList<string> variableValues, string kind, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(messageId))
+        {
+            logger.LogError("Fast2SMS is not configured (missing API key or message id) — cannot send WhatsApp {Kind}.", kind);
             throw new WhatsAppDeliveryException();
         }
 
-        var variables = string.Join('|', variable1, variable2);
+        var variables = string.Join('|', variableValues.Select(SanitizeVariable));
         var query = $"?authorization={Uri.EscapeDataString(_options.ApiKey)}" +
-                    $"&message_id={Uri.EscapeDataString(_options.MessageId)}" +
+                    $"&message_id={Uri.EscapeDataString(messageId)}" +
                     $"&numbers={Uri.EscapeDataString(phoneNumber)}" +
                     $"&variables_values={Uri.EscapeDataString(variables)}";
 
@@ -56,7 +72,7 @@ public class Fast2SmsWhatsAppService(HttpClient httpClient, IOptions<Fast2SmsOpt
                 throw new WhatsAppDeliveryException();
             }
 
-            logger.LogInformation("WhatsApp {Kind} dispatched via Fast2SMS to {PhoneLast4}.", isOtp ? "OTP" : "template message", LastFour(phoneNumber));
+            logger.LogInformation("WhatsApp {Kind} dispatched via Fast2SMS to {PhoneLast4}.", kind, LastFour(phoneNumber));
         }
         catch (WhatsAppDeliveryException)
         {
@@ -103,6 +119,13 @@ public class Fast2SmsWhatsAppService(HttpClient httpClient, IOptions<Fast2SmsOpt
 
         return true;
     }
+
+    // "|" is Fast2SMS's variable separator, and WhatsApp rejects template parameters containing
+    // newlines/tabs or runs of spaces — so a trip title or pickup location typed with any of those
+    // would otherwise shift every following variable or fail the whole send. Whitespace runs are
+    // collapsed to one space rather than trimmed, so AfterGreeting's leading space survives.
+    private static string SanitizeVariable(string value) =>
+        Regex.Replace(value.Replace('|', '/'), @"\s+", " ");
 
     private static string LastFour(string phoneNumber) =>
         phoneNumber.Length <= 4 ? phoneNumber : "…" + phoneNumber[^4..];

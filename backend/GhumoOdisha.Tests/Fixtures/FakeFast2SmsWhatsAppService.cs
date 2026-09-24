@@ -19,6 +19,11 @@ public class FakeFast2SmsWhatsAppService : IFast2SmsWhatsAppService
     public string? LastTemplateVariable2 { get; private set; }
     public int TemplateCallCount { get; private set; }
 
+    /// <summary>Set to simulate Fast2Sms:BookingConfirmedMessageId being configured.</summary>
+    public bool BookingConfirmedTemplateConfigured { get; set; }
+    public BookingConfirmedWhatsAppMessage? LastBookingConfirmed { get; private set; }
+    public int BookingConfirmedCallCount { get; private set; }
+
     public Task SendOtpAsync(string phoneNumber, string customerName, string otp, CancellationToken cancellationToken = default)
     {
         if (ShouldFail)
@@ -45,5 +50,23 @@ public class FakeFast2SmsWhatsAppService : IFast2SmsWhatsAppService
         LastTemplateVariable1 = variable1;
         LastTemplateVariable2 = variable2;
         return Task.CompletedTask;
+    }
+
+    public Task<bool> SendBookingConfirmedAsync(string phoneNumber, BookingConfirmedWhatsAppMessage message, CancellationToken cancellationToken = default)
+    {
+        if (!BookingConfirmedTemplateConfigured)
+        {
+            return Task.FromResult(false);
+        }
+
+        if (ShouldFail)
+        {
+            throw new GhumoOdisha.Application.Exceptions.WhatsAppDeliveryException();
+        }
+
+        BookingConfirmedCallCount++;
+        LastPhoneNumber = phoneNumber;
+        LastBookingConfirmed = message;
+        return Task.FromResult(true);
     }
 }

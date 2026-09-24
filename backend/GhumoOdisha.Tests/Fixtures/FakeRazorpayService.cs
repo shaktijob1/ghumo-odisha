@@ -9,15 +9,17 @@ namespace GhumoOdisha.Tests.Fixtures;
 public class FakeRazorpayService : IRazorpayService
 {
     public string? LastRefundedPaymentId { get; private set; }
+    public string? LastRefundId { get; private set; }
     public int RefundCallCount { get; private set; }
     public bool ShouldFailRefund { get; set; }
+    public string RefundStatusToReturn { get; set; } = "processed";
 
     public Task<RazorpayOrder> CreateOrderAsync(long amountPaise, string receipt, CancellationToken cancellationToken = default) =>
         Task.FromResult(new RazorpayOrder($"order_fake_{Guid.NewGuid():N}", amountPaise, "INR"));
 
     public bool VerifySignature(string orderId, string paymentId, string signature) => true;
 
-    public Task RefundAsync(string paymentId, CancellationToken cancellationToken = default)
+    public Task<string> RefundAsync(string paymentId, CancellationToken cancellationToken = default)
     {
         if (ShouldFailRefund)
         {
@@ -26,6 +28,10 @@ public class FakeRazorpayService : IRazorpayService
 
         RefundCallCount++;
         LastRefundedPaymentId = paymentId;
-        return Task.CompletedTask;
+        LastRefundId = $"rfnd_fake_{Guid.NewGuid():N}";
+        return Task.FromResult(LastRefundId);
     }
+
+    public Task<string> GetRefundStatusAsync(string refundId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(RefundStatusToReturn);
 }

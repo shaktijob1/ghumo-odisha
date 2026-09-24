@@ -18,6 +18,13 @@ public class AdminCouponsController(ICouponService couponService) : ControllerBa
         return Ok(ApiResponse<IReadOnlyList<AdminCouponDto>>.Ok(result));
     }
 
+    [HttpGet("{id:int}/bookings")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<AdminCouponBookingDto>>>> GetCouponBookings(int id, CancellationToken cancellationToken)
+    {
+        var result = await couponService.GetBookingsAsync(id, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<AdminCouponBookingDto>>.Ok(result));
+    }
+
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object>>> CreateCoupon(AdminCreateCouponRequest request, CancellationToken cancellationToken)
     {

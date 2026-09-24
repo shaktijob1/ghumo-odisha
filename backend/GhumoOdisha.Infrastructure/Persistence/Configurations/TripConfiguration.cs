@@ -27,6 +27,9 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
         builder.Property(t => t.Status)
             .HasConversion<int>();
 
+        builder.Property(t => t.ItineraryPdfUrl)
+            .HasMaxLength(500);
+
         builder.Property(t => t.CreatedAt).HasColumnType("datetime(6)");
         builder.Property(t => t.UpdatedAt).HasColumnType("datetime(6)");
 

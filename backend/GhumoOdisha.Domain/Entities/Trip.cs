@@ -14,6 +14,7 @@ public class Trip
     public bool IncludesStay { get; set; }
     public bool IncludesCoordinator { get; set; }
     public TripStatus Status { get; set; }
+    public string? ItineraryPdfUrl { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -25,4 +26,5 @@ public class Trip
     public ICollection<ItineraryDay> ItineraryDays { get; set; } = new List<ItineraryDay>();
     public ICollection<TripDateSlot> TripDateSlots { get; set; } = new List<TripDateSlot>();
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public ICollection<Destination> Destinations { get; set; } = new List<Destination>();
 }

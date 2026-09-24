@@ -162,6 +162,17 @@ export class AdminTripService {
       .pipe(map(() => undefined));
   }
 
+  // Itinerary PDF
+  uploadItineraryPdf(tripId: number, file: File): Observable<void> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/itinerary-pdf`, form).pipe(map(() => undefined));
+  }
+
+  deleteItineraryPdf(tripId: number): Observable<void> {
+    return this.http.delete<ApiResponse<object>>(`${base()}/trips/${tripId}/itinerary-pdf`).pipe(map(() => undefined));
+  }
+
   // Pickup points
   addPickupPoint(tripId: number, request: AddPickupPointRequest): Observable<void> {
     return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/pickup-points`, request).pipe(map(() => undefined));

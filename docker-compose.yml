@@ -1,0 +1,45 @@
+# Local Docker testing only - NOT the production deployment (that's IIS, per azure-pipelines.yml).
+# Run: docker compose up --build
+#
+# First time only, once mysql is up, apply migrations from the host (see README note printed
+# below / chat instructions) since this container never auto-migrates the schema.
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: devpassword
+      MYSQL_DATABASE: ghumo_odisha
+    ports:
+      - "3307:3306" # host 3307 to avoid clashing with a MySQL you might already have on 3306
+    volumes:
+      - ghumo_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pdevpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=ghumo_odisha;User=root;Password=devpassword;"
+      # Dev-only key so the container can issue/validate JWTs out of the box - never reuse this
+      # value anywhere real, and production already supplies its own via a non-committed secret.
+      Jwt__SigningKey: "docker-local-testing-signing-key-please-replace-32chars-min"
+      Storage__RootPath: /data
+      Cors__AllowedOrigins__0: "http://localhost:4200"
+    volumes:
+      - ghumo_storage_data:/data
+
+volumes:
+  ghumo_mysql_data:
+  ghumo_storage_data:

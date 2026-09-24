@@ -1,3 +1,4 @@
+using System.Data;
 using GhumoOdisha.Application.Bookings;
 using GhumoOdisha.Application.Bookings.Dtos;
 using GhumoOdisha.Application.Common;
@@ -35,8 +36,6 @@ public class BookingPaymentService(
 
     public async Task<CreatePaymentOrderResult> CreateOrderAsync(int customerId, int bookingId, BookingPaymentPlan plan, string? couponCode, CancellationToken cancellationToken = default)
     {
-        var booking = await LoadOwnedPayableBookingAsync(customerId, bookingId, cancellationToken);
-
         int? couponCodeId = null;
         var couponDiscount = 0m;
         if (!string.IsNullOrWhiteSpace(couponCode))
@@ -46,40 +45,104 @@ public class BookingPaymentService(
             couponDiscount = validation.DiscountAmount;
         }
 
-        var (advanceAmount, totalDiscount) = ComputeAmounts(booking, plan, couponDiscount);
-        var amountPaise = ToPaise(advanceAmount);
+        // FOR UPDATE serializes concurrent create-order calls for the same booking (a background
+        // prefetch racing a second tab or a page reload mid-request) so two calls can never both
+        // read "no matching pending order" and each mint a separate Razorpay order — whichever
+        // transaction gets the row lock first decides the order; the second one, once unblocked,
+        // re-reads that committed order and reuses it via the idempotency check below instead of
+        // creating a second one and orphaning whichever order the customer actually pays against.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            var booking = await db.Bookings
+                .FromSqlInterpolated($"SELECT * FROM Bookings WHERE BookingId = {bookingId} FOR UPDATE")
+                .SingleOrDefaultAsync(b => b.CustomerId == customerId, cancellationToken)
+                ?? throw new NotFoundException("Booking not found.");
 
-        var order = await razorpay.CreateOrderAsync(amountPaise, $"GO-{booking.BookingId}-{(int)plan}", cancellationToken);
+            if (booking.BookingStatus is not (BookingStatus.Requested or BookingStatus.Pending))
+            {
+                throw new ConflictException("This booking can no longer be paid for online.");
+            }
 
-        booking.RazorpayOrderId = order.Id;
-        booking.PendingAdvanceAmount = advanceAmount;
-        booking.PendingDiscountAmount = totalDiscount;
-        booking.PendingCouponCodeId = couponCodeId;
-        booking.PendingCouponDiscountAmount = couponCodeId.HasValue ? couponDiscount : null;
-        booking.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
+            var trip = await db.Trips.AsNoTracking().FirstOrDefaultAsync(t => t.TripId == booking.TripId, cancellationToken)
+                ?? throw new NotFoundException("Trip not found.");
 
-        return new CreatePaymentOrderResult(order.Id, order.AmountPaise, order.Currency, _razorpayOptions.KeyId, totalDiscount);
+            var (advanceAmount, totalDiscount) = ComputeAmounts(booking, trip, plan, couponDiscount);
+            var amountPaise = ToPaise(advanceAmount);
+
+            // Reuse the already-pending Razorpay order when nothing about the charge has changed,
+            // instead of minting a fresh one on every call (background prefetch, plan/coupon
+            // re-selection, a retried click).
+            if (!string.IsNullOrEmpty(booking.RazorpayOrderId)
+                && booking.PendingAdvanceAmount == advanceAmount
+                && booking.PendingDiscountAmount == totalDiscount
+                && booking.PendingCouponCodeId == couponCodeId)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return new CreatePaymentOrderResult(booking.RazorpayOrderId, amountPaise, "INR", _razorpayOptions.KeyId, totalDiscount);
+            }
+
+            var order = await razorpay.CreateOrderAsync(amountPaise, $"GO-{booking.BookingId}-{(int)plan}", cancellationToken);
+
+            booking.RazorpayOrderId = order.Id;
+            booking.PendingAdvanceAmount = advanceAmount;
+            booking.PendingDiscountAmount = totalDiscount;
+            booking.PendingCouponCodeId = couponCodeId;
+            booking.PendingCouponDiscountAmount = couponCodeId.HasValue ? couponDiscount : null;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return new CreatePaymentOrderResult(order.Id, order.AmountPaise, order.Currency, _razorpayOptions.KeyId, totalDiscount);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task VerifyAndConfirmAsync(int customerId, int bookingId, VerifyPaymentRequest request, CancellationToken cancellationToken = default)
     {
         var booking = await LoadOwnedPayableBookingAsync(customerId, bookingId, cancellationToken);
 
+        // TEMP (diagnostics): safe to remove once the order-id-mismatch race is confirmed fixed.
+        // Never logs the signature value or the Razorpay key secret.
+        logger.LogInformation(
+            "Payment verify attempt: booking {BookingId}, status {BookingStatus}, storedOrderId {StoredOrderId}, requestOrderId {RequestOrderId}, paymentId {PaymentId}, signaturePresent {SignaturePresent}, pendingAdvanceAmount {PendingAdvanceAmount}",
+            bookingId, booking.BookingStatus, booking.RazorpayOrderId, request.RazorpayOrderId, request.RazorpayPaymentId,
+            !string.IsNullOrWhiteSpace(request.RazorpaySignature), booking.PendingAdvanceAmount);
+
         if (string.IsNullOrEmpty(booking.RazorpayOrderId) || booking.RazorpayOrderId != request.RazorpayOrderId)
         {
+            logger.LogWarning(
+                "Payment verify FAILED — order id mismatch: booking {BookingId}, stored {StoredOrderId}, request {RequestOrderId}.",
+                bookingId, booking.RazorpayOrderId, request.RazorpayOrderId);
             throw new PaymentVerificationException();
         }
 
-        if (!razorpay.VerifySignature(request.RazorpayOrderId, request.RazorpayPaymentId, request.RazorpaySignature))
+        var signatureMatches = razorpay.VerifySignature(request.RazorpayOrderId, request.RazorpayPaymentId, request.RazorpaySignature);
+        logger.LogInformation("Payment verify signature check: booking {BookingId}, matches {SignatureMatches}", bookingId, signatureMatches);
+        if (!signatureMatches)
         {
+            logger.LogWarning(
+                "Payment verify FAILED — signature mismatch: booking {BookingId}, orderId {OrderId}, paymentId {PaymentId}.",
+                bookingId, request.RazorpayOrderId, request.RazorpayPaymentId);
             throw new PaymentVerificationException();
         }
 
         // Never recomputed from anything the client sends here — exactly what CreateOrderAsync
         // already quoted and charged via Razorpay.
-        var advanceAmount = booking.PendingAdvanceAmount ?? throw new PaymentVerificationException();
+        if (booking.PendingAdvanceAmount is null)
+        {
+            logger.LogWarning("Payment verify FAILED — no pending advance amount recorded: booking {BookingId}.", bookingId);
+            throw new PaymentVerificationException();
+        }
+        var advanceAmount = booking.PendingAdvanceAmount.Value;
         var discountAmount = booking.PendingDiscountAmount ?? 0m;
+        logger.LogInformation(
+            "Payment verify OK: booking {BookingId}, advanceAmount {AdvanceAmount}, discountAmount {DiscountAmount}. Confirming booking.",
+            bookingId, advanceAmount, discountAmount);
         var couponCodeId = booking.PendingCouponCodeId;
         var couponDiscount = booking.PendingCouponDiscountAmount ?? 0m;
 
@@ -104,6 +167,20 @@ public class BookingPaymentService(
         }
     }
 
+    public async Task<string?> GetRefundStatusAsync(int customerId, int bookingId, CancellationToken cancellationToken = default)
+    {
+        var booking = await db.Bookings.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId, cancellationToken)
+            ?? throw new NotFoundException("Booking not found.");
+
+        if (string.IsNullOrEmpty(booking.RazorpayRefundId))
+        {
+            return null;
+        }
+
+        return await razorpay.GetRefundStatusAsync(booking.RazorpayRefundId, cancellationToken);
+    }
+
     private async Task<Booking> LoadOwnedPayableBookingAsync(int customerId, int bookingId, CancellationToken cancellationToken)
     {
         var booking = await db.Bookings
@@ -119,9 +196,9 @@ public class BookingPaymentService(
         return booking;
     }
 
-    private (decimal AdvanceAmount, decimal TotalDiscount) ComputeAmounts(Booking booking, BookingPaymentPlan plan, decimal couponDiscount)
+    private (decimal AdvanceAmount, decimal TotalDiscount) ComputeAmounts(Booking booking, Trip trip, BookingPaymentPlan plan, decimal couponDiscount)
     {
-        var totalAmount = booking.Trip.AmountPerPerson * booking.NumberOfSeats;
+        var totalAmount = trip.AmountPerPerson * booking.NumberOfSeats;
         var planDiscount = plan == BookingPaymentPlan.Full ? FullPaymentDiscountPerSeat * booking.NumberOfSeats : 0m;
         var totalDiscount = planDiscount + couponDiscount;
         var effectiveTotal = Math.Max(0, totalAmount - totalDiscount);

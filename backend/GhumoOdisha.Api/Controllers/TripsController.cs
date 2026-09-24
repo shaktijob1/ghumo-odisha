@@ -11,9 +11,14 @@ public class TripsController(ITripService tripService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<TripSummaryDto>>>> GetActiveTrips(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken cancellationToken = default)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await tripService.GetActiveTripsAsync(page, pageSize, cancellationToken);
+        var result = await tripService.GetActiveTripsAsync(page, pageSize, search, fromDate, toDate, cancellationToken);
         return Ok(ApiResponse<PagedResult<TripSummaryDto>>.Ok(result));
     }
 

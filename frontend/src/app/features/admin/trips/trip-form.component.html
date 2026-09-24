@@ -48,6 +48,26 @@
         </div>
       </div>
 
+      <div class="fld">
+        <span class="lbl">Destinations</span>
+        @if (destinationOptions().length === 0) {
+          <p class="note">No destinations yet — <a routerLink="/admin/destinations/add" style="color:var(--accent);font-weight:600">add one</a> to feature this trip on a destination page.</p>
+        } @else {
+          <div class="row wrap" style="gap:14px">
+            @for (d of destinationOptions(); track d.destinationId) {
+              <label class="row" style="gap:6px">
+                <input
+                  type="checkbox"
+                  [checked]="selectedDestinationIds().has(d.destinationId)"
+                  (change)="toggleDestination(d.destinationId, $any($event.target).checked)"
+                />
+                {{ d.name }}
+              </label>
+            }
+          </div>
+        }
+      </div>
+
       <button class="btn" type="submit" [disabled]="saving()">
         {{ tripId ? 'Save basic info' : 'Create trip' }}
       </button>
@@ -158,7 +178,12 @@
           }
 
           <div class="row" style="gap:10px">
-            <input class="inp" style="width:110px" placeholder="09:00 AM" [(ngModel)]="newPoint[d.itineraryDayId].time" [ngModelOptions]="{standalone: true}" />
+            <select class="inp" style="width:130px" [(ngModel)]="newPoint[d.itineraryDayId].time" [ngModelOptions]="{standalone: true}">
+              <option value="" disabled selected>Select time</option>
+              @for (o of hourOptions; track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
             <input class="inp" placeholder="Point description" [(ngModel)]="newPoint[d.itineraryDayId].description" [ngModelOptions]="{standalone: true}" />
             <button class="btn sm" (click)="addPoint(d.itineraryDayId)">+ Add point</button>
           </div>
@@ -174,6 +199,23 @@
         </div>
         <button class="addbtn" style="margin-top:8px" (click)="addDay()">+ Add day</button>
       </div>
+    </div>
+
+    <div class="formsec">
+      <h4>Itinerary PDF</h4>
+      <div class="sub">Offered to customers as a downloadable itinerary on the trip page.</div>
+
+      <label class="drop">
+        {{ uploadingItineraryPdf() ? 'Uploading…' : 'Click to choose a PDF (up to 10 MB)' }}
+        <input type="file" accept="application/pdf" style="display:none" [disabled]="uploadingItineraryPdf()" (change)="onItineraryPdfSelected($event)" />
+      </label>
+
+      @if (t.itineraryPdfUrl; as url) {
+        <div class="row sp" style="margin-top:10px">
+          <a [href]="url | imageUrl" target="_blank" class="btn sm ghost">View current PDF</a>
+          <button type="button" class="btn sm ghost" (click)="deleteItineraryPdf()">Remove</button>
+        </div>
+      }
     </div>
 
     <div class="formsec">
@@ -237,7 +279,12 @@
       <div class="repeat">
         <div class="rh"><b>Add pickup point</b></div>
         <div class="row" style="gap:10px">
-          <input class="inp" style="width:110px" placeholder="6:00 AM" [(ngModel)]="newPickupPoint.time" [ngModelOptions]="{standalone: true}" />
+          <select class="inp" style="width:130px" [(ngModel)]="newPickupPoint.time" [ngModelOptions]="{standalone: true}">
+            <option value="" disabled selected>Select time</option>
+            @for (o of hourOptions; track o.value) {
+              <option [value]="o.value">{{ o.label }}</option>
+            }
+          </select>
           <input class="inp" style="flex:1" placeholder="Pickup location" [(ngModel)]="newPickupPoint.location" [ngModelOptions]="{standalone: true}" />
           <button class="btn sm" (click)="addPickupPoint()">+ Add</button>
         </div>

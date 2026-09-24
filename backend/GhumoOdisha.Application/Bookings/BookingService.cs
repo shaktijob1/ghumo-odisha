@@ -1,9 +1,11 @@
 using System.Data;
+using System.Globalization;
 using GhumoOdisha.Application.Bookings.Dtos;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Contact;
 using GhumoOdisha.Application.Exceptions;
+using GhumoOdisha.Application.Legal;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Domain.Entities;
 using GhumoOdisha.Domain.Enums;
@@ -35,6 +37,11 @@ public class BookingService(
             }
         }
 
+        if (!request.AgreedToTerms)
+        {
+            throw new ValidationAppException(["You must accept the Terms & Conditions to request a booking."]);
+        }
+
         var trip = await db.Trips.Include(t => t.TripPhotos).FirstOrDefaultAsync(t => t.TripId == request.TripId && t.Status == TripStatus.Active, cancellationToken)
             ?? throw new NotFoundException("Trip not found.");
 
@@ -53,6 +60,15 @@ public class BookingService(
 
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken)
             ?? throw new NotFoundException("Customer not found.");
+
+        // A customer requesting the same date slot again (e.g. after changing seat count) should
+        // leave only the newest request standing — supersede whatever they still had pending for
+        // this exact slot rather than piling up duplicate Requested rows an admin would have to sort out.
+        var priorRequestsForSlot = await db.Bookings
+            .Where(b => b.CustomerId == customerId
+                     && b.TripDateSlotId == request.TripDateSlotId
+                     && (b.BookingStatus == BookingStatus.Requested || b.BookingStatus == BookingStatus.Pending))
+            .ToListAsync(cancellationToken);
 
         PickupPoint? pickupPoint = null;
         if (request.PickupPointId.HasValue)
@@ -86,7 +102,26 @@ public class BookingService(
             UpdatedAt = now
         };
 
+        foreach (var prior in priorRequestsForSlot)
+        {
+            prior.BookingStatus = BookingStatus.Cancelled;
+            prior.CancelledAt = now;
+            prior.UpdatedAt = now;
+            prior.AdminNotes = AppendNote(prior.AdminNotes, "Cancelled automatically — replaced by a newer request for the same date.");
+        }
+
         db.Bookings.Add(booking);
+
+        // Snapshotted verbatim from the canonical text at this exact moment — never re-read later,
+        // so a future wording change can never retroactively alter what this customer agreed to.
+        db.TermsAcceptances.Add(new TermsAcceptance
+        {
+            CustomerId = customerId,
+            Booking = booking,
+            Version = TermsAndConditionsContent.Version,
+            Text = TermsAndConditionsContent.Text,
+            AcceptedAt = now
+        });
 
         try
         {
@@ -104,8 +139,10 @@ public class BookingService(
             throw;
         }
 
+        // No WhatsApp is sent here — the booking is only Requested, nothing has been paid yet.
+        // The first message a customer/organizer gets is on confirmation (NotifyBookingConfirmedAsync),
+        // once an advance has actually been paid.
         var message = BuildWhatsAppMessage(booking, trip, slot, customer);
-        await NotifyBookingRequestedAsync(booking, trip, slot, customer, cancellationToken);
         return new CreateBookingResult(MapToResponse(booking, trip.Title, CoverImageUrl(trip.TripPhotos), slot, pickupPoint), message);
     }
 
@@ -488,17 +525,17 @@ public class BookingService(
             throw new ConflictException("Only confirmed bookings can be cancelled.");
         }
 
-        var refunded = await TryRefundOnlinePaymentAsync(
+        var refundId = await TryRefundOnlinePaymentAsync(
             preCheck,
             bookingId,
             "We couldn't process the Razorpay refund right now. Please try again shortly, or refund manually and re-run cancellation once done.",
             cancellationToken);
 
-        var adminNotes = refunded
+        var adminNotes = refundId is not null
             ? AppendNote(request.AdminNotes, "Refunded in full via Razorpay.")
             : request.AdminNotes;
 
-        await CancelInternalAsync(bookingId, adminNotes, cancellationToken);
+        await CancelInternalAsync(bookingId, adminNotes, refundId, cancellationToken);
     }
 
     public async Task<BookingResponseDto> CancelOwnBookingAsync(int customerId, int bookingId, CancellationToken cancellationToken = default)
@@ -529,35 +566,35 @@ public class BookingService(
             throw new ConflictException($"Cancellations are only allowed up to {CancellationWindowHours} hours before the trip starts. Please contact us directly.");
         }
 
-        var refunded = await TryRefundOnlinePaymentAsync(
+        var refundId = await TryRefundOnlinePaymentAsync(
             preCheck,
             bookingId,
             "We couldn't process your refund right now. Please try again shortly or contact us.",
             cancellationToken);
 
-        var adminNotes = refunded ? "Cancelled by customer — refunded in full via Razorpay." : "Cancelled by customer.";
+        var adminNotes = refundId is not null ? "Cancelled by customer — refunded in full via Razorpay." : "Cancelled by customer.";
 
-        await CancelInternalAsync(bookingId, adminNotes, cancellationToken);
+        await CancelInternalAsync(bookingId, adminNotes, refundId, cancellationToken);
         return await GetCustomerBookingDetailAsync(customerId, bookingId, cancellationToken);
     }
 
     /// <summary>
-    /// Refunds the booking's Razorpay payment in full, if one exists. Used by both the customer
-    /// self-cancel and admin-cancel paths so a booking is never marked Refunded without the gateway
-    /// actually having released the money — on failure this blocks cancellation entirely rather than
-    /// leaving payment/seat state inconsistent with what the database claims happened.
+    /// Refunds the booking's Razorpay payment in full, if one exists, and returns the created
+    /// refund's id (null if no online payment was ever taken). Used by both the customer self-cancel
+    /// and admin-cancel paths so a booking is never marked Refunded without the gateway actually
+    /// having released the money — on failure this blocks cancellation entirely rather than leaving
+    /// payment/seat state inconsistent with what the database claims happened.
     /// </summary>
-    private async Task<bool> TryRefundOnlinePaymentAsync(Booking booking, int bookingId, string failureMessage, CancellationToken cancellationToken)
+    private async Task<string?> TryRefundOnlinePaymentAsync(Booking booking, int bookingId, string failureMessage, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(booking.RazorpayPaymentId) || booking.AdvanceAmount <= 0)
         {
-            return false;
+            return null;
         }
 
         try
         {
-            await razorpay.RefundAsync(booking.RazorpayPaymentId, cancellationToken);
-            return true;
+            return await razorpay.RefundAsync(booking.RazorpayPaymentId, cancellationToken);
         }
         catch (Exception ex) when (ex is PaymentGatewayException or PaymentGatewayAuthException)
         {
@@ -569,7 +606,7 @@ public class BookingService(
     private static string? AppendNote(string? existing, string note) =>
         string.IsNullOrWhiteSpace(existing) ? note : $"{existing} — {note}";
 
-    private async Task CancelInternalAsync(int bookingId, string? adminNotes, CancellationToken cancellationToken)
+    private async Task CancelInternalAsync(int bookingId, string? adminNotes, string? refundId, CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         try
@@ -593,6 +630,10 @@ public class BookingService(
             booking.PaymentStatus = PaymentStatus.Refunded;
             booking.CancelledAt = now;
             booking.UpdatedAt = now;
+            if (refundId is not null)
+            {
+                booking.RazorpayRefundId = refundId;
+            }
             if (!string.IsNullOrWhiteSpace(adminNotes))
             {
                 booking.AdminNotes = adminNotes;
@@ -687,37 +728,38 @@ public class BookingService(
 
     // ---------- WhatsApp notifications ----------
     //
-    // Fast2SMS has exactly one approved template on this account, built for OTP delivery with two
-    // variable slots. There is no separate approved template for booking notices, so these reuse
-    // that same template — variable 1 as a short "who this is for" line, variable 2 packed with the
-    // booking summary. Whatever fixed wrapper text Meta approved around those two slots (e.g. "Your
-    // OTP is {{2}}") still applies and cannot be changed here; if it reads oddly to customers, the
-    // real fix is getting a dedicated booking-notice template approved and swapping the MessageId.
+    // The customer's booking-confirmed notice uses its own approved 9-variable template
+    // (Fast2Sms:BookingConfirmedMessageId). Everything else — the organizer's copy, and the
+    // customer's notice when that id isn't configured — reuses the two-variable OTP template:
+    // variable 1 as a short "who this is for" line, variable 2 packed with the booking summary.
     //
     // These are always best-effort: a WhatsApp failure must never fail a booking request/confirm/cancel.
 
-    private async Task NotifyBookingRequestedAsync(Booking booking, Trip trip, TripDateSlot slot, Customer customer, CancellationToken cancellationToken)
-    {
-        var summary = $"Booking GO-{booking.BookingId} requested: {trip.Title}, " +
-                      $"{slot.StartDate:dd MMM}-{slot.EndDate:dd MMM}, {booking.NumberOfSeats} seat(s), " +
-                      $"Rs {booking.TotalAmount:N0}. We'll confirm shortly.";
-        await TrySendAsync(customer.PhoneNumber, customer.Name, summary, "booking-requested/customer", cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(_organizerContact.WhatsAppNumber))
-        {
-            var adminSummary = $"GO-{booking.BookingId}: {customer.Name} ({customer.PhoneNumber}) - {trip.Title}, " +
-                               $"{booking.NumberOfSeats} seat(s), Rs {booking.TotalAmount:N0}. Status: Requested.";
-            await TrySendAsync(_organizerContact.WhatsAppNumber, "New Booking Request", adminSummary, "booking-requested/admin", cancellationToken);
-        }
-    }
-
+    // Covers every way a booking becomes Confirmed — the admin's Confirm button (offline payment)
+    // and a verified Razorpay advance — since both go through ConfirmBookingAsync.
     private async Task NotifyBookingConfirmedAsync(Booking booking, Trip trip, TripDateSlot slot, Customer customer, CancellationToken cancellationToken)
     {
-        var balanceNote = booking.RemainingAmount > 0 ? $", balance Rs {booking.RemainingAmount:N0} due before the trip" : ", fully paid";
-        var summary = $"Booking GO-{booking.BookingId} CONFIRMED: {trip.Title}, " +
-                      $"{slot.StartDate:dd MMM}-{slot.EndDate:dd MMM}, {booking.NumberOfSeats} seat(s). " +
-                      $"Paid Rs {booking.AdvanceAmount:N0}{balanceNote}. See you there!";
-        await TrySendAsync(customer.PhoneNumber, customer.Name, summary, "booking-confirmed/customer", cancellationToken);
+        var sentDedicatedTemplate = false;
+        try
+        {
+            var message = await BuildBookingConfirmedMessageAsync(booking, trip, slot, customer, cancellationToken);
+            sentDedicatedTemplate = await whatsApp.SendBookingConfirmedAsync(customer.PhoneNumber, message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "WhatsApp notification failed (booking-confirmed/customer) — continuing without blocking the booking operation.");
+            sentDedicatedTemplate = true; // Attempted and failed — don't also send the fallback text.
+        }
+
+        if (!sentDedicatedTemplate)
+        {
+            // Dedicated template not configured yet — fall back to the shared two-variable template.
+            var balanceNote = booking.RemainingAmount > 0 ? $", balance Rs {booking.RemainingAmount:N0} due before the trip" : ", fully paid";
+            var summary = $"Booking GO-{booking.BookingId} CONFIRMED: {trip.Title}, " +
+                          $"{slot.StartDate:dd MMM}-{slot.EndDate:dd MMM}, {booking.NumberOfSeats} seat(s). " +
+                          $"Paid Rs {booking.AdvanceAmount:N0}{balanceNote}. See you there!";
+            await TrySendAsync(customer.PhoneNumber, customer.Name, summary, "booking-confirmed/customer", cancellationToken);
+        }
 
         if (!string.IsNullOrWhiteSpace(_organizerContact.WhatsAppNumber))
         {
@@ -725,6 +767,41 @@ public class BookingService(
                                $"paid Rs {booking.AdvanceAmount:N0}, balance Rs {booking.RemainingAmount:N0}. Status: Confirmed.";
             await TrySendAsync(_organizerContact.WhatsAppNumber, "Booking Confirmed", adminSummary, "booking-confirmed/admin", cancellationToken);
         }
+    }
+
+    private const string ToBeSharedText = "Will be shared by our team";
+
+    private async Task<BookingConfirmedWhatsAppMessage> BuildBookingConfirmedMessageAsync(
+        Booking booking, Trip trip, TripDateSlot slot, Customer customer, CancellationToken cancellationToken)
+    {
+        var pickupPoints = await db.PickupPoints.AsNoTracking()
+            .Where(p => p.TripId == trip.TripId)
+            .OrderBy(p => p.DisplayOrder).ThenBy(p => p.PickupPointId)
+            .ToListAsync(cancellationToken);
+
+        // Pickup point = the trip's last pickup point in route order. Reporting time = the earliest
+        // pickup time on the trip. Times are free text (the admin form saves "HH:mm"), so anything
+        // that doesn't parse as a time is ignored; if none parse, the first point's text is used as-is.
+        var lastPickupPoint = pickupPoints.LastOrDefault()?.Location;
+        var earliestTime = pickupPoints
+            .Select(p => TimeOnly.TryParse(p.Time, CultureInfo.InvariantCulture, out var t) ? t : (TimeOnly?)null)
+            .Where(t => t.HasValue)
+            .Min();
+        var reportingTime = earliestTime?.ToString("h:mm tt", CultureInfo.InvariantCulture)
+                            ?? pickupPoints.FirstOrDefault()?.Time;
+
+        var name = string.IsNullOrWhiteSpace(customer.Name) ? "Traveller" : customer.Name.Trim();
+
+        return new BookingConfirmedWhatsAppMessage(
+            CustomerName: name,
+            TripTitle: trip.Title,
+            TravelDate: slot.StartDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture),
+            PassengerName: name,
+            Seats: booking.NumberOfSeats.ToString(CultureInfo.InvariantCulture),
+            AmountPaid: booking.AdvanceAmount.ToString("#,##0.##", CultureInfo.InvariantCulture),
+            BookingReference: $"GO-{booking.BookingId}",
+            PickupPoint: string.IsNullOrWhiteSpace(lastPickupPoint) ? ToBeSharedText : lastPickupPoint,
+            ReportingTime: string.IsNullOrWhiteSpace(reportingTime) ? ToBeSharedText : reportingTime);
     }
 
     private async Task TrySendAsync(string phoneNumber, string variable1, string variable2, string context, CancellationToken cancellationToken)
@@ -764,7 +841,8 @@ public class BookingService(
         booking.AdminNotes,
         booking.RequestedAt,
         booking.ConfirmedAt,
-        booking.CancelledAt);
+        booking.CancelledAt,
+        slot.AvailableSeats);
 
     private static AdminBookingListItemDto MapToAdminListItem(Booking booking) => new(
         booking.BookingId,

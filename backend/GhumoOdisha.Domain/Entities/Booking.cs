@@ -22,6 +22,7 @@ public class Booking
     public string? AdminNotes { get; set; }
     public string? RazorpayOrderId { get; set; }
     public string? RazorpayPaymentId { get; set; }
+    public string? RazorpayRefundId { get; set; }
 
     // Set by BookingPaymentService.CreateOrderAsync, consumed by VerifyAndConfirmAsync — so a
     // verified payment always confirms exactly what was quoted/charged at order-creation time,

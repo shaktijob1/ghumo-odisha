@@ -10,4 +10,7 @@ public record TripSummaryDto(
     DateOnly? NextSlotEndDate,
     int? NextSlotAvailableSeats,
     int? NextSlotTotalSeats,
-    IReadOnlyList<TripPhotoDto> Photos);
+    TripInclusionsDto Inclusions,
+    IReadOnlyList<string> HighlightPlaceNames,
+    IReadOnlyList<TripPhotoDto> Photos,
+    IReadOnlyList<string> DestinationNames);

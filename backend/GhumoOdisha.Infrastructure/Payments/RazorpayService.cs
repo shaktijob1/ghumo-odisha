@@ -106,7 +106,7 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
             Encoding.UTF8.GetBytes(signature.Trim().ToLowerInvariant()));
     }
 
-    public async Task RefundAsync(string paymentId, CancellationToken cancellationToken = default)
+    public async Task<string> RefundAsync(string paymentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.KeyId) || string.IsNullOrWhiteSpace(_options.KeySecret))
         {
@@ -151,7 +151,73 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
             throw new PaymentGatewayException("Unable to process the refund right now. Please try again.");
         }
 
-        logger.LogInformation("Refunded Razorpay payment {PaymentId}.", paymentId);
+        string refundId;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            refundId = doc.RootElement.GetProperty("id").GetString()!;
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Razorpay refund succeeded but returned an unexpected response body for payment {PaymentId}: {Body}", paymentId, body);
+            throw new PaymentGatewayException();
+        }
+
+        logger.LogInformation("Refunded Razorpay payment {PaymentId} — refund {RefundId}.", paymentId, refundId);
+        return refundId;
+    }
+
+    public async Task<string> GetRefundStatusAsync(string refundId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.KeyId) || string.IsNullOrWhiteSpace(_options.KeySecret))
+        {
+            logger.LogError("Razorpay is not configured (missing key id or key secret) — cannot check refund status.");
+            throw new PaymentGatewayException();
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.razorpay.com/v1/refunds/{Uri.EscapeDataString(refundId)}");
+        request.Headers.Authorization = BasicAuthHeader();
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await httpClient.SendAsync(request, cancellationToken);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Razorpay refund-status request timed out for refund {RefundId}.", refundId);
+            throw new PaymentGatewayException("Unable to check the refund status right now. Please try again.");
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Razorpay refund-status request failed for refund {RefundId}.", refundId);
+            throw new PaymentGatewayException("Unable to check the refund status right now. Please try again.");
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            logger.LogError("Razorpay rejected our API credentials while checking refund {RefundId}.", refundId);
+            throw new PaymentGatewayAuthException();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogError("Razorpay refund-status check failed with HTTP {StatusCode} for refund {RefundId}: {Body}", (int)response.StatusCode, refundId, body);
+            throw new PaymentGatewayException("Unable to check the refund status right now. Please try again.");
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.GetProperty("status").GetString()!;
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Razorpay refund-status check returned an unexpected response body for refund {RefundId}: {Body}", refundId, body);
+            throw new PaymentGatewayException();
+        }
     }
 
     private AuthenticationHeaderValue BasicAuthHeader() =>

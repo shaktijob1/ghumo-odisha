@@ -9,8 +9,11 @@ import { DateSlot, TripDetail, TripSummary } from '../models/trip.model';
 export class PublicTripService {
   constructor(private readonly http: HttpClient) {}
 
-  getTrips(page = 1, pageSize = 20): Observable<PagedResult<TripSummary>> {
-    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
+  getTrips(page = 1, pageSize = 20, filters?: { search?: string; fromDate?: string; toDate?: string }): Observable<PagedResult<TripSummary>> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (filters?.search) params = params.set('search', filters.search);
+    if (filters?.fromDate) params = params.set('fromDate', filters.fromDate);
+    if (filters?.toDate) params = params.set('toDate', filters.toDate);
     return this.http.get<ApiResponse<PagedResult<TripSummary>>>(`${environment.apiUrl}/trips`, { params }).pipe(map((r) => r.data!));
   }
 

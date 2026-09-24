@@ -1,4 +1,5 @@
 using GhumoOdisha.Application.Common;
+using GhumoOdisha.Application.Exceptions;
 using GhumoOdisha.Application.Trips;
 using GhumoOdisha.Application.Trips.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -50,5 +51,25 @@ public class AdminItineraryController(ITripService tripService) : ControllerBase
     {
         await tripService.DeleteItineraryPointAsync(id, cancellationToken);
         return Ok(ApiResponse<object>.Ok(new { }, "Itinerary point deleted."));
+    }
+
+    [HttpPost("api/admin/trips/{tripId:int}/itinerary-pdf")]
+    public async Task<ActionResult<ApiResponse<object>>> UploadItineraryPdf(int tripId, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new ValidationAppException(["An itinerary PDF file is required."]);
+        }
+
+        var pdf = new UploadedImage(file.OpenReadStream(), file.FileName, file.ContentType, file.Length);
+        await tripService.UploadItineraryPdfAsync(tripId, pdf, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Itinerary PDF uploaded."));
+    }
+
+    [HttpDelete("api/admin/trips/{tripId:int}/itinerary-pdf")]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteItineraryPdf(int tripId, CancellationToken cancellationToken)
+    {
+        await tripService.DeleteItineraryPdfAsync(tripId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Itinerary PDF removed."));
     }
 }

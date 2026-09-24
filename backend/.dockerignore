@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+
+GhumoOdisha.Tests/
+
+# Never ship persistent/uploaded files inside the image - same rule as production deploys.
+GhumoOdisha.Api/wwwroot/uploads/
+
+logs/
+*.log

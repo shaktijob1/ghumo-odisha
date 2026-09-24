@@ -9,7 +9,9 @@ public class AdminCreateCouponRequestValidator : AbstractValidator<AdminCreateCo
     {
         RuleFor(x => x.Code).NotEmpty().MaximumLength(32).Matches("^[A-Za-z0-9-]+$")
             .WithMessage("Coupon codes can only contain letters, numbers and hyphens.");
+        RuleFor(x => x.HolderName).NotEmpty().WithMessage("Enter the coupon holder's name.").MaximumLength(100);
         RuleFor(x => x.DiscountAmount).GreaterThan(0);
+        RuleFor(x => x.CommissionPerSeat).GreaterThanOrEqualTo(0);
         RuleFor(x => x.ValidUntil)
             .GreaterThanOrEqualTo(x => x.ValidFrom!.Value)
             .When(x => x.ValidFrom.HasValue && x.ValidUntil.HasValue)
@@ -21,7 +23,9 @@ public class AdminUpdateCouponRequestValidator : AbstractValidator<AdminUpdateCo
 {
     public AdminUpdateCouponRequestValidator()
     {
+        RuleFor(x => x.HolderName).NotEmpty().WithMessage("Enter the coupon holder's name.").MaximumLength(100);
         RuleFor(x => x.DiscountAmount).GreaterThan(0);
+        RuleFor(x => x.CommissionPerSeat).GreaterThanOrEqualTo(0);
         RuleFor(x => x.ValidUntil)
             .GreaterThanOrEqualTo(x => x.ValidFrom!.Value)
             .When(x => x.ValidFrom.HasValue && x.ValidUntil.HasValue)

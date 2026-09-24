@@ -20,6 +20,10 @@ export class ToastService {
     this.push(message, 'bad');
   }
 
+  info(message: string): void {
+    this.push(message, 'default');
+  }
+
   private push(message: string, kind: Toast['kind']): void {
     const id = nextId++;
     this.toasts.update((list) => [...list, { id, message, kind }]);

@@ -1,20 +1,32 @@
+import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { DestinationSummary } from '../../core/models/destination.model';
+import { ImageUrlPipe } from '../pipes/image-url.pipe';
 
 @Component({
   selector: 'app-destination-card',
   standalone: true,
+  imports: [CommonModule, RouterLink, ImageUrlPipe],
   template: `
-    <div class="destcard" [style.background]="gradient">
-      <svg class="ic" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 18l5.5-7 4 5 2.5-3 6 5"></path>
-      </svg>
-      <b>{{ name }}</b>
-      <span>{{ tagline }}</span>
-    </div>
+    <a class="dcard" [routerLink]="['/destinations', destination.slug]">
+      <div class="ph">
+        @if (destination.heroImageUrl) {
+          <img [src]="destination.heroImageUrl | imageUrl" alt="{{ destination.name }}" />
+        }
+      </div>
+      <div class="cnt">
+        <span>{{ destination.tripCount }} trip{{ destination.tripCount === 1 ? '' : 's' }}</span>
+      </div>
+      <div class="info">
+        <b>{{ destination.name }}</b>
+        @if (destination.startingPrice !== null) {
+          <span>Starting at &#8377;{{ destination.startingPrice | number: '1.0-0' }}*</span>
+        }
+      </div>
+    </a>
   `,
 })
 export class DestinationCardComponent {
-  @Input({ required: true }) name!: string;
-  @Input({ required: true }) tagline!: string;
-  @Input({ required: true }) gradient!: string;
+  @Input({ required: true }) destination!: DestinationSummary;
 }

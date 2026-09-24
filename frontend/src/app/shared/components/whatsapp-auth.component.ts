@@ -27,7 +27,7 @@ type Step = 'details' | 'otp';
 })
 export class WhatsappAuthComponent implements OnDestroy {
   @Input() mode: 'book' | 'login' = 'book';
-  @Input() title = 'Book this trip';
+  @Input() title = 'Welcome Back';
   @Output() authenticated = new EventEmitter<CustomerAuthResponse>();
   @Output() cancelled = new EventEmitter<void>();
 

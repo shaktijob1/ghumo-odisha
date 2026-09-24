@@ -24,6 +24,7 @@ public record BookingResponseDto(
     string? AdminNotes,
     DateTime RequestedAt,
     DateTime? ConfirmedAt,
-    DateTime? CancelledAt);
+    DateTime? CancelledAt,
+    int SlotAvailableSeats);
 
 public record CreateBookingResult(BookingResponseDto Booking, string WhatsAppMessage);

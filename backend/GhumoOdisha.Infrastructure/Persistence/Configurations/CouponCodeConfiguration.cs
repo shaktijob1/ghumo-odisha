@@ -11,12 +11,15 @@ public class CouponCodeConfiguration : IEntityTypeConfiguration<CouponCode>
         builder.ToTable("CouponCodes", t =>
         {
             t.HasCheckConstraint("CK_CouponCode_DiscountAmount_Positive", "DiscountAmount > 0");
+            t.HasCheckConstraint("CK_CouponCode_CommissionPerSeat_NonNegative", "CommissionPerSeat >= 0");
         });
 
         builder.HasKey(c => c.CouponCodeId);
 
         builder.Property(c => c.Code).HasMaxLength(32).IsRequired();
+        builder.Property(c => c.HolderName).HasMaxLength(100).IsRequired();
         builder.Property(c => c.DiscountAmount).HasColumnType("decimal(10,2)");
+        builder.Property(c => c.CommissionPerSeat).HasColumnType("decimal(10,2)");
         builder.Property(c => c.CreatedAt).HasColumnType("datetime(6)");
         builder.Property(c => c.UpdatedAt).HasColumnType("datetime(6)");
 

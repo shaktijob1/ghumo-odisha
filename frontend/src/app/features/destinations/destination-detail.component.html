@@ -1,0 +1,131 @@
+@switch (state()) {
+  @case ('loading') {
+    <div class="container"><app-state-panel kind="loading"></app-state-panel></div>
+  }
+  @case ('error') {
+    <div class="container">
+      <app-state-panel kind="error" message="Unable to load this destination."></app-state-panel>
+    </div>
+  }
+  @case ('not-found') {
+    <div class="container">
+      <app-state-panel kind="empty" message="We couldn't find that destination."></app-state-panel>
+      <div style="text-align:center;margin-top:-8px"><a class="btn sm" routerLink="/">Back to Ghumo Odisha</a></div>
+    </div>
+  }
+  @case ('ready') {
+    @let d = destination()!;
+    <div class="container">
+      <div class="crumb">
+        <a routerLink="/">Home</a>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+        <span class="now">{{ d.name }}</span>
+      </div>
+
+      <section class="lhero">
+        @if (d.heroImageUrl) {
+          <img [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" />
+        }
+        <div class="lhero-inner">
+          <div>
+            @if (d.region) { <span class="eyebrow" style="color:#fff;opacity:.85">{{ d.region }}</span> }
+            <h1>{{ d.name }}</h1>
+            @if (d.tagline) { <p>{{ d.tagline }}</p> }
+          </div>
+          <div class="lhero-stat">
+            <b>{{ d.tripCount }}</b>
+            <span>trip{{ d.tripCount === 1 ? '' : 's' }} here</span>
+          </div>
+        </div>
+
+        <div class="lhero-search">
+          <div class="searchbar">
+            <app-date-picker [value]="fromDate()" (valueChange)="fromDate.set($event)" placeholder="Start date" [min]="todayIso"></app-date-picker>
+            <button type="button" class="btn searchbtn" (click)="applyFilters()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              Search
+            </button>
+          </div>
+        </div>
+      </section>
+
+      @if (hasActiveFilters()) {
+        <div class="filterchips" style="margin:18px 0 0;border-bottom:none;padding-bottom:0">
+          <span class="chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+            From {{ fromDate() | date:'d MMM y' }}
+            <button type="button" class="chipx" (click)="clearDateFilter()" aria-label="Remove date filter">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </span>
+        </div>
+      }
+
+      <section class="sect" style="padding-top:22px">
+        <div class="sechead">
+          <div>
+            <h2>Trips in {{ d.name }}</h2>
+            <p class="sub">{{ totalCount() }} trip(s) available in this destination</p>
+          </div>
+        </div>
+
+        @switch (tripsState()) {
+          @case ('loading') {
+            <div class="tgrid">
+              @for (i of [1, 2, 3]; track i) {
+                <div class="tcard skel">
+                  <div class="shot"></div>
+                  <div class="body">
+                    <div class="ln" style="width:70%"></div>
+                    <div class="ln" style="width:45%"></div>
+                    <div class="ln" style="width:55%"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          @case ('error') {
+            <div class="state-panel">
+              <p class="mut" style="margin-bottom:14px">Unable to load trips.</p>
+              <button class="btn sm" (click)="loadTrips()">Try Again</button>
+            </div>
+          }
+          @case ('ready') {
+            @if (trips().length === 0) {
+              <div class="state-panel">
+                <p class="mut">No trips match your filters in {{ d.name }} right now.</p>
+              </div>
+            } @else {
+              <div class="tgrid">
+                @for (t of trips(); track $index) {
+                  <app-trip-card [trip]="t"></app-trip-card>
+                }
+              </div>
+            }
+          }
+        }
+      </section>
+
+      @if (d.aboutText) {
+        <section class="sect" style="padding-top:6px">
+          <div class="sechead">
+            <div>
+              <span class="eyebrow">Know Before You Go</span>
+              <h2>About {{ d.name }}</h2>
+            </div>
+          </div>
+          <div class="aboutborder">
+            <p style="font-size:13.5px;line-height:1.65">{{ d.aboutText }}</p>
+            @if (factList().length > 0) {
+              <div class="factrow">
+                @for (f of factList(); track f.label) {
+                  <div class="fact"><div class="k">{{ f.label }}</div><div class="v">{{ f.value }}</div></div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+}

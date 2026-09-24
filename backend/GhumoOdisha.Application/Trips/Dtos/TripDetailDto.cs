@@ -12,4 +12,5 @@ public record TripDetailDto(
     IReadOnlyList<RoomPhotoDto> RoomPhotos,
     IReadOnlyList<VehiclePhotoDto> VehiclePhotos,
     IReadOnlyList<PickupPointDto> PickupPoints,
-    IReadOnlyList<DateSlotDto> DateSlots);
+    IReadOnlyList<DateSlotDto> DateSlots,
+    string? ItineraryPdfUrl);

@@ -1,2 +1,12 @@
 # Local Claude Code tool state
 .claude/scheduled_tasks.lock
+
+# Persistent uploaded/business file storage (Storage:RootPath) lives outside this repo
+# (e.g. D:\GhumoOdishaData) - this only guards against someone pointing it at a path
+# inside the repo for local testing.
+GhumoOdishaData/
+
+# Visual Studio / local runtime artifacts
+.vs/
+backend/api.log
+frontend/api-pid.txt

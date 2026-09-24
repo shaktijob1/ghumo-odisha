@@ -1,0 +1,103 @@
+# IMPORTANT - persistent storage separation:
+# Uploaded photos (and any future persisted documents/invoices) are written to Storage:RootPath
+# (e.g. D:\GhumoOdishaData on the server), configured via the Storage__RootPath environment
+# variable / IIS app setting - never inside the app folder this pipeline deploys. This pipeline
+# only ever builds and publishes APPLICATION files (Angular build + compiled API); wwwroot no
+# longer contains an uploads/ folder at all (see backend/GhumoOdisha.Api/wwwroot/.gitignore), so
+# there's nothing here for a deploy step to accidentally overwrite persistent data with.
+# Whatever step actually copies the published artifact onto the server (a Release pipeline /
+# deploy task outside this file) MUST replace only the app directory (e.g. D:\GhumoOdisha\App)
+# and must NEVER delete, recreate, or write into D:\GhumoOdishaData.
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '10.0.x'
+  nodeVersion: '22.x'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildAngular
+        displayName: 'Build Angular frontend'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: 'Use Node.js $(nodeVersion)'
+
+          - script: npm ci
+            workingDirectory: frontend
+            displayName: 'npm ci (frontend)'
+
+          - script: npm run build:wwwroot
+            workingDirectory: frontend
+            displayName: 'ng build --configuration production, copy to Api/wwwroot'
+
+          - publish: backend/GhumoOdisha.Api/wwwroot
+            artifact: angular-wwwroot
+            displayName: 'Publish compiled Angular output'
+
+      - job: BuildAndPublishApi
+        displayName: 'Build and publish ASP.NET Core API'
+        dependsOn: BuildAngular
+        steps:
+          - download: current
+            artifact: angular-wwwroot
+            displayName: 'Download compiled Angular output'
+
+          - task: UseDotNet@2
+            inputs:
+              version: $(dotnetVersion)
+            displayName: 'Use .NET SDK $(dotnetVersion)'
+
+          - script: |
+              rmdir /S /Q backend\GhumoOdisha.Api\wwwroot
+              xcopy /E /I /Y "$(Pipeline.Workspace)\angular-wwwroot" backend\GhumoOdisha.Api\wwwroot
+            displayName: 'Replace wwwroot with compiled Angular output'
+
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'restore'
+              projects: 'backend/GhumoOdisha.Api/GhumoOdisha.Api.csproj'
+            displayName: 'dotnet restore'
+
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'build'
+              projects: 'backend/GhumoOdisha.Api/GhumoOdisha.Api.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+            displayName: 'dotnet build'
+
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'test'
+              projects: 'backend/GhumoOdisha.Tests/GhumoOdisha.Tests.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+            displayName: 'dotnet test'
+
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'publish'
+              projects: 'backend/GhumoOdisha.Api/GhumoOdisha.Api.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-restore --output $(Build.ArtifactStagingDirectory)/publish'
+              zipAfterPublish: false
+            displayName: 'dotnet publish (includes wwwroot)'
+
+          - script: |
+              if exist "$(Build.ArtifactStagingDirectory)\publish\wwwroot\uploads" (
+                echo ERROR: published artifact contains wwwroot\uploads - persistent uploaded files must never ship as part of the app deployment.
+                exit /b 1
+              )
+              echo OK: no wwwroot\uploads folder in the published artifact.
+            displayName: 'Guard: fail build if uploads/ leaked into the artifact'
+
+          - publish: $(Build.ArtifactStagingDirectory)/publish
+            artifact: ghumo-odisha-api
+            displayName: 'Publish deployable app (IIS-ready)'

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicTripService } from '../../core/services/public-trip.service';
@@ -7,7 +7,8 @@ import { CustomerBookingService } from '../../core/services/customer-booking.ser
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
 import { CustomerProfileService } from '../../core/services/customer-profile.service';
 import { ContactService } from '../../core/services/contact.service';
-import { TripDetail, DateSlot } from '../../core/models/trip.model';
+import { ToastService } from '../../core/services/toast.service';
+import { TripDetail, DateSlot, TripHighlight } from '../../core/models/trip.model';
 import { BookingResponse, CreateBookingResult } from '../../core/models/booking.model';
 import { CustomerAuthResponse } from '../../core/models/auth.model';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
@@ -19,19 +20,32 @@ import { downloadFile } from '../../shared/utils/download-file';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
+// Mirrors PaymentPanelComponent / BookingPaymentService.ComputeAmounts — display-only; the backend
+// recomputes and is the only source of truth for what actually gets charged.
+const PER_SEAT_ADVANCE = 99;
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Slot dates come from the API as plain "yyyy-MM-dd" (DateOnly), so they're compared as strings
+// against today's local date — no Date parsing, no timezone shift.
+function toLocalDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 @Component({
   selector: 'app-trip-detail',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe],
   templateUrl: './trip-detail.component.html',
 })
-export class TripDetailComponent implements OnInit {
+export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly tripService = inject(PublicTripService);
   private readonly bookingService = inject(CustomerBookingService);
   readonly auth = inject(CustomerAuthService);
   private readonly contactService = inject(ContactService);
   private readonly profileService = inject(CustomerProfileService);
+  private readonly toast = inject(ToastService);
 
   readonly contact = this.contactService.get();
   readonly state = signal<LoadState>('loading');
@@ -41,6 +55,7 @@ export class TripDetailComponent implements OnInit {
   readonly selectedSlotId = signal<number | null>(null);
   readonly seats = signal(1);
   readonly customerNotes = signal('');
+  readonly termsAccepted = signal(false);
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly bookingResult = signal<CreateBookingResult | null>(null);
@@ -58,6 +73,56 @@ export class TripDetailComponent implements OnInit {
   readonly namePromptSubmitting = signal(false);
   readonly namePromptError = signal<string | null>(null);
 
+  readonly selectedHighlight = signal<TripHighlight | null>(null);
+  readonly selectedDayIndex = signal(0);
+  readonly showAllSlots = signal(false);
+
+  private static readonly VISIBLE_SLOT_COUNT = 3;
+
+  // Slots arrive already sorted by StartDate from the API; past departures are dropped here so
+  // the month tabs and cards never offer a date that has already gone.
+  readonly upcomingSlots = computed(() => {
+    const today = toLocalDateKey(new Date());
+    return (this.trip()?.dateSlots ?? []).filter((s) => s.startDate.slice(0, 10) >= today);
+  });
+
+  // One tab per calendar month that has at least one upcoming departure, in chronological order.
+  readonly slotMonths = computed(() => {
+    const months: { key: string; label: string }[] = [];
+    for (const s of this.upcomingSlots()) {
+      const key = s.startDate.slice(0, 7);
+      if (months.at(-1)?.key !== key) {
+        months.push({ key, label: MONTH_NAMES[Number(key.slice(5, 7)) - 1] });
+      }
+    }
+    return months;
+  });
+
+  readonly selectedMonth = signal<string | null>(null);
+
+  readonly monthSlots = computed(() => {
+    const month = this.selectedMonth();
+    return this.upcomingSlots().filter((s) => s.startDate.startsWith(month ?? ''));
+  });
+
+  readonly visibleSlots = computed(() => {
+    const slots = this.monthSlots();
+    return this.showAllSlots() ? slots : slots.slice(0, TripDetailComponent.VISIBLE_SLOT_COUNT);
+  });
+
+  private heroTimer?: ReturnType<typeof setInterval>;
+
+  // Day tabs auto-advance on small screens only, where the connector arrows are hidden and the
+  // tab strip behaves like a carousel instead — desktop keeps the arrows and manual clicking.
+  private readonly dayTabEls = viewChildren<ElementRef<HTMLButtonElement>>('dayTab');
+  private readonly dayTabsEl = viewChild<ElementRef<HTMLDivElement>>('dayTabsEl');
+  private readonly mobileMql = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)') : null;
+  private dayTimer?: ReturnType<typeof setInterval>;
+  private readonly onMobileMqlChange = (e: MediaQueryListEvent): void => {
+    if (e.matches) this.startDayAutoplay();
+    else this.stopDayAutoplay();
+  };
+
   tripId!: number;
   private clientRequestId: string | null = null;
   private justAuthenticated = false;
@@ -70,22 +135,40 @@ export class TripDetailComponent implements OnInit {
   readonly includedItems = computed(() => {
     const inc = this.trip()?.inclusions;
     if (!inc) return [];
-    const items: string[] = [];
-    if (inc.breakfast) items.push('Breakfast');
-    if (inc.lunch) items.push('Lunch');
-    if (inc.dinner) items.push('Dinner');
-    if (inc.stay) items.push('Stay');
-    if (inc.coordinator) items.push('Trip coordinator');
+    const items: { key: 'breakfast' | 'lunch' | 'dinner' | 'stay' | 'coordinator'; label: string; caption: string }[] = [];
+    if (inc.breakfast) items.push({ key: 'breakfast', label: 'Breakfast included', caption: 'Breakfast' });
+    if (inc.lunch) items.push({ key: 'lunch', label: 'Lunch included', caption: 'Lunch' });
+    if (inc.dinner) items.push({ key: 'dinner', label: 'Dinner included', caption: 'Dinner' });
+    if (inc.stay) items.push({ key: 'stay', label: 'Stay included', caption: 'Stay' });
+    if (inc.coordinator) items.push({ key: 'coordinator', label: 'Trip coordinator included', caption: 'Coordinator' });
     return items;
   });
 
   readonly totalAmount = computed(() => (this.trip()?.amountPerPerson ?? 0) * this.seats());
 
+  // What's actually collected via Razorpay to confirm the booking — ₹99/seat, same rate the
+  // payment panel charges once the booking request exists. Never used to compute what's actually
+  // charged; that's recomputed server-side from scratch.
+  readonly bookingAdvance = computed(() => PER_SEAT_ADVANCE * this.seats());
+  readonly remainingAmount = computed(() => Math.max(0, this.totalAmount() - this.bookingAdvance()));
+
   readonly requiresPickupPoint = computed(() => (this.trip()?.pickupPoints.length ?? 0) > 0);
+
+  readonly showBookingModal = signal(false);
+  readonly needsPickupSelection = computed(
+    () => this.requiresPickupPoint() && !this.selectedPickupPointId() && !this.bookingResult(),
+  );
 
   ngOnInit(): void {
     this.tripId = Number(this.route.snapshot.paramMap.get('id'));
     this.load();
+    this.mobileMql?.addEventListener('change', this.onMobileMqlChange);
+  }
+
+  ngOnDestroy(): void {
+    this.stopHeroAutoplay();
+    this.stopDayAutoplay();
+    this.mobileMql?.removeEventListener('change', this.onMobileMqlChange);
   }
 
   load(): void {
@@ -93,17 +176,84 @@ export class TripDetailComponent implements OnInit {
     this.tripService.getTrip(this.tripId).subscribe({
       next: (t) => {
         this.trip.set(t);
-        const firstOpenSlot = t.dateSlots.find((s) => !s.isSoldOut);
+        const firstOpenSlot = this.upcomingSlots().find((s) => !s.isSoldOut);
         this.selectedSlotId.set(firstOpenSlot?.tripDateSlotId ?? null);
-        this.selectedPickupPointId.set(t.pickupPoints[0]?.pickupPointId ?? null);
+        // Open on the month holding the next bookable departure (e.g. October if September is
+        // empty or sold out), falling back to the first month that has any departure at all.
+        this.selectedMonth.set(firstOpenSlot?.startDate.slice(0, 7) ?? this.slotMonths()[0]?.key ?? null);
+        // No pickup point is pre-selected — choosing one is now an explicit step in the booking
+        // popup, not a silently-applied default the customer might not notice.
+        this.selectedPickupPointId.set(null);
+        this.selectedDayIndex.set(0);
+        this.showAllSlots.set(false);
         this.state.set('ready');
+        this.startHeroAutoplay();
+        this.startDayAutoplay();
       },
       error: () => this.state.set('error'),
     });
   }
 
+  private startHeroAutoplay(): void {
+    this.stopHeroAutoplay();
+    if ((this.trip()?.photos.length ?? 0) > 1) {
+      this.heroTimer = setInterval(() => this.nextHero(), 4500);
+    }
+  }
+
+  private stopHeroAutoplay(): void {
+    if (this.heroTimer) {
+      clearInterval(this.heroTimer);
+      this.heroTimer = undefined;
+    }
+  }
+
+  private startDayAutoplay(): void {
+    this.stopDayAutoplay();
+    if (!this.mobileMql?.matches || (this.trip()?.itineraryDays.length ?? 0) <= 1) {
+      return;
+    }
+    this.dayTimer = setInterval(() => this.advanceDay(), 10000);
+  }
+
+  private stopDayAutoplay(): void {
+    if (this.dayTimer) {
+      clearInterval(this.dayTimer);
+      this.dayTimer = undefined;
+    }
+  }
+
+  private advanceDay(): void {
+    const total = this.trip()?.itineraryDays.length ?? 0;
+    if (total === 0) return;
+    this.selectDay((this.selectedDayIndex() + 1) % total);
+  }
+
+  // Used by both the manual tap and the mobile autoplay tick — a manual tap also scrolls the tab
+  // into view and restarts the timer so it doesn't immediately override what the customer picked.
+  selectDay(index: number): void {
+    this.selectedDayIndex.set(index);
+
+    // Scrolls only the tab strip itself (never scrollIntoView, which also drags the whole page's
+    // vertical scroll toward this section — jarring when this fires on its own every 10s).
+    const container = this.dayTabsEl()?.nativeElement;
+    const btn = this.dayTabEls()[index]?.nativeElement;
+    if (container && btn) {
+      const target = btn.offsetLeft - (container.clientWidth - btn.clientWidth) / 2;
+      container.scrollTo({ left: target, behavior: 'smooth' });
+    }
+
+    this.startDayAutoplay();
+  }
+
   selectPickupPoint(id: number): void {
     this.selectedPickupPointId.set(id);
+    this.tryProceed();
+  }
+
+  selectMonth(key: string): void {
+    this.selectedMonth.set(key);
+    this.showAllSlots.set(false);
   }
 
   selectSlot(slot: DateSlot): void {
@@ -112,26 +262,48 @@ export class TripDetailComponent implements OnInit {
     this.seats.set(1);
   }
 
-  nextHero(): void {
+  private nextHero(): void {
     const total = this.trip()?.photos.length ?? 0;
     if (total === 0) return;
     this.heroIndex.set((this.heroIndex() + 1) % total);
   }
 
-  prevHero(): void {
-    const total = this.trip()?.photos.length ?? 0;
-    if (total === 0) return;
-    this.heroIndex.set((this.heroIndex() - 1 + total) % total);
+  // Demo only — no PDF generation wired up yet.
+  downloadItineraryDemo(): void {
+    this.toast.info("Itinerary PDF download is coming soon — we'll notify you when it's ready.");
   }
 
-  submitBooking(): void {
+  openHighlight(h: TripHighlight): void {
+    this.selectedHighlight.set(h);
+  }
+
+  closeHighlight(): void {
+    this.selectedHighlight.set(null);
+  }
+
+  // Opens the booking popup — pickup point, sign-in and payment all happen as steps inside it.
+  openBookingModal(): void {
     if (!this.selectedSlot()) {
       this.submitError.set('Choose a date first.');
       return;
     }
 
-    if (this.requiresPickupPoint() && !this.selectedPickupPointId()) {
-      this.submitError.set('Choose a pickup point first.');
+    this.submitError.set(null);
+    this.showBookingModal.set(true);
+    this.tryProceed();
+  }
+
+  closeBookingModal(): void {
+    this.showBookingModal.set(false);
+    this.showAuthModal.set(false);
+    this.showNamePrompt.set(false);
+  }
+
+  // Walks the popup forward one step at a time: pickup point (if this trip needs one) → sign in
+  // → name on file → create the booking request. Each step's own handler calls this again once
+  // it's satisfied, so the popup always lands on whatever step is still outstanding.
+  private tryProceed(): void {
+    if (this.needsPickupSelection()) {
       return;
     }
 
@@ -147,6 +319,10 @@ export class TripDetailComponent implements OnInit {
       this.namePromptError.set(null);
       this.showNamePrompt.set(true);
       return;
+    }
+
+    if (this.bookingResult()) {
+      return; // Already created — the popup's payment/result step takes over from here.
     }
 
     this.proceedToBooking();
@@ -168,6 +344,7 @@ export class TripDetailComponent implements OnInit {
         customerNotes: this.customerNotes() || null,
         clientRequestId: this.clientRequestId,
         pickupPointId: this.selectedPickupPointId(),
+        agreedToTerms: this.termsAccepted(),
       })
       .subscribe({
         next: (result) => {
@@ -191,11 +368,11 @@ export class TripDetailComponent implements OnInit {
     this.showAuthModal.set(false);
     this.justAuthenticated = true;
     // Resume the booking the customer was already mid-way through — no second "Book" click needed.
-    this.submitBooking();
+    this.tryProceed();
   }
 
   onAuthCancelled(): void {
-    this.showAuthModal.set(false);
+    this.closeBookingModal();
   }
 
   submitNamePrompt(): void {
@@ -213,7 +390,7 @@ export class TripDetailComponent implements OnInit {
         this.auth.restoreSession().subscribe(() => {
           this.namePromptSubmitting.set(false);
           this.showNamePrompt.set(false);
-          this.proceedToBooking();
+          this.tryProceed();
         });
       },
       error: () => {
@@ -224,13 +401,7 @@ export class TripDetailComponent implements OnInit {
   }
 
   cancelNamePrompt(): void {
-    this.showNamePrompt.set(false);
-  }
-
-  openWhatsApp(): void {
-    const message = this.bookingResult()?.whatsAppMessage;
-    if (!message) return;
-    window.open(this.contactService.buildWhatsAppLink(message), '_blank');
+    this.closeBookingModal();
   }
 
   onPaymentConfirmed(): void {

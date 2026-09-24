@@ -87,6 +87,7 @@ export interface CreateBookingRequest {
   customerNotes?: string | null;
   clientRequestId?: string | null;
   pickupPointId?: number | null;
+  agreedToTerms: boolean;
 }
 
 export interface CreateBookingResult {
@@ -117,4 +118,5 @@ export interface BookingResponse {
   requestedAt: string;
   confirmedAt: string | null;
   cancelledAt: string | null;
+  slotAvailableSeats: number;
 }

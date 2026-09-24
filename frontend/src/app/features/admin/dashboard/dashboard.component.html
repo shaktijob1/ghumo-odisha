@@ -22,6 +22,22 @@
   </div>
 </div>
 
+<div class="panel" style="margin-bottom:16px">
+  <h4>Dashboard hero photo</h4>
+  <div class="sub">Background banner on the customer homepage. Falls back to trip photos if not set.</div>
+  <div class="row" style="gap:14px;align-items:center;margin-top:10px">
+    @if (heroPhoto()) {
+      <img [src]="heroPhoto()! | imageUrl" alt="Dashboard hero" style="width:96px;height:56px;border-radius:10px;object-fit:cover" />
+    } @else {
+      <div style="width:96px;height:56px;border-radius:10px;background:var(--canvas);border:1px dashed var(--line)"></div>
+    }
+    <label class="btn sm ghost" style="cursor:pointer">
+      @if (uploadingHeroPhoto()) { <span class="spin"></span> } @else { {{ heroPhoto() ? 'Change photo' : 'Upload photo' }} }
+      <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onHeroPhotoSelected($event)" />
+    </label>
+  </div>
+</div>
+
 @switch (state()) {
   @case ('loading') {
     <app-state-panel kind="loading" message="Loading dashboard…"></app-state-panel>

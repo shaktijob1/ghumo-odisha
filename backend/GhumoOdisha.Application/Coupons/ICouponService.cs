@@ -13,6 +13,9 @@ public interface ICouponService
 
     Task<IReadOnlyList<AdminCouponDto>> GetAllAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Every booking made with this coupon, with the customer, new/existing flag and commission.</summary>
+    Task<IReadOnlyList<AdminCouponBookingDto>> GetBookingsAsync(int couponCodeId, CancellationToken cancellationToken = default);
+
     // ---------- Customer ----------
 
     /// <summary>Checks the code exists, is active, in its validity window, and not already used by

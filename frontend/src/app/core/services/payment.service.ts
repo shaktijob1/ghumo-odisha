@@ -48,4 +48,12 @@ export class PaymentService {
       .post<ApiResponse<CouponValidationResult>>(`${environment.apiUrl}/customer/coupons/validate`, { code })
       .pipe(map((r) => r.data!));
   }
+
+  /** Live status straight from Razorpay (e.g. "pending"/"processed"/"failed"), or null if this
+   * booking was never refunded online (nothing paid online, or refunded manually/offline). */
+  getRefundStatus(bookingId: number): Observable<string | null> {
+    return this.http
+      .get<ApiResponse<{ status: string | null }>>(`${environment.apiUrl}/customer/bookings/${bookingId}/payments/refund-status`)
+      .pipe(map((r) => r.data!.status));
+  }
 }

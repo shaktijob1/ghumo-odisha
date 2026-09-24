@@ -1,0 +1,125 @@
+@if (loading()) {
+  <app-state-panel kind="loading"></app-state-panel>
+} @else {
+  <div class="ahead">
+    <div>
+      <h2>{{ destinationId ? 'Edit destination' : 'Add destination' }}</h2>
+      <div class="sub">{{ destinationId ? 'Shown on the customer site as soon as it has an active trip.' : 'Add the basics and a hero photo, then create.' }}</div>
+    </div>
+    <a class="btn sm ghost" routerLink="/admin/destinations">Back to destinations</a>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="formsec">
+      <h4>Basic information</h4>
+      <div class="sub">Name and slug are shown to customers; the slug forms the page URL.</div>
+
+      <div class="f2">
+        <div class="fld">
+          <span class="lbl">Destination name</span>
+          <input class="inp" formControlName="name" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Slug (URL)</span>
+          <input class="inp" formControlName="slug" />
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Tagline</span>
+        <input class="inp" formControlName="tagline" placeholder="e.g. Mountains • Waterfalls • Culture" />
+      </div>
+      <div class="f3">
+        <div class="fld">
+          <span class="lbl">Region</span>
+          <input class="inp" formControlName="region" placeholder="e.g. Eastern Ghats, Odisha" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Display order</span>
+          <input class="inp" type="number" formControlName="displayOrder" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Status</span>
+          <label class="row" style="gap:6px;margin-top:11px"><input type="checkbox" formControlName="isActive" /> Active (visible to customers)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="formsec">
+      <h4>About this destination</h4>
+      <div class="sub">Shown in the "About" section below the trip listing on the destination page.</div>
+
+      <div class="fld">
+        <span class="lbl">About text</span>
+        <textarea class="inp" formControlName="aboutText" rows="4"></textarea>
+      </div>
+      <div class="f3">
+        <div class="fld">
+          <span class="lbl">Best season</span>
+          <input class="inp" formControlName="bestSeason" placeholder="e.g. Oct – Feb" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Distance from Bhubaneswar</span>
+          <input class="inp" formControlName="distanceFromBhubaneswar" placeholder="e.g. ~440 km" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Ideal duration</span>
+          <input class="inp" formControlName="idealDuration" placeholder="e.g. 2–4 days" />
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Known for</span>
+        <input class="inp" formControlName="knownFor" placeholder="e.g. Hills & coffee" />
+      </div>
+
+      <button class="btn" type="submit" [disabled]="saving()">
+        {{ destinationId ? 'Save changes' : 'Create destination' }}
+      </button>
+    </div>
+  </form>
+
+  @if (destinationId) {
+    <div class="formsec">
+      <h4>Hero photo</h4>
+      <div class="sub">Shown on the trending-destinations row and at the top of the destination page.</div>
+
+      <label class="drop">
+        {{ uploadingHero() ? 'Uploading…' : 'Click to choose an image (JPG or PNG, up to 5 MB)' }}
+        <input type="file" accept="image/jpeg,image/png" style="display:none" [disabled]="uploadingHero()" (change)="onHeroImageSelected($event)" />
+      </label>
+
+      @if (destination()?.heroImageUrl; as url) {
+        <div class="thumbs">
+          <div class="t"><img [src]="url | imageUrl" alt="" /></div>
+        </div>
+      }
+    </div>
+
+    @if (destination()?.tripTitles?.length) {
+      <div class="formsec">
+        <h4>Linked trips</h4>
+        <div class="sub">Managed from each trip's edit page.</div>
+        <div class="row wrap" style="gap:8px">
+          @for (title of destination()!.tripTitles; track title) {
+            <span class="badge ok">{{ title }}</span>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="formsec">
+      <h4>Hero photo</h4>
+      <div class="sub">Optional — pick one now and it's attached as soon as the destination is created, or add it later from the edit page.</div>
+
+      <label class="drop">
+        {{ pendingHeroImageFile() ? pendingHeroImageFile()!.name : 'Click to choose an image (JPG or PNG, up to 5 MB)' }}
+        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onPendingHeroImageSelected($event)" />
+      </label>
+
+      @if (pendingHeroImagePreviewUrl(); as url) {
+        <div class="thumbs">
+          <div class="t"><img [src]="url" alt="" /></div>
+        </div>
+      }
+    </div>
+  }
+}

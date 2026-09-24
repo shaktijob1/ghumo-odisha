@@ -11,6 +11,10 @@ export const routes: Routes = [
       { path: 'trips', loadComponent: () => import('./features/trips/home.component').then((m) => m.HomeComponent) },
       { path: 'trips/:id', loadComponent: () => import('./features/trips/trip-detail.component').then((m) => m.TripDetailComponent) },
       {
+        path: 'destinations/:slug',
+        loadComponent: () => import('./features/destinations/destination-detail.component').then((m) => m.DestinationDetailComponent),
+      },
+      {
         path: 'cars',
         data: { title: 'Cars' },
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
@@ -20,6 +24,7 @@ export const routes: Routes = [
         data: { title: 'Hotels' },
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
       },
+      { path: 'terms', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
       { path: 'login', loadComponent: () => import('./features/auth/customer-auth.component').then((m) => m.CustomerAuthComponent) },
       {
         path: 'my-bookings',
@@ -61,6 +66,18 @@ export const routes: Routes = [
       {
         path: 'trips/:id',
         loadComponent: () => import('./features/admin/trips/trip-detail.component').then((m) => m.TripDetailComponent),
+      },
+      {
+        path: 'destinations',
+        loadComponent: () => import('./features/admin/destinations/destination-list.component').then((m) => m.DestinationListComponent),
+      },
+      {
+        path: 'destinations/add',
+        loadComponent: () => import('./features/admin/destinations/destination-form.component').then((m) => m.DestinationFormComponent),
+      },
+      {
+        path: 'destinations/:id/edit',
+        loadComponent: () => import('./features/admin/destinations/destination-form.component').then((m) => m.DestinationFormComponent),
       },
       {
         path: 'bookings',

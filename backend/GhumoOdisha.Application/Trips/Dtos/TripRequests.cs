@@ -10,7 +10,8 @@ public record CreateTripRequest(
     bool IncludesLunch,
     bool IncludesDinner,
     bool IncludesStay,
-    bool IncludesCoordinator);
+    bool IncludesCoordinator,
+    IReadOnlyList<int>? DestinationIds = null);
 
 public record UpdateTripRequest(
     string Title,
@@ -21,4 +22,5 @@ public record UpdateTripRequest(
     bool IncludesDinner,
     bool IncludesStay,
     bool IncludesCoordinator,
-    TripStatus Status);
+    TripStatus Status,
+    IReadOnlyList<int>? DestinationIds = null);

@@ -3,7 +3,9 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminTripService } from '../../../core/services/admin-trip.service';
+import { AdminDestinationService } from '../../../core/services/admin-destination.service';
 import { AdminTripDetail } from '../../../core/models/trip.model';
+import { AdminDestinationListItem } from '../../../core/models/destination.model';
 import { TripStatus } from '../../../core/models/enums.model';
 import { ToastService } from '../../../core/services/toast.service';
 import { StatePanelComponent } from '../../../shared/components/state-panel.component';
@@ -18,11 +20,21 @@ import { ImageUrlPipe } from '../../../shared/pipes/image-url.pipe';
 export class TripFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly tripService = inject(AdminTripService);
+  private readonly destinationService = inject(AdminDestinationService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   readonly TripStatus = TripStatus;
+
+  readonly destinationOptions = signal<AdminDestinationListItem[]>([]);
+  readonly selectedDestinationIds = signal<Set<number>>(new Set());
+
+  // hourly options ("00:00".."23:00") for the time dropdowns, e.g. { value: '09:00', label: '9:00 AM' }
+  readonly hourOptions = Array.from({ length: 24 }, (_, hour) => {
+    const value = `${hour.toString().padStart(2, '0')}:00`;
+    return { value, label: this.to12Hour(value) };
+  });
 
   tripId: number | null = null;
   readonly loading = signal(true);
@@ -61,11 +73,22 @@ export class TripFormComponent implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
     this.tripId = idParam ? Number(idParam) : null;
 
+    this.destinationService.getAllForPicker().subscribe((d) => this.destinationOptions.set(d));
+
     if (this.tripId) {
       this.loadTrip(this.tripId);
     } else {
       this.loading.set(false);
     }
+  }
+
+  toggleDestination(destinationId: number, checked: boolean): void {
+    this.selectedDestinationIds.update((current) => {
+      const next = new Set(current);
+      if (checked) next.add(destinationId);
+      else next.delete(destinationId);
+      return next;
+    });
   }
 
   // `silent` skips the full-page loading state — used after add/delete actions so the
@@ -77,6 +100,7 @@ export class TripFormComponent implements OnInit {
     this.tripService.getTrip(id).subscribe({
       next: (t) => {
         this.trip.set(t);
+        this.selectedDestinationIds.set(new Set(t.destinationIds));
         for (const day of t.itineraryDays) {
           this.newPoint[day.itineraryDayId] ??= { time: '', description: '' };
         }
@@ -104,7 +128,7 @@ export class TripFormComponent implements OnInit {
     }
 
     this.saving.set(true);
-    const v = this.form.getRawValue();
+    const v = { ...this.form.getRawValue(), destinationIds: Array.from(this.selectedDestinationIds()) };
 
     if (this.tripId) {
       this.tripService.updateTrip(this.tripId, v).subscribe({
@@ -232,7 +256,7 @@ export class TripFormComponent implements OnInit {
       return;
     }
 
-    this.tripService.addItineraryPoint(dayId, draft).subscribe({
+    this.tripService.addItineraryPoint(dayId, { ...draft, time: this.to12Hour(draft.time) }).subscribe({
       next: () => {
         this.newPoint[dayId] = { time: '', description: '' };
         this.loadTrip(this.tripId!, true);
@@ -282,6 +306,31 @@ export class TripFormComponent implements OnInit {
     this.tripService.deleteVehiclePhoto(id).subscribe(() => this.loadTrip(this.tripId!, true));
   }
 
+  // ---------- itinerary PDF ----------
+
+  readonly uploadingItineraryPdf = signal(false);
+
+  onItineraryPdfSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.tripId) return;
+
+    this.uploadingItineraryPdf.set(true);
+    this.tripService.uploadItineraryPdf(this.tripId, file).subscribe({
+      next: () => {
+        this.uploadingItineraryPdf.set(false);
+        this.toast.success('Itinerary PDF uploaded.');
+        this.loadTrip(this.tripId!, true);
+      },
+      error: () => this.uploadingItineraryPdf.set(false),
+    });
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  deleteItineraryPdf(): void {
+    if (!this.tripId) return;
+    this.tripService.deleteItineraryPdf(this.tripId).subscribe(() => this.loadTrip(this.tripId!, true));
+  }
+
   // ---------- pickup points ----------
 
   addPickupPoint(): void {
@@ -290,7 +339,7 @@ export class TripFormComponent implements OnInit {
       return;
     }
 
-    this.tripService.addPickupPoint(this.tripId, this.newPickupPoint).subscribe({
+    this.tripService.addPickupPoint(this.tripId, { ...this.newPickupPoint, time: this.to12Hour(this.newPickupPoint.time) }).subscribe({
       next: () => {
         this.toast.success('Pickup point added.');
         this.newPickupPoint = { location: '', time: '' };
@@ -301,5 +350,15 @@ export class TripFormComponent implements OnInit {
 
   deletePickupPoint(id: number): void {
     this.tripService.deletePickupPoint(id).subscribe(() => this.loadTrip(this.tripId!, true));
+  }
+
+  // converts a native <input type="time"> value ("HH:mm", 24h) into the
+  // "h:mm AM/PM" string stored and shown to customers
+  private to12Hour(time24: string): string {
+    const [hoursStr, minutes] = time24.split(':');
+    const hours = Number(hoursStr);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return `${hour12}:${minutes} ${period}`;
   }
 }

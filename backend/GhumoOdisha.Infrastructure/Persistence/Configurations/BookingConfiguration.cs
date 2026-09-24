@@ -31,6 +31,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.AdminNotes).HasColumnType("text");
         builder.Property(b => b.RazorpayOrderId).HasMaxLength(64);
         builder.Property(b => b.RazorpayPaymentId).HasMaxLength(64);
+        builder.Property(b => b.RazorpayRefundId).HasMaxLength(64);
         builder.Property(b => b.PendingAdvanceAmount).HasColumnType("decimal(10,2)");
         builder.Property(b => b.PendingDiscountAmount).HasColumnType("decimal(10,2)");
         builder.Property(b => b.PendingCouponDiscountAmount).HasColumnType("decimal(10,2)");

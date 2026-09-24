@@ -7,18 +7,246 @@
       <span class="eyebrow">EXPLORE ODISHA</span>
       <h1>Discover Odisha.<br />Travel. Explore. Experience.</h1>
       <p>Explore Odisha's mountains, waterfalls, beaches, temples and hidden destinations with Ghumo Odisha.</p>
-      <div class="cta">
-        <button type="button" class="btn" (click)="scrollTo('upcoming-trips')">Explore Trips</button>
-        <button type="button" class="btn ghost" (click)="scrollTo('organizer-contact')">Contact Organizer</button>
+    </div>
+
+    <div class="dhero-search">
+      <div class="searchbar">
+        <div class="sfield">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+          <input
+            class="sinput"
+            placeholder="Where do you want to go?"
+            autocomplete="off"
+            [ngModel]="locationSearch()"
+            (ngModelChange)="locationSearch.set($event)"
+            (focus)="onLocationFieldFocus()"
+            (blur)="onLocationFieldBlur()"
+          />
+          @if (showLocationSuggestions() && locationSuggestions().length > 0) {
+            <div class="loc-suggest">
+              @for (loc of locationSuggestions(); track loc) {
+                <button type="button" (mousedown)="selectLocationSuggestion(loc)">{{ loc }}</button>
+              }
+            </div>
+          }
+        </div>
+        <!-- Date filters hidden for now (kept in the component so the filter logic is intact); re-add
+             a .sfield/.dateinput block here identical to the ones on the destination page to bring them back. -->
+        <button type="button" class="btn searchbtn" (click)="applyFilters()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          Search
+        </button>
       </div>
     </div>
   </section>
 </div>
 
-<section id="upcoming-trips" class="sect">
+<section id="trending-destinations" class="sect tight">
   <div class="container">
-    <h2>Upcoming Trips</h2>
-    <div class="sub">Explore our upcoming journeys across Odisha.</div>
+    <div class="sechead">
+      <div class="sechead-text">
+        <span class="eyebrow">Trending Now</span>
+        <h2>Trending Odisha Destinations</h2>
+        <p class="sub sub-full">Pick a destination to see every trip we run there — dates, seats and prices, all in one place.</p>
+        <p class="sub sub-mobile">Explore trips by destination</p>
+      </div>
+      <button type="button" class="viewall-mobile" (click)="scrollTo('upcoming-trips')">
+        View All
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+      </button>
+    </div>
+
+    @switch (destinationsState()) {
+      @case ('loading') {
+        <div class="dscroll">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="dcard skel"><div class="ph"></div></div>
+          }
+        </div>
+        <div class="dmobile">
+          <div class="dfeatured skel"></div>
+          <div class="dmini-row">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="dmini skel"></div>
+            }
+          </div>
+        </div>
+      }
+      @case ('error') {
+        <div class="state-panel">
+          <p class="mut" style="margin-bottom:14px">Unable to load destinations.</p>
+          <button class="btn sm" (click)="loadDestinations()">Try Again</button>
+        </div>
+      }
+      @case ('ready') {
+        @if (destinations().length === 0) {
+          <div class="state-panel">
+            <p class="mut">No destinations are available right now.</p>
+          </div>
+        } @else {
+          <div class="dscroll">
+            @for (d of destinations(); track $index) {
+              <app-destination-card [destination]="d"></app-destination-card>
+            }
+          </div>
+
+          <div class="dmobile">
+            <ng-template #cardInner let-d="d">
+              @if (d.heroImageUrl) {
+                <img [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" draggable="false" />
+              }
+              <span class="mcard-badge">{{ d.tripCount }} trip{{ d.tripCount === 1 ? '' : 's' }}</span>
+              <div class="mcard-info">
+                <b>{{ d.name }}</b>
+                @if (d.startingPrice !== null) {
+                  <span>From &#8377;{{ d.startingPrice | number: '1.0-0' }}</span>
+                }
+              </div>
+            </ng-template>
+
+            @if (displayedDestination(); as ad) {
+              <a class="dfeatured" [class.reduced-motion]="reducedMotion" [routerLink]="['/destinations', ad.slug]">
+                @for (d of destinations(); track $index; let i = $index) {
+                  @if (d.heroImageUrl) {
+                    <img class="dfeatured-img" [class.show]="i === activeIndex()" [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" />
+                  }
+                }
+                <div class="dfeatured-scrim" aria-hidden="true"></div>
+
+                @if (displayedIndex() === 0) {
+                  <span class="dfeatured-badge pop" [class.fade]="heroTextFading()">&#128081; Most Popular</span>
+                }
+                <span class="dfeatured-badge count" [class.fade]="heroTextFading()">{{ ad.tripCount }} trip{{ ad.tripCount === 1 ? '' : 's' }}</span>
+
+                <div class="dfeatured-text" [class.fade]="heroTextFading()">
+                  <span class="dfeatured-loc">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                    {{ ad.name }}
+                  </span>
+                  <b>{{ ad.name }}</b>
+                  @if (ad.startingPrice !== null) {
+                    <span class="dfeatured-price">From &#8377;{{ ad.startingPrice | number: '1.0-0' }}</span>
+                  }
+                  @if (tagsFor(ad).length > 0) {
+                    <div class="dfeatured-tags">
+                      @for (tag of tagsFor(ad); track tag; let last = $last) {
+                        <span class="dftag">
+                          @switch (tagIcon(tag)) {
+                            @case ('water') {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"></path></svg>
+                            }
+                            @case ('mountain') {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19h18L14 6l-3.5 5L8 8z"></path></svg>
+                            }
+                            @case ('tree') {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 7 10h3l-4 6h5v5h2v-5h5l-4-6h3z"></path></svg>
+                            }
+                            @case ('landmark') {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21V9l7-5 7 5v12M9 21v-6h6v6"></path></svg>
+                            }
+                            @case ('sun') {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path></svg>
+                            }
+                            @default {
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M15 9l-2 6-6 2 2-6 6-2z"></path></svg>
+                            }
+                          }
+                          {{ tag }}
+                        </span>
+                        @if (!last) { <span class="dftag-div" aria-hidden="true"></span> }
+                      }
+                    </div>
+                  }
+                </div>
+
+                <span class="dfeatured-arrow" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                </span>
+              </a>
+            }
+
+            @if (destinations().length > 1) {
+              <div
+                class="mcarousel"
+                #carouselTrack
+                [class.reduced-motion]="reducedMotion"
+                [class.dragging]="dragging()"
+                (pointerdown)="onPointerDown($event)"
+              >
+                @for (d of destinations(); track $index; let i = $index) {
+                  @if (i === activeIndex()) {
+                    <a class="mcard active" [style.--x.px]="offsetPx(i)" [routerLink]="['/destinations', d.slug]" (click)="onActiveCardClick($event)">
+                      <ng-container [ngTemplateOutlet]="cardInner" [ngTemplateOutletContext]="{ d: d }"></ng-container>
+                    </a>
+                  } @else {
+                    <div class="mcard" role="button" tabindex="0" [style.--x.px]="offsetPx(i)" (click)="onSideCardClick(i)" (keydown.enter)="onSideCardClick(i)">
+                      <ng-container [ngTemplateOutlet]="cardInner" [ngTemplateOutletContext]="{ d: d }"></ng-container>
+                    </div>
+                  }
+                }
+              </div>
+
+              <div class="mdots" role="tablist" aria-label="Select destination">
+                @for (d of destinations(); track $index; let i = $index) {
+                  <button type="button" class="mdot" [class.active]="i === activeIndex()" (click)="goTo(i)" [attr.aria-label]="'Show ' + d.name"></button>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+    }
+  </div>
+</section>
+
+<section id="upcoming-trips" class="sect">
+  <div class="container" [class.section-flash]="highlightUpcoming()">
+    <div class="sechead">
+      <div>
+        <span class="eyebrow">Upcoming Departures</span>
+        <h2>Upcoming Trips</h2>
+        <p class="sub">Fixed departures across Odisha, with seats you can check in real time before you request a booking.</p>
+      </div>
+    </div>
+
+    @if (distinctLocations().length > 0) {
+      <div class="locfilters">
+        <button type="button" class="locbtn" [class.on]="selectedLocation() === null" (click)="selectLocation(null)">All</button>
+        @for (loc of distinctLocations(); track loc) {
+          <button type="button" class="locbtn" [class.on]="selectedLocation() === loc" (click)="selectLocation(loc)">{{ loc }}</button>
+        }
+      </div>
+    }
+
+    @if (hasActiveFilters()) {
+      <div class="filterchips">
+        @if (locationSearch()) {
+          <span class="chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+            {{ locationSearch() }}
+            <button type="button" class="chipx" (click)="clearLocationFilter()" aria-label="Remove location filter">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </span>
+        }
+        @if (fromDate() || toDate()) {
+          <span class="chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+            @if (fromDate() && toDate()) {
+              {{ fromDate() | date:'d MMM y' }} &rarr; {{ toDate() | date:'d MMM y' }}
+            } @else if (fromDate()) {
+              From {{ fromDate() | date:'d MMM y' }}
+            } @else {
+              Until {{ toDate() | date:'d MMM y' }}
+            }
+            <button type="button" class="chipx" (click)="clearDateFilter()" aria-label="Remove date filter">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </span>
+        }
+        <button type="button" class="clearall-btn" (click)="clearAllFilters()">Clear all filters</button>
+      </div>
+    }
 
     @switch (state()) {
       @case ('loading') {
@@ -49,33 +277,30 @@
           </div>
         } @else {
           <div class="tgrid">
-            @for (t of upcomingTrips(); track t.tripId) {
+            @for (t of visibleUpcomingTrips(); track $index) {
               <app-trip-card [trip]="t"></app-trip-card>
             }
           </div>
+          @if (visibleTripsCount() < upcomingTrips().length) {
+            <div style="text-align:center;margin-top:22px">
+              <button type="button" class="btn sm ghost" (click)="showMoreTrips()">View more</button>
+            </div>
+          }
         }
       }
     }
   </div>
 </section>
 
-<section id="destinations" class="sect alt">
+<section id="why-ghumo" class="sect alt">
   <div class="container">
-    <h2>Featured Odisha Destinations</h2>
-    <div class="sub">Explore some of the places that make Odisha unforgettable.</div>
-
-    <div class="destgrid">
-      @for (d of destinations; track d.name) {
-        <app-destination-card [name]="d.name" [tagline]="d.tagline" [gradient]="d.gradient"></app-destination-card>
-      }
+    <div class="sechead">
+      <div>
+        <span class="eyebrow">Why Ghumo Odisha</span>
+        <h2>Why Travel With Ghumo Odisha</h2>
+        <p class="sub">What to expect when you travel with us.</p>
+      </div>
     </div>
-  </div>
-</section>
-
-<section id="why-ghumo" class="sect">
-  <div class="container">
-    <h2>Why Travel With Ghumo Odisha</h2>
-    <div class="sub">What to expect when you travel with us.</div>
 
     <div class="featgrid">
       @for (f of features; track f.title) {
@@ -85,25 +310,27 @@
   </div>
 </section>
 
-<section id="organizer-contact" class="sect alt">
+<section id="organizer-contact" class="sect">
   <div class="container">
-    <div class="orgcontact">
-      <div class="oc-text">
-        <h2>Talk to Ghumo Odisha</h2>
-        <p class="mut" style="margin-top:6px">Have a question about a trip or want to book directly? Get in touch with our organizer.</p>
+    <div class="orgbanner">
+      <div class="orgbanner-photo">
+        @if (heroImage()) {
+          <img [src]="heroImage() | imageUrl" alt="" (error)="onHeroImageError()" />
+        }
+        <span class="orgbanner-caption">Let's plan your next adventure</span>
       </div>
-      <div class="oc-card">
-        <div class="row" style="gap:12px;align-items:center;margin-bottom:10px">
+
+      <div class="orgbanner-profile">
+        <div class="row" style="gap:12px;align-items:center;margin-bottom:14px">
           @if (contact()?.photoUrl) {
-            <img [src]="contact()!.photoUrl! | imageUrl" alt="{{ contact()?.name }}" style="width:52px;height:52px;border-radius:999px;object-fit:cover;flex-shrink:0" />
+            <img [src]="contact()!.photoUrl! | imageUrl" alt="{{ contact()?.name }}" class="orgbanner-avatar" />
           } @else {
-            <div style="width:52px;height:52px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0">
-              {{ (contact()?.name || 'G')[0] }}
-            </div>
+            <div class="orgbanner-avatar orgbanner-avatar-fallback">{{ (contact()?.name || 'G')[0] }}</div>
           }
           <div>
-            <div class="eyebrow" style="margin-bottom:4px">Travel Organizer</div>
+            <div class="eyebrow" style="margin-bottom:3px">Travel Organizer</div>
             <b style="font-size:16px;display:block">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</b>
+            <span class="mut" style="font-size:12px">{{ contact()?.role || 'Your Travel Expert' }}</span>
           </div>
         </div>
         <div class="oc-line">
@@ -112,11 +339,23 @@
         </div>
         <div class="oc-line">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
-          <span>WhatsApp</span>
+          <button type="button" (click)="openWhatsApp()" style="background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--accent);font-weight:600">Chat on WhatsApp</button>
         </div>
+        <div class="oc-line">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2z"></path><path d="m2 6 10 7 10-7"></path></svg>
+          <span>{{ contact()?.email || '—' }}</span>
+        </div>
+      </div>
+
+      <div class="orgbanner-quote">
+        <p>&ldquo;Ask anything about trips, itineraries or custom plans. I'm here to help!&rdquo;</p>
         <div class="row" style="gap:10px;margin-top:16px">
-          <a class="btn sm" style="flex:1" [href]="'tel:' + contact()?.phone">Call Now</a>
-          <button type="button" class="btn sm ghost" style="flex:1" (click)="openWhatsApp()">WhatsApp</button>
+          <button type="button" class="btn sm iconbtn" (click)="openWhatsApp()" aria-label="Chat on WhatsApp">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
+          </button>
+          <a class="btn sm ghost iconbtn" [href]="'tel:' + contact()?.phone" aria-label="Call now">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
+          </a>
         </div>
       </div>
     </div>

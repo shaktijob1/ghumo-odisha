@@ -7,7 +7,7 @@ namespace GhumoOdisha.Application.Trips;
 public interface ITripService
 {
     // Public
-    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default);
 
     Task<TripDetailDto> GetTripDetailAsync(int tripId, CancellationToken cancellationToken = default);
 
@@ -71,6 +71,11 @@ public interface ITripService
     Task DeleteVehiclePhotoAsync(int vehiclePhotoId, CancellationToken cancellationToken = default);
 
     Task UpdateVehiclePhotoOrderAsync(int vehiclePhotoId, int displayOrder, CancellationToken cancellationToken = default);
+
+    // Admin - itinerary PDF
+    Task UploadItineraryPdfAsync(int tripId, UploadedImage pdf, CancellationToken cancellationToken = default);
+
+    Task DeleteItineraryPdfAsync(int tripId, CancellationToken cancellationToken = default);
 
     // Admin - pickup points
     Task<int> AddPickupPointAsync(int tripId, AddPickupPointRequest request, CancellationToken cancellationToken = default);

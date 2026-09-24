@@ -28,4 +28,12 @@ public class PaymentsController(IBookingPaymentService paymentService) : Control
         await paymentService.VerifyAndConfirmAsync(customerId, id, request, cancellationToken);
         return Ok(ApiResponse<object>.Ok(new { }, "Payment verified. Booking confirmed."));
     }
+
+    [HttpGet("api/customer/bookings/{id:int}/payments/refund-status")]
+    public async Task<ActionResult<ApiResponse<object>>> GetRefundStatus(int id, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        var status = await paymentService.GetRefundStatusAsync(customerId, id, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { status }));
+    }
 }

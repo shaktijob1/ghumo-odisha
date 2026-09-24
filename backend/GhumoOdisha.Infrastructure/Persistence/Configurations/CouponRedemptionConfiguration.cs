@@ -13,6 +13,7 @@ public class CouponRedemptionConfiguration : IEntityTypeConfiguration<CouponRede
         builder.HasKey(r => r.CouponRedemptionId);
 
         builder.Property(r => r.DiscountAmount).HasColumnType("decimal(10,2)");
+        builder.Property(r => r.CommissionAmount).HasColumnType("decimal(10,2)");
         builder.Property(r => r.RedeemedAt).HasColumnType("datetime(6)");
 
         // The actual enforcement of "one redemption per customer per coupon" — not application logic alone.

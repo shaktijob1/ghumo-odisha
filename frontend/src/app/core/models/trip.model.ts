@@ -76,7 +76,10 @@ export interface TripSummary {
   nextSlotEndDate: string | null;
   nextSlotAvailableSeats: number | null;
   nextSlotTotalSeats: number | null;
+  inclusions: TripInclusions;
+  highlightPlaceNames: string[];
   photos: TripPhoto[];
+  destinationNames: string[];
 }
 
 export interface TripDetail {
@@ -92,6 +95,7 @@ export interface TripDetail {
   vehiclePhotos: VehiclePhoto[];
   pickupPoints: PickupPoint[];
   dateSlots: DateSlot[];
+  itineraryPdfUrl: string | null;
 }
 
 export interface AdminTripListItem {
@@ -122,6 +126,9 @@ export interface AdminTripDetail {
   vehiclePhotos: VehiclePhoto[];
   pickupPoints: PickupPoint[];
   dateSlots: DateSlot[];
+  destinationIds: number[];
+  destinationNames: string[];
+  itineraryPdfUrl: string | null;
 }
 
 export interface CreateTripRequest {
@@ -133,6 +140,7 @@ export interface CreateTripRequest {
   includesDinner: boolean;
   includesStay: boolean;
   includesCoordinator: boolean;
+  destinationIds?: number[];
 }
 
 export interface UpdateTripRequest extends CreateTripRequest {

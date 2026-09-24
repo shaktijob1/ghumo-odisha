@@ -7,16 +7,24 @@
 
 <div class="panel" style="margin-bottom:16px">
   <h4>Create a coupon</h4>
-  <div class="sub">Each customer can redeem a given code once.</div>
+  <div class="sub">Applies to all trips, with no limit on how many different customers can redeem it — each customer can still redeem a given code once. The coupon holder earns the commission for every seat booked with it.</div>
 
   <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
     <div class="fld" style="flex:1;min-width:160px">
       <span class="lbl">Code</span>
       <input class="inp" placeholder="GHUMO199" [ngModel]="code()" (ngModelChange)="code.set($event.toUpperCase())" />
     </div>
+    <div class="fld" style="flex:1;min-width:180px">
+      <span class="lbl">Coupon holder name</span>
+      <input class="inp" placeholder="e.g. Rahul Das" maxlength="100" [ngModel]="holderName()" (ngModelChange)="holderName.set($event)" />
+    </div>
     <div class="fld" style="width:140px">
       <span class="lbl">Discount (₹)</span>
       <input class="inp" type="number" min="1" [ngModel]="discountAmount()" (ngModelChange)="discountAmount.set($event)" />
+    </div>
+    <div class="fld" style="width:160px">
+      <span class="lbl">Commission / seat (₹)</span>
+      <input class="inp" type="number" min="0" [ngModel]="commissionPerSeat()" (ngModelChange)="commissionPerSeat.set($event)" />
     </div>
     <div class="fld" style="width:160px">
       <span class="lbl">Valid from</span>
@@ -32,6 +40,10 @@
       </button>
     </div>
   </div>
+  <label class="row" style="gap:8px;margin-top:12px;cursor:pointer">
+    <input type="checkbox" [ngModel]="isFirstTimeCustomerOnly()" (ngModelChange)="isFirstTimeCustomerOnly.set($event)" />
+    <span class="note">First-time customers only (rejects anyone who already has a confirmed booking)</span>
+  </label>
   @if (createError()) {
     <div class="errorbox">{{ createError() }}</div>
   }
@@ -48,20 +60,38 @@
     @if (coupons().length === 0) {
       <app-state-panel kind="empty" message="No coupons yet."></app-state-panel>
     } @else {
-      <div class="panel" style="padding:16px">
+      <div class="panel" style="padding:16px;margin-bottom:16px">
         <div class="tblwrap">
           <table class="tbl">
-            <tr><th>Code</th><th>Discount</th><th>Valid from</th><th>Valid until</th><th>Redeemed</th><th>Status</th><th></th></tr>
+            <tr>
+              <th>Code</th><th>Holder</th><th>Discount</th><th>Commission / seat</th><th>Scope</th><th>Valid</th>
+              <th class="num">Bookings</th><th class="num">New / Existing</th><th class="num">Commission earned</th><th>Status</th><th></th>
+            </tr>
             @for (c of coupons(); track c.couponCodeId) {
-              <tr>
+              <tr [style.background]="selectedCouponId() === c.couponCodeId ? 'var(--accent-soft)' : null">
                 <td><b>{{ c.code }}</b></td>
+                <td>{{ c.holderName }}</td>
                 <td>₹{{ c.discountAmount | number:'1.0-0' }}</td>
-                <td class="note">{{ c.validFrom ? (c.validFrom | date:'d MMM y') : 'Any time' }}</td>
-                <td class="note">{{ c.validUntil ? (c.validUntil | date:'d MMM y') : 'No expiry' }}</td>
-                <td>{{ c.redemptionCount }}</td>
+                <td>₹{{ c.commissionPerSeat | number:'1.0-0' }}</td>
+                <td>
+                  @if (c.isFirstTimeCustomerOnly) {
+                    <span class="badge info">First-time only</span>
+                  } @else {
+                    <span class="note">All customers</span>
+                  }
+                </td>
+                <td class="note" style="white-space:nowrap">
+                  {{ c.validFrom ? (c.validFrom | date:'d MMM y') : 'Any time' }} – {{ c.validUntil ? (c.validUntil | date:'d MMM y') : 'No expiry' }}
+                </td>
+                <td class="num">{{ c.redemptionCount }}</td>
+                <td class="num">{{ c.newCustomerCount }} / {{ c.existingCustomerCount }}</td>
+                <td class="num"><b>₹{{ c.commissionEarned | number:'1.0-0' }}</b></td>
                 <td><span class="badge" [class]="c.isActive ? 'ok' : 'bad'">{{ c.isActive ? 'Active' : 'Inactive' }}</span></td>
                 <td>
-                  <div class="row" style="gap:8px;justify-content:flex-end">
+                  <div class="row" style="gap:8px;justify-content:flex-end;flex-wrap:nowrap">
+                    <button class="btn sm" [class.ghost]="selectedCouponId() !== c.couponCodeId" (click)="toggleBookings(c)">
+                      {{ selectedCouponId() === c.couponCodeId ? 'Hide bookings' : 'View bookings' }}
+                    </button>
                     <button class="btn sm ghost" (click)="toggleActive(c)">{{ c.isActive ? 'Deactivate' : 'Activate' }}</button>
                     <button class="btn sm ghost" (click)="remove(c)">Remove</button>
                   </div>
@@ -71,6 +101,71 @@
           </table>
         </div>
       </div>
+
+      @if (selectedCoupon(); as sc) {
+        <div class="panel" style="padding:16px">
+          <h4>Bookings with {{ sc.code }}</h4>
+          <div class="sub">Coupon holder: <b>{{ sc.holderName }}</b> · ₹{{ sc.commissionPerSeat | number:'1.0-0' }} commission per seat. Cancelled or rejected bookings earn no commission.</div>
+
+          <div class="kpis">
+            <div class="kpi"><div class="k">Bookings</div><div class="v">{{ sc.redemptionCount }}</div></div>
+            <div class="kpi"><div class="k">New / existing customers</div><div class="v">{{ sc.newCustomerCount }} / {{ sc.existingCustomerCount }}</div></div>
+            <div class="kpi"><div class="k">Seats booked</div><div class="v">{{ sc.totalSeats }}</div></div>
+            <div class="kpi"><div class="k">Commission earned</div><div class="v">₹{{ sc.commissionEarned | number:'1.0-0' }}</div></div>
+          </div>
+
+          @switch (bookingsState()) {
+            @case ('loading') {
+              <app-state-panel kind="loading"></app-state-panel>
+            }
+            @case ('error') {
+              <app-state-panel kind="error" message="Could not load bookings for this coupon."></app-state-panel>
+            }
+            @case ('ready') {
+              @if (bookings().length === 0) {
+                <app-state-panel kind="empty" message="No bookings have used this coupon yet."></app-state-panel>
+              } @else {
+                <div class="tblwrap">
+                  <table class="tbl">
+                    <tr>
+                      <th>Booking</th><th>Customer</th><th>Customer type</th><th>Trip</th><th>Travel date</th>
+                      <th class="num">Seats</th><th class="num">Total</th><th class="num">Coupon discount</th><th class="num">Commission</th>
+                      <th>Status</th><th>Used on</th>
+                    </tr>
+                    @for (b of bookings(); track b.bookingId) {
+                      <tr>
+                        <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#{{ b.bookingId }}</b></a></td>
+                        <td>
+                          <a [routerLink]="['/admin/customers', b.customerId]">{{ b.customerName }}</a>
+                          <div class="note">{{ b.customerPhone }}</div>
+                        </td>
+                        <td>
+                          <span class="badge" [class]="b.isNewCustomer ? 'ok' : 'info'">{{ b.isNewCustomer ? 'New customer' : 'Existing customer' }}</span>
+                        </td>
+                        <td>{{ b.tripTitle }}</td>
+                        <td class="note" style="white-space:nowrap">{{ b.startDate | date:'d MMM y' }}</td>
+                        <td class="num">{{ b.numberOfSeats }}</td>
+                        <td class="num">₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                        <td class="num">₹{{ b.discountAmount | number:'1.0-0' }}</td>
+                        <td class="num">
+                          @if (b.commissionEarned === b.commissionAmount) {
+                            <b>₹{{ b.commissionEarned | number:'1.0-0' }}</b>
+                          } @else {
+                            <b>₹0</b>
+                            <div class="note" style="text-decoration:line-through">₹{{ b.commissionAmount | number:'1.0-0' }}</div>
+                          }
+                        </td>
+                        <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                        <td class="note" style="white-space:nowrap">{{ b.redeemedAt | date:'d MMM y' }}</td>
+                      </tr>
+                    }
+                  </table>
+                </div>
+              }
+            }
+          }
+        </div>
+      }
     }
   }
 }
