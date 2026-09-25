@@ -79,12 +79,28 @@
 
   @if (destinationId) {
     <div class="formsec">
-      <h4>Hero photo</h4>
-      <div class="sub">Shown on the trending-destinations row and at the top of the destination page.</div>
+      <h4>Cover photo</h4>
+      <div class="sub">Shown on the destination cards (Trending Odisha Destinations). If not set, the hero photo is used.</div>
 
       <label class="drop">
-        {{ uploadingHero() ? 'Uploading…' : 'Click to choose an image (JPG or PNG, up to 5 MB)' }}
-        <input type="file" accept="image/jpeg,image/png" style="display:none" [disabled]="uploadingHero()" (change)="onHeroImageSelected($event)" />
+        {{ uploadingCover() ? 'Uploading…' : 'Click to choose an image (JPG, PNG or WebP, up to 5 MB)' }}
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" [disabled]="uploadingCover()" (change)="onCoverImageSelected($event)" />
+      </label>
+
+      @if (destination()?.coverImageUrl; as url) {
+        <div class="thumbs">
+          <div class="t"><img [src]="url | imageUrl" alt="" /></div>
+        </div>
+      }
+    </div>
+
+    <div class="formsec">
+      <h4>Hero photo</h4>
+      <div class="sub">The large banner at the top of the destination page, after a customer opens it.</div>
+
+      <label class="drop">
+        {{ uploadingHero() ? 'Uploading…' : 'Click to choose an image (JPG, PNG or WebP, up to 5 MB)' }}
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" [disabled]="uploadingHero()" (change)="onHeroImageSelected($event)" />
       </label>
 
       @if (destination()?.heroImageUrl; as url) {
@@ -108,11 +124,11 @@
   } @else {
     <div class="formsec">
       <h4>Hero photo</h4>
-      <div class="sub">Optional — pick one now and it's attached as soon as the destination is created, or add it later from the edit page.</div>
+      <div class="sub">Optional — pick one now and it's attached as soon as the destination is created, or add it later from the edit page. It's also used on the destination cards until you add a separate cover photo from the edit page.</div>
 
       <label class="drop">
-        {{ pendingHeroImageFile() ? pendingHeroImageFile()!.name : 'Click to choose an image (JPG or PNG, up to 5 MB)' }}
-        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onPendingHeroImageSelected($event)" />
+        {{ pendingHeroImageFile() ? pendingHeroImageFile()!.name : 'Click to choose an image (JPG, PNG or WebP, up to 5 MB)' }}
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onPendingHeroImageSelected($event)" />
       </label>
 
       @if (pendingHeroImagePreviewUrl(); as url) {

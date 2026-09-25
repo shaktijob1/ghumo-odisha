@@ -11,7 +11,7 @@ public record RazorpayOrder(string Id, long AmountPaise, string Currency);
 
 public record CreatePaymentOrderRequest(BookingPaymentPlan Plan, string? CouponCode = null);
 
-public record CreatePaymentOrderResult(string OrderId, long AmountPaise, string Currency, string KeyId, decimal DiscountApplied);
+public record CreatePaymentOrderResult(string OrderId, long AmountPaise, string Currency, string KeyId, decimal DiscountApplied, bool DevBypass = false);
 
 /// <summary>No Plan/CouponCode here on purpose — verification confirms exactly what CreateOrderAsync
 /// already quoted and locked onto the booking (Booking.PendingAdvanceAmount etc.), never a value

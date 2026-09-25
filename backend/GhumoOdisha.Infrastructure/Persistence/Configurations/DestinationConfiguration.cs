@@ -23,6 +23,7 @@ public class DestinationConfiguration : IEntityTypeConfiguration<Destination>
         builder.Property(d => d.Tagline).HasMaxLength(300);
         builder.Property(d => d.Region).HasMaxLength(200);
         builder.Property(d => d.HeroImageUrl).HasMaxLength(500);
+        builder.Property(d => d.CoverImageUrl).HasMaxLength(500);
         builder.Property(d => d.AboutText).HasColumnType("text");
         builder.Property(d => d.BestSeason).HasMaxLength(100);
         builder.Property(d => d.DistanceFromBhubaneswar).HasMaxLength(100);

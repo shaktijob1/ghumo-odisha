@@ -24,12 +24,18 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<ItineraryPoint> ItineraryPoints => Set<ItineraryPoint>();
     public DbSet<TripDateSlot> TripDateSlots => Set<TripDateSlot>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<BookingPayment> BookingPayments => Set<BookingPayment>();
+    public DbSet<BookingTraveller> BookingTravellers => Set<BookingTraveller>();
+    public DbSet<BookingEvent> BookingEvents => Set<BookingEvent>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<CustomerOtp> CustomerOtps => Set<CustomerOtp>();
     public DbSet<CustomerRefreshToken> CustomerRefreshTokens => Set<CustomerRefreshToken>();
     public DbSet<CouponCode> CouponCodes => Set<CouponCode>();
     public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
+    public DbSet<CouponPayout> CouponPayouts => Set<CouponPayout>();
+    public DbSet<AppLog> AppLogs => Set<AppLog>();
+    public DbSet<AdminActivity> AdminActivities => Set<AdminActivity>();
     public DbSet<Destination> Destinations => Set<Destination>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -17,25 +17,19 @@ import { WhatsappAuthComponent } from '../../shared/components/whatsapp-auth.com
 import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 import { downloadFile } from '../../shared/utils/download-file';
+import { toLocalDateKey } from '../../shared/utils/date-key';
+import { BookingPriceSummaryComponent, payNowFor } from '../../shared/components/booking-price-summary.component';
+import { CouponFieldComponent, CouponSelection } from '../../shared/components/coupon-field.component';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-// Mirrors PaymentPanelComponent / BookingPaymentService.ComputeAmounts — display-only; the backend
-// recomputes and is the only source of truth for what actually gets charged.
-const PER_SEAT_ADVANCE = 99;
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-// Slot dates come from the API as plain "yyyy-MM-dd" (DateOnly), so they're compared as strings
-// against today's local date — no Date parsing, no timezone shift.
-function toLocalDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 @Component({
   selector: 'app-trip-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe, BookingPriceSummaryComponent, CouponFieldComponent],
   templateUrl: './trip-detail.component.html',
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
@@ -54,7 +48,9 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   readonly heroIndex = signal(0);
   readonly selectedSlotId = signal<number | null>(null);
   readonly seats = signal(1);
-  readonly customerNotes = signal('');
+  // Chosen in the sidebar; carried into the payment step, where it is (re)validated for this customer.
+  readonly coupon = signal<CouponSelection | null>(null);
+  readonly couponDiscount = computed(() => (this.coupon()?.validated ? this.coupon()!.discountAmount : 0));
   readonly termsAccepted = signal(false);
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
@@ -149,8 +145,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   // What's actually collected via Razorpay to confirm the booking — ₹99/seat, same rate the
   // payment panel charges once the booking request exists. Never used to compute what's actually
   // charged; that's recomputed server-side from scratch.
-  readonly bookingAdvance = computed(() => PER_SEAT_ADVANCE * this.seats());
-  readonly remainingAmount = computed(() => Math.max(0, this.totalAmount() - this.bookingAdvance()));
+  readonly bookingAdvance = computed(() => payNowFor(this.trip()?.amountPerPerson ?? 0, this.seats(), this.couponDiscount()));
 
   readonly requiresPickupPoint = computed(() => (this.trip()?.pickupPoints.length ?? 0) > 0);
 
@@ -341,7 +336,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         tripId: this.tripId,
         tripDateSlotId: this.selectedSlot()!.tripDateSlotId,
         numberOfSeats: this.seats(),
-        customerNotes: this.customerNotes() || null,
+        customerNotes: null,
         clientRequestId: this.clientRequestId,
         pickupPointId: this.selectedPickupPointId(),
         agreedToTerms: this.termsAccepted(),
@@ -430,5 +425,9 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       },
       error: () => this.downloadingInvoice.set(false),
     });
+  }
+
+  onCouponChange(selection: CouponSelection | null): void {
+    this.coupon.set(selection);
   }
 }

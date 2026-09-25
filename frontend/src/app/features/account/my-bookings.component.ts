@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 import { CustomerBookingService } from '../../core/services/customer-booking.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { BookingResponse } from '../../core/models/booking.model';
-import { BookingStatus, BookingStatusLabels, PaymentStatus, PaymentStatusLabels, bookingStatusBadgeClass } from '../../core/models/enums.model';
+import { BookingStatus, BookingStatusLabels, PaymentMethodLabels, PaymentStatus, PaymentStatusLabels, bookingStatusBadgeClass } from '../../core/models/enums.model';
+import { BookingTimelineComponent } from '../../shared/components/booking-timeline.component';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
 import { downloadFile } from '../../shared/utils/download-file';
@@ -15,7 +16,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-my-bookings',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatePanelComponent, PaymentPanelComponent, ImageUrlPipe],
+  imports: [CommonModule, RouterLink, StatePanelComponent, PaymentPanelComponent, ImageUrlPipe, BookingTimelineComponent],
   templateUrl: './my-bookings.component.html',
 })
 export class MyBookingsComponent implements OnInit {
@@ -40,6 +41,7 @@ export class MyBookingsComponent implements OnInit {
   readonly PaymentStatus = PaymentStatus;
   readonly BookingStatusLabels = BookingStatusLabels;
   readonly PaymentStatusLabels = PaymentStatusLabels;
+  readonly PaymentMethodLabels = PaymentMethodLabels;
   readonly bookingStatusBadgeClass = bookingStatusBadgeClass;
 
   readonly filtered = computed(() => {
@@ -66,7 +68,8 @@ export class MyBookingsComponent implements OnInit {
   }
 
   canDownloadInvoice(booking: BookingResponse): boolean {
-    return booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Completed;
+    // Linked travellers (added by the organizer) can view the booking but not its invoice.
+    return booking.isOwner && (booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Completed);
   }
 
   downloadInvoice(booking: BookingResponse): void {
@@ -82,7 +85,7 @@ export class MyBookingsComponent implements OnInit {
   }
 
   canCancel(booking: BookingResponse): boolean {
-    return booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Requested;
+    return booking.isOwner && (booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Requested);
   }
 
   // A Requested booking never held seats (only an admin CONFIRM deducts them), so other bookings
@@ -106,7 +109,7 @@ export class MyBookingsComponent implements OnInit {
   }
 
   canPayNow(booking: BookingResponse): boolean {
-    return booking.bookingStatus === BookingStatus.Requested && !this.isSlotFull(booking);
+    return booking.isOwner && booking.bookingStatus === BookingStatus.Requested && !this.isSlotFull(booking);
   }
 
   openDetails(booking: BookingResponse): void {
@@ -116,7 +119,7 @@ export class MyBookingsComponent implements OnInit {
 
   private loadRefundStatus(booking: BookingResponse): void {
     this.refundStatus.set(null);
-    if (booking.bookingStatus !== BookingStatus.Cancelled || booking.paymentStatus !== PaymentStatus.Refunded) {
+    if (!booking.isOwner || booking.bookingStatus !== BookingStatus.Cancelled || booking.paymentStatus !== PaymentStatus.Refunded) {
       return;
     }
     this.refundStatusLoading.set(true);

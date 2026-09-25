@@ -1,4 +1,4 @@
-import { BookingStatus } from './enums.model';
+import { BookingStatus, PaymentMethod } from './enums.model';
 
 export interface AdminCoupon {
   couponCodeId: number;
@@ -16,6 +16,30 @@ export interface AdminCoupon {
   totalSeats: number;
   commissionEarned: number;
   createdAt: string;
+  activeBookingCount: number;
+  cancelledBookingCount: number;
+  /** Commission lost because the booking was cancelled or rejected. */
+  commissionReversed: number;
+  commissionPaid: number;
+  /** Earned − paid. Negative after a cancellation that came after a payout — netted against future commission. */
+  balanceDue: number;
+}
+
+export interface CouponPayout {
+  couponPayoutId: number;
+  amount: number;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  paidAt: string;
+}
+
+export interface AddCouponPayoutRequest {
+  amount: number;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  paidAt: string | null;
 }
 
 export interface AdminCouponBooking {

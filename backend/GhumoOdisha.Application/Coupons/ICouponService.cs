@@ -16,6 +16,16 @@ public interface ICouponService
     /// <summary>Every booking made with this coupon, with the customer, new/existing flag and commission.</summary>
     Task<IReadOnlyList<AdminCouponBookingDto>> GetBookingsAsync(int couponCodeId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CouponPayoutDto>> GetPayoutsAsync(int couponCodeId, CancellationToken cancellationToken = default);
+    /// <summary>Records commission paid to the holder. Rejects an amount above the current balance due.</summary>
+    Task AddPayoutAsync(int couponCodeId, AddCouponPayoutRequest request, CancellationToken cancellationToken = default);
+    /// <summary>Removes a wrongly recorded payout.</summary>
+    Task RemovePayoutAsync(int couponCodeId, int couponPayoutId, CancellationToken cancellationToken = default);
+
+    // ---------- Public partner page ----------
+    /// <summary>A coupon holder's own totals and payouts, looked up by code. Contains nothing about who booked.</summary>
+    Task<PartnerCouponSummaryDto> GetPartnerSummaryAsync(string code, CancellationToken cancellationToken = default);
+
     // ---------- Customer ----------
 
     /// <summary>Checks the code exists, is active, in its validity window, and not already used by

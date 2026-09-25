@@ -2,7 +2,7 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
 /**
  * These tests mock the auth network calls instead of relying on real WhatsApp OTP delivery
- * (Fast2SMS sends to a real phone we have no way to read in CI). Every other page (trips,
+ * (the WhatsApp OTP goes to a real phone we have no way to read in CI). Every other page (trips,
  * contact, etc.) still hits the real backend, so this only isolates the piece that can't be
  * automated without a live phone.
  */

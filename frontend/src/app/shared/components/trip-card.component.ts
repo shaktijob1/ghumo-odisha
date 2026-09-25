@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TripSummary } from '../../core/models/trip.model';
+import { TripSummary, UpcomingSlot } from '../../core/models/trip.model';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 
 @Component({
@@ -50,14 +50,6 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
 
         <div class="heroinfo mobiletab-only">
           <h3>{{ trip.title }}</h3>
-          @if (trip.nextSlotStartDate) {
-            <div class="herometa">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-              <span>{{ trip.nextSlotStartDate | date:'d MMM' }} → {{ trip.nextSlotEndDate | date:'d MMM y' }}</span>
-            </div>
-          } @else {
-            <div class="herometa"><span>Dates coming soon</span></div>
-          }
           @if (placesLine) {
             <div class="herometa">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
@@ -66,6 +58,23 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
           }
         </div>
       </div>
+      @if (rollingSlots.length > 0) {
+        <!-- Information only: the list is rendered twice and the track slides left by exactly one
+             copy (-50%), so the loop restarts on an identical frame with no visible jump. -->
+        <div class="datestrip" aria-label="Upcoming departures">
+          <div class="datestrip-track" [style.animation-duration.s]="rollingSlots.length * 3.2">
+            @for (copy of [0, 1]; track copy) {
+              @for (s of rollingSlots; track $index) {
+                @let isDup = copy === 1 || $index >= trip.upcomingSlots.length;
+                <span class="datepill" [class]="'tone' + ($index % 5)" [class.dup]="isDup" [attr.aria-hidden]="isDup ? 'true' : null">
+                  <b>{{ s.startDate | date:'d MMM' | uppercase }}</b>
+                  <small>{{ s.availableSeats === 0 ? 'Sold out' : s.availableSeats + (s.availableSeats === 1 ? ' seat' : ' seats') }}</small>
+                </span>
+              }
+            }
+          </div>
+        </div>
+      }
       <div class="body">
         <div class="titlerow desktop-only">
           <h3>{{ trip.title }}</h3>
@@ -179,6 +188,23 @@ export class TripCardComponent implements OnInit, OnDestroy {
     if (seats === 0) return 'soldout';
     if (seats <= 5) return 'low';
     return 'normal';
+  }
+
+  // One copy of the strip must be at least as wide as the card, otherwise a gap shows at the right
+  // edge before the second copy arrives. With only a few departures, repeat them until one copy
+  // holds enough pills to fill the card width.
+  private static readonly MinPillsPerCopy = 6;
+  private rollingSource?: UpcomingSlot[];
+  private rollingCache: UpcomingSlot[] = [];
+
+  get rollingSlots(): UpcomingSlot[] {
+    const slots = this.trip.upcomingSlots ?? [];
+    if (slots !== this.rollingSource) {
+      this.rollingSource = slots;
+      const repeats = slots.length === 0 ? 0 : Math.ceil(TripCardComponent.MinPillsPerCopy / slots.length);
+      this.rollingCache = Array.from({ length: repeats }, () => slots).flat();
+    }
+    return this.rollingCache;
   }
 
   // No per-trip advance-booking amount exists on TripSummary yet; this mirrors

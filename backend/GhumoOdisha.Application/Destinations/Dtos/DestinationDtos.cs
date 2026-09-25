@@ -6,6 +6,7 @@ public record DestinationSummaryDto(
     string Slug,
     string? Tagline,
     string? HeroImageUrl,
+    string? CoverImageUrl,
     int TripCount,
     decimal? StartingPrice);
 
@@ -30,6 +31,7 @@ public record AdminDestinationListItemDto(
     bool IsActive,
     int DisplayOrder,
     string? HeroImageUrl,
+    string? CoverImageUrl,
     int TripCount);
 
 public record AdminDestinationDetailDto(
@@ -39,6 +41,7 @@ public record AdminDestinationDetailDto(
     string? Tagline,
     string? Region,
     string? HeroImageUrl,
+    string? CoverImageUrl,
     string? AboutText,
     string? BestSeason,
     string? DistanceFromBhubaneswar,

@@ -31,6 +31,7 @@ public class UploadedFilesController(IOptions<ImageStorageOptions> options) : Co
         [".jpeg"] = "image/jpeg",
         [".jfif"] = "image/jpeg",
         [".png"] = "image/png",
+        [".webp"] = "image/webp",
         [".pdf"] = "application/pdf",
     };
 
@@ -54,6 +55,10 @@ public class UploadedFilesController(IOptions<ImageStorageOptions> options) : Co
             return NotFound();
         }
 
+        // Every upload gets a new random file name and is never edited in place, so browsers and
+        // CDNs can keep it for a year. nosniff stops a browser treating it as anything else.
+        Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        Response.Headers.XContentTypeOptions = "nosniff";
         return PhysicalFile(fullPath, contentType);
     }
 }

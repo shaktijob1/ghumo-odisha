@@ -1,7 +1,7 @@
 namespace GhumoOdisha.Application.Auth;
 
 /// <summary>
-/// Variables for the approved Fast2SMS "Booking Confirmed" WhatsApp template, in template order
+/// Variables for the approved "Booking Confirmed" WhatsApp template, in template order
 /// ({{1}}..{{9}}). All values are already formatted for display — the template supplies the
 /// labels, emoji and the ₹ sign around them.
 /// </summary>

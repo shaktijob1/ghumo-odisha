@@ -35,6 +35,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly ngZone = inject(NgZone);
 
   readonly contact = this.contactService.get();
+  readonly orgPhotoFailed = signal(false);
   private readonly siteHeroPhoto = this.heroPhotoService.get();
   private readonly siteHeroPhotoFailed = signal(false);
 

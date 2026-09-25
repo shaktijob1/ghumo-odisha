@@ -1,4 +1,4 @@
-import { BookingSource, BookingStatus, PaymentStatus } from './enums.model';
+import { BookingEventType, BookingSource, BookingStatus, Gender, PaymentMethod, PaymentStatus } from './enums.model';
 
 export interface AdminBookingListItem {
   bookingId: number;
@@ -45,6 +45,73 @@ export interface AdminBookingDetail {
   requestedAt: string;
   confirmedAt: string | null;
   cancelledAt: string | null;
+  discountAmount: number;
+  couponCode: string | null;
+  payments: BookingPayment[];
+  roomsAllotted: number;
+  maleCount: number | null;
+  femaleCount: number | null;
+  cancellationReason: string | null;
+  refundWaived: boolean;
+  travellers: AdminTraveller[];
+  timeline: BookingEvent[];
+}
+
+export interface AdminTraveller {
+  bookingTravellerId: number;
+  seatNumber: number;
+  fullName: string;
+  gender: Gender | null;
+  age: number | null;
+  aadhaarLast4: string | null;
+  phoneNumber: string | null;
+  linkedCustomerId: number | null;
+  linkedCustomerName: string | null;
+}
+
+export interface BookingEvent {
+  eventType: BookingEventType;
+  title: string;
+  description: string | null;
+  actor: string;
+  createdAt: string;
+}
+
+export interface TravellerInput {
+  seatNumber: number;
+  fullName: string;
+  gender: Gender | null;
+  age: number | null;
+  aadhaarLast4: string | null;
+  phoneNumber: string | null;
+}
+
+export interface ChangeSeatsRequest {
+  numberOfSeats: number;
+  reason: string;
+}
+
+export interface UpdateGenderCountsRequest {
+  maleCount: number | null;
+  femaleCount: number | null;
+}
+
+export interface BookingPayment {
+  bookingPaymentId: number;
+  amount: number;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+  recordedBy: string;
+  paidAt: string;
+}
+
+export interface AddBookingPaymentRequest {
+  amount: number;
+  method: PaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  paidAt?: string | null;
 }
 
 export interface AdminBookingFilter {
@@ -56,6 +123,8 @@ export interface AdminBookingFilter {
 
 export interface ConfirmBookingRequest {
   advanceAmount: number;
+  method?: PaymentMethod | null;
+  paymentReference?: string | null;
 }
 
 export interface RejectBookingRequest {
@@ -64,6 +133,8 @@ export interface RejectBookingRequest {
 
 export interface CancelBookingRequest {
   adminNotes?: string | null;
+  waiveRefund?: boolean;
+  reason?: string | null;
 }
 
 export interface CreateManualBookingRequest {
@@ -119,4 +190,10 @@ export interface BookingResponse {
   confirmedAt: string | null;
   cancelledAt: string | null;
   slotAvailableSeats: number;
+  /** False for a booking the organizer added this customer to as a traveller — view-only. */
+  isOwner: boolean;
+  roomsAllotted: number;
+  timeline: BookingEvent[];
+  /** Empty for a linked traveller — only the booker sees payment details. */
+  payments: BookingPayment[];
 }

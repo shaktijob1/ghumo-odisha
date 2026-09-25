@@ -47,4 +47,10 @@ export class AdminDestinationService {
     form.append('file', file);
     return this.http.post<ApiResponse<object>>(`${base()}/${id}/hero-image`, form).pipe(map(() => undefined));
   }
+
+  updateCoverImage(id: number, file: File): Observable<void> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ApiResponse<object>>(`${base()}/${id}/cover-image`, form).pipe(map(() => undefined));
+  }
 }

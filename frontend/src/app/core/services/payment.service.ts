@@ -11,6 +11,8 @@ export interface PaymentOrder {
   currency: string;
   keyId: string;
   discountApplied: number;
+  /** True only when the API runs with Razorpay:DevBypassEnabled (local development) — no real checkout. */
+  devBypass?: boolean;
 }
 
 export interface VerifyPaymentRequest {

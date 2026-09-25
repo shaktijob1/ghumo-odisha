@@ -11,6 +11,7 @@ import { AdminCustomerListItem } from '../../../core/models/customer.model';
 import { BookingSource, BookingStatus } from '../../../core/models/enums.model';
 import { ApiResponse } from '../../../core/models/api-response.model';
 import { ToastService } from '../../../core/services/toast.service';
+import { isUpcomingSlot } from '../../../shared/utils/date-key';
 
 @Component({
   selector: 'app-booking-form',
@@ -73,7 +74,7 @@ export class BookingFormComponent implements OnInit {
     this.slots.set([]);
     if (!this.selectedTripId) return;
 
-    this.tripService.getTrip(this.selectedTripId).subscribe((t) => this.slots.set(t.dateSlots));
+    this.tripService.getTrip(this.selectedTripId).subscribe((t) => this.slots.set(t.dateSlots.filter(isUpcomingSlot)));
   }
 
   get selectedTripPrice(): number {

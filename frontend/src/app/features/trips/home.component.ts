@@ -24,7 +24,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly tripService = inject(PublicTripService);
   private readonly heroPhotoService = inject(HeroService);
 
-  private readonly siteHeroPhoto = this.heroPhotoService.get();
+  private readonly tripsHeroPhoto = this.heroPhotoService.get('trips');
+  private readonly tripsHeroPhotoFailed = signal(false);
+  private readonly siteHeroPhoto = this.heroPhotoService.get('home');
   private readonly siteHeroPhotoFailed = signal(false);
 
   readonly state = signal<LoadState>('loading');
@@ -110,15 +112,21 @@ export class HomeComponent implements OnInit, OnDestroy {
   );
   private readonly heroImageIndex = signal(0);
 
-  // A dedicated, admin-uploaded hero photo takes priority over cycling trip cover photos; if it
-  // fails to load, fall back to the trip-photo carousel as before.
+  // Admin-uploaded hero photos take priority over cycling trip cover photos: this page's own Trips
+  // photo first, then the Home page photo. Each one that fails to load is skipped in turn.
   readonly heroImage = computed(() => {
-    const dedicated = this.siteHeroPhoto();
-    if (dedicated && !this.siteHeroPhotoFailed()) return dedicated;
+    const trips = this.tripsHeroPhoto();
+    if (trips && !this.tripsHeroPhotoFailed()) return trips;
+    const home = this.siteHeroPhoto();
+    if (home && !this.siteHeroPhotoFailed()) return home;
     return this.heroImageCandidates()[this.heroImageIndex()] ?? null;
   });
 
   onHeroImageError(): void {
+    if (this.tripsHeroPhoto() && !this.tripsHeroPhotoFailed()) {
+      this.tripsHeroPhotoFailed.set(true);
+      return;
+    }
     if (this.siteHeroPhoto() && !this.siteHeroPhotoFailed()) {
       this.siteHeroPhotoFailed.set(true);
       return;

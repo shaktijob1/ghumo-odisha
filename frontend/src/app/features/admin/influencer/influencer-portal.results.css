@@ -1,0 +1,48 @@
+/* Partner page — results: greeting, balance card with progress ring, stat cards. */
+/* ---------- Results ---------- */
+.rise { opacity: 0; animation: rise .6s cubic-bezier(.2, .8, .2, 1) forwards; animation-delay: var(--d, 0ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+.pp-eyebrow { margin: 0 0 4px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.pp-eyebrow.light { color: rgba(255, 255, 255, .8); }
+
+.pp-hello { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px; margin: 12px 0 22px; }
+.pp-hello h1 { margin-bottom: 4px; }
+.pp-coupon { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; justify-content: flex-end; max-width: 440px; }
+.pp-coupon-code { padding: 8px 14px; border: 1.5px dashed var(--accent); border-radius: 12px; background: #fff; font: 700 16px var(--font-body); letter-spacing: .1em; color: var(--accent); }
+.pp-status { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; }
+.pp-status .pulse { width: 8px; height: 8px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 0 currentColor; animation: pulse 1.8s infinite; }
+.pp-status.off { background: var(--danger-bg); color: var(--danger); }
+.pp-status.off .pulse { animation: none; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(15, 111, 92, .45); } 70% { box-shadow: 0 0 0 8px rgba(15, 111, 92, 0); } 100% { box-shadow: 0 0 0 0 rgba(15, 111, 92, 0); } }
+.pp-coupon-meta { width: 100%; text-align: right; color: var(--muted); font-size: 12.5px; }
+
+.pp-balance { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px 30px; border-radius: 22px; color: #fff; overflow: hidden;
+  background: linear-gradient(135deg, #0F6F5C 0%, #148670 55%, #1A9C82 100%); box-shadow: 0 18px 40px rgba(15, 111, 92, .28); }
+.pp-balance::after { content: ''; position: absolute; top: -40%; left: -30%; width: 45%; height: 180%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent); transform: rotate(20deg); animation: sheen 5s ease-in-out 1s infinite; }
+@keyframes sheen { 0% { left: -40%; } 45%, 100% { left: 130%; } }
+.pp-balance.clear { background: linear-gradient(135deg, #3A5B7A, #4E7394); box-shadow: 0 18px 40px rgba(58, 91, 122, .25); }
+.pp-balance.neg { background: linear-gradient(135deg, #9A6A11, #B7852A); box-shadow: 0 18px 40px rgba(154, 106, 17, .25); }
+.pp-balance-amount { font: 800 clamp(40px, 7vw, 58px) / 1 var(--font-heading); letter-spacing: -.02em; margin: 6px 0 10px; }
+.pp-balance-note { margin: 0; max-width: 460px; font-size: 13.5px; line-height: 1.55; color: rgba(255, 255, 255, .85); }
+
+.pp-ring { position: relative; flex-shrink: 0; width: 132px; height: 132px; }
+.pp-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pp-ring circle { fill: none; stroke-width: 10; }
+.pp-ring .track { stroke: rgba(255, 255, 255, .2); }
+.pp-ring .bar { stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset 1.4s cubic-bezier(.2, .8, .2, 1) .3s; }
+.pp-ring-label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.pp-ring-label b { font: 800 26px var(--font-heading); }
+.pp-ring-label span { font-size: 11.5px; color: rgba(255, 255, 255, .8); }
+
+.pp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0; }
+.pp-stat { display: flex; flex-direction: column; gap: 4px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fff; transition: transform .2s, box-shadow .2s; }
+.pp-stat:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(15, 20, 22, .07); }
+.pp-stat .ic { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; margin-bottom: 6px; }
+.pp-stat .ic.ok { background: var(--accent-soft); color: var(--accent); }
+.pp-stat .ic.info { background: var(--info-bg); color: var(--info); }
+.pp-stat .ic.wait { background: var(--wait-bg); color: var(--wait); }
+.pp-stat .k { color: var(--muted); font-size: 12.5px; }
+.pp-stat b { font: 700 26px var(--font-heading); letter-spacing: -.01em; }
+.pp-stat small { color: var(--muted); font-size: 12px; }
+

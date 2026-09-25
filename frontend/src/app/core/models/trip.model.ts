@@ -80,6 +80,8 @@ export interface TripSummary {
   highlightPlaceNames: string[];
   photos: TripPhoto[];
   destinationNames: string[];
+  /** Display-only: upcoming active departures for the card's rolling dates strip. */
+  upcomingSlots: UpcomingSlot[];
 }
 
 export interface TripDetail {
@@ -183,4 +185,9 @@ export interface AddPickupPointRequest {
 
 export interface UpdatePickupPointRequest extends AddPickupPointRequest {
   displayOrder: number;
+}
+
+export interface UpcomingSlot {
+  startDate: string;
+  availableSeats: number;
 }

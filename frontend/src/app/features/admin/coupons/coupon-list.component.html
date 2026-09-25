@@ -61,11 +61,11 @@
       <app-state-panel kind="empty" message="No coupons yet."></app-state-panel>
     } @else {
       <div class="panel" style="padding:16px;margin-bottom:16px">
-        <div class="tblwrap">
+        <div class="tblwrap couponwrap">
           <table class="tbl">
             <tr>
               <th>Code</th><th>Holder</th><th>Discount</th><th>Commission / seat</th><th>Scope</th><th>Valid</th>
-              <th class="num">Bookings</th><th class="num">New / Existing</th><th class="num">Commission earned</th><th>Status</th><th></th>
+              <th class="num">Bookings</th><th class="num">New / Existing</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
             </tr>
             @for (c of coupons(); track c.couponCodeId) {
               <tr [style.background]="selectedCouponId() === c.couponCodeId ? 'var(--accent-soft)' : null">
@@ -83,9 +83,18 @@
                 <td class="note" style="white-space:nowrap">
                   {{ c.validFrom ? (c.validFrom | date:'d MMM y') : 'Any time' }} – {{ c.validUntil ? (c.validUntil | date:'d MMM y') : 'No expiry' }}
                 </td>
-                <td class="num">{{ c.redemptionCount }}</td>
+                <td class="num">
+                  {{ c.activeBookingCount }}
+                  @if (c.cancelledBookingCount) { <div class="note">{{ c.cancelledBookingCount }} cancelled</div> }
+                </td>
                 <td class="num">{{ c.newCustomerCount }} / {{ c.existingCustomerCount }}</td>
                 <td class="num"><b>₹{{ c.commissionEarned | number:'1.0-0' }}</b></td>
+                <td class="num">₹{{ c.commissionPaid | number:'1.0-0' }}</td>
+                <td class="num">
+                  <b [style.color]="c.balanceDue > 0 ? 'var(--wait)' : c.balanceDue < 0 ? 'var(--danger)' : 'var(--muted)'">
+                    {{ c.balanceDue < 0 ? '−' : '' }}₹{{ (c.balanceDue < 0 ? -c.balanceDue : c.balanceDue) | number:'1.0-0' }}
+                  </b>
+                </td>
                 <td><span class="badge" [class]="c.isActive ? 'ok' : 'bad'">{{ c.isActive ? 'Active' : 'Inactive' }}</span></td>
                 <td>
                   <div class="row" style="gap:8px;justify-content:flex-end;flex-wrap:nowrap">
@@ -97,75 +106,203 @@
                   </div>
                 </td>
               </tr>
+              @if (selectedCouponId() === c.couponCodeId) {
+                <tr class="expandrow">
+                  <td colspan="13">
+                    <div class="expand-inner">
+                      <ng-container [ngTemplateOutlet]="couponDetail" [ngTemplateOutletContext]="{ $implicit: c }"></ng-container>
+                    </div>
+                  </td>
+                </tr>
+              }
             }
           </table>
         </div>
       </div>
+    }
+  }
+}
 
-      @if (selectedCoupon(); as sc) {
-        <div class="panel" style="padding:16px">
-          <h4>Bookings with {{ sc.code }}</h4>
-          <div class="sub">Coupon holder: <b>{{ sc.holderName }}</b> · ₹{{ sc.commissionPerSeat | number:'1.0-0' }} commission per seat. Cancelled or rejected bookings earn no commission.</div>
+<!-- Record payout modal -->
+@if (showPayoutModal()) {
+  <div class="modal-backdrop" (click)="showPayoutModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Record payout</h4>
+      <p class="note" style="margin-bottom:14px">
+        To <b>{{ selectedCoupon()?.holderName }}</b> · balance due <b>₹{{ selectedCoupon()?.balanceDue | number:'1.0-0' }}</b>.
+        Send the money first, then record it here.
+      </p>
+      <div class="fld">
+        <span class="lbl">Amount paid (₹)</span>
+        <input class="inp" type="number" min="1" [max]="selectedCoupon()?.balanceDue ?? null" [(ngModel)]="payoutAmount" />
+      </div>
+      <div class="row" style="gap:10px">
+        <div class="fld" style="flex:1">
+          <span class="lbl">Paid via</span>
+          <select class="inp" [(ngModel)]="payoutMethod">
+            @for (m of payoutMethods; track m.value) { <option [ngValue]="m.value">{{ m.label }}</option> }
+          </select>
+        </div>
+        <div class="fld" style="flex:1">
+          <span class="lbl">Paid on</span>
+          <input class="inp" type="date" [(ngModel)]="payoutDate" />
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Reference (UTR / transaction id) — optional</span>
+        <input class="inp" maxlength="100" [(ngModel)]="payoutReference" />
+      </div>
+      <div class="fld">
+        <span class="lbl">Note — optional</span>
+        <input class="inp" maxlength="500" placeholder="e.g. Commission for September" [(ngModel)]="payoutNotes" />
+      </div>
+      @if (payoutError()) {
+        <div class="errorbox">{{ payoutError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showPayoutModal.set(false)">Cancel</button>
+        <button class="btn" style="flex:1" [disabled]="savingPayout()" (click)="savePayout()">
+          @if (savingPayout()) { <span class="spin"></span> } @else { Record ₹{{ payoutAmount | number:'1.0-0' }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}
 
-          <div class="kpis">
-            <div class="kpi"><div class="k">Bookings</div><div class="v">{{ sc.redemptionCount }}</div></div>
-            <div class="kpi"><div class="k">New / existing customers</div><div class="v">{{ sc.newCustomerCount }} / {{ sc.existingCustomerCount }}</div></div>
-            <div class="kpi"><div class="k">Seats booked</div><div class="v">{{ sc.totalSeats }}</div></div>
-            <div class="kpi"><div class="k">Commission earned</div><div class="v">₹{{ sc.commissionEarned | number:'1.0-0' }}</div></div>
-          </div>
+<app-confirm-dialog
+  [open]="payoutToRemove() !== null"
+  title="Remove this payout?"
+  [message]="'₹' + (payoutToRemove()?.amount ?? 0) + ' will be added back to the balance due. Use this only to correct a wrong entry.'"
+  confirmLabel="Remove payout"
+  [destructive]="true"
+  (confirm)="confirmRemovePayout()"
+  (cancel)="payoutToRemove.set(null)"
+></app-confirm-dialog>
 
-          @switch (bookingsState()) {
-            @case ('loading') {
-              <app-state-panel kind="loading"></app-state-panel>
-            }
-            @case ('error') {
-              <app-state-panel kind="error" message="Could not load bookings for this coupon."></app-state-panel>
-            }
-            @case ('ready') {
-              @if (bookings().length === 0) {
-                <app-state-panel kind="empty" message="No bookings have used this coupon yet."></app-state-panel>
-              } @else {
-                <div class="tblwrap">
-                  <table class="tbl">
-                    <tr>
-                      <th>Booking</th><th>Customer</th><th>Customer type</th><th>Trip</th><th>Travel date</th>
-                      <th class="num">Seats</th><th class="num">Total</th><th class="num">Coupon discount</th><th class="num">Commission</th>
-                      <th>Status</th><th>Used on</th>
-                    </tr>
-                    @for (b of bookings(); track b.bookingId) {
-                      <tr>
-                        <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#{{ b.bookingId }}</b></a></td>
-                        <td>
-                          <a [routerLink]="['/admin/customers', b.customerId]">{{ b.customerName }}</a>
-                          <div class="note">{{ b.customerPhone }}</div>
-                        </td>
-                        <td>
-                          <span class="badge" [class]="b.isNewCustomer ? 'ok' : 'info'">{{ b.isNewCustomer ? 'New customer' : 'Existing customer' }}</span>
-                        </td>
-                        <td>{{ b.tripTitle }}</td>
-                        <td class="note" style="white-space:nowrap">{{ b.startDate | date:'d MMM y' }}</td>
-                        <td class="num">{{ b.numberOfSeats }}</td>
-                        <td class="num">₹{{ b.totalAmount | number:'1.0-0' }}</td>
-                        <td class="num">₹{{ b.discountAmount | number:'1.0-0' }}</td>
-                        <td class="num">
-                          @if (b.commissionEarned === b.commissionAmount) {
-                            <b>₹{{ b.commissionEarned | number:'1.0-0' }}</b>
-                          } @else {
-                            <b>₹0</b>
-                            <div class="note" style="text-decoration:line-through">₹{{ b.commissionAmount | number:'1.0-0' }}</div>
-                          }
-                        </td>
-                        <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
-                        <td class="note" style="white-space:nowrap">{{ b.redeemedAt | date:'d MMM y' }}</td>
-                      </tr>
-                    }
-                  </table>
-                </div>
+<!-- Details for one coupon — rendered in an expandable row directly under that coupon. -->
+<ng-template #couponDetail let-sc>
+  <div class="row sp" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+    <div>
+      <h4>Bookings with {{ sc.code }}</h4>
+      <div class="sub">Coupon holder: <b>{{ sc.holderName }}</b> · ₹{{ sc.commissionPerSeat | number:'1.0-0' }} commission per seat. Cancelled or rejected bookings earn no commission.</div>
+    </div>
+    <button class="btn sm soft" title="A public page where {{ sc.holderName }} can check their own earnings and payouts" (click)="copyPartnerLink(sc.code)">
+      Copy partner link
+    </button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k">Active bookings</div><div class="v">{{ sc.activeBookingCount }}</div></div>
+    <div class="kpi"><div class="k">Cancelled</div><div class="v">{{ sc.cancelledBookingCount }}</div></div>
+    <div class="kpi"><div class="k">Seats travelling</div><div class="v">{{ sc.totalSeats }}</div></div>
+    <div class="kpi"><div class="k">New / existing customers</div><div class="v">{{ sc.newCustomerCount }} / {{ sc.existingCustomerCount }}</div></div>
+  </div>
+
+  <div class="panel" style="padding:16px;margin:0 0 16px;background:var(--canvas, #F7F8F8)">
+    <div class="row sp" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <h4>Commission account — {{ sc.holderName }}</h4>
+        <div class="sub">Paid by hand (UPI / bank / cash). Cancelled bookings drop out of "earned" automatically.</div>
+      </div>
+      @if (sc.balanceDue > 0) {
+        <button class="btn sm" (click)="openPayoutModal()">Record payout</button>
+      }
+    </div>
+    <div class="payacct">
+      <div><span class="k">Earned</span><b>₹{{ sc.commissionEarned | number:'1.0-0' }}</b></div>
+      <span class="op">−</span>
+      <div><span class="k">Paid out</span><b>₹{{ sc.commissionPaid | number:'1.0-0' }}</b></div>
+      <span class="op">=</span>
+      <div class="bal" [class.neg]="sc.balanceDue < 0" [class.zero]="sc.balanceDue === 0">
+        <span class="k">{{ sc.balanceDue < 0 ? 'Overpaid' : 'Balance due' }}</span>
+        <b>₹{{ (sc.balanceDue < 0 ? -sc.balanceDue : sc.balanceDue) | number:'1.0-0' }}</b>
+      </div>
+    </div>
+    @if (sc.commissionReversed > 0) {
+      <p class="note" style="margin-top:10px">₹{{ sc.commissionReversed | number:'1.0-0' }} of commission was reversed because {{ sc.cancelledBookingCount }} booking(s) were cancelled.</p>
+    }
+    @if (sc.balanceDue < 0) {
+      <p class="note" style="margin-top:6px;color:var(--danger)">Paid ₹{{ -sc.balanceDue | number:'1.0-0' }} more than is now earned — this is deducted from {{ sc.holderName }}'s next commission.</p>
+    }
+
+    @switch (payoutsState()) {
+      @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
+      @case ('error') { <app-state-panel kind="error" message="Could not load payouts."></app-state-panel> }
+      @case ('ready') {
+        @if (payouts().length === 0) {
+          <p class="note" style="margin-top:12px">No payouts recorded yet.</p>
+        } @else {
+          <div class="tblwrap" style="margin-top:12px">
+            <table class="tbl">
+              <tr><th>Paid on</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th></th></tr>
+              @for (p of payouts(); track p.couponPayoutId) {
+                <tr>
+                  <td>{{ p.paidAt | date:'d MMM y' }}</td>
+                  <td>{{ payoutMethodLabel(p.method) }}</td>
+                  <td>{{ p.reference || '—' }} @if (p.notes) { <div class="note">{{ p.notes }}</div> }</td>
+                  <td class="num"><b>₹{{ p.amount | number:'1.0-0' }}</b></td>
+                  <td class="num"><button class="btn sm ghost" style="color:var(--danger)" (click)="payoutToRemove.set(p)">Remove</button></td>
+                </tr>
               }
+            </table>
+          </div>
+        }
+      }
+    }
+  </div>
+
+  @if (cancelledBookings().length > 0) {
+    <p class="note" style="margin-bottom:8px">{{ cancelledBookings().length }} cancelled booking(s) below earn no commission (shown struck through).</p>
+  }
+
+  @switch (bookingsState()) {
+    @case ('loading') {
+      <app-state-panel kind="loading"></app-state-panel>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load bookings for this coupon."></app-state-panel>
+    }
+    @case ('ready') {
+      @if (bookings().length === 0) {
+        <app-state-panel kind="empty" message="No bookings have used this coupon yet."></app-state-panel>
+      } @else {
+        <div class="tblwrap">
+          <table class="tbl">
+            <tr>
+              <th>Booking</th><th>Customer</th><th>Customer type</th><th>Trip</th><th>Travel date</th>
+              <th class="num">Seats</th><th class="num">Total</th><th class="num">Coupon discount</th><th class="num">Commission</th>
+              <th>Status</th><th>Used on</th>
+            </tr>
+            @for (b of bookings(); track b.bookingId) {
+              <tr>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#{{ b.bookingId }}</b></a></td>
+                <td>
+                  <a [routerLink]="['/admin/customers', b.customerId]">{{ b.customerName }}</a>
+                  <div class="note">{{ b.customerPhone }}</div>
+                </td>
+                <td>
+                  <span class="badge" [class]="b.isNewCustomer ? 'ok' : 'info'">{{ b.isNewCustomer ? 'New customer' : 'Existing customer' }}</span>
+                </td>
+                <td>{{ b.tripTitle }}</td>
+                <td class="note" style="white-space:nowrap">{{ b.startDate | date:'d MMM y' }}</td>
+                <td class="num">{{ b.numberOfSeats }}</td>
+                <td class="num">₹{{ b.totalAmount | number:'1.0-0' }}</td>
+                <td class="num">₹{{ b.discountAmount | number:'1.0-0' }}</td>
+                <td class="num">
+                  @if (b.commissionEarned === b.commissionAmount) {
+                    <b>₹{{ b.commissionEarned | number:'1.0-0' }}</b>
+                  } @else {
+                    <b>₹0</b>
+                    <div class="note" style="text-decoration:line-through">₹{{ b.commissionAmount | number:'1.0-0' }}</div>
+                  }
+                </td>
+                <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
+                <td class="note" style="white-space:nowrap">{{ b.redeemedAt | date:'d MMM y' }}</td>
+              </tr>
             }
-          }
+          </table>
         </div>
       }
     }
   }
-}
+</ng-template>

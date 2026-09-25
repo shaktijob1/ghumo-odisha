@@ -17,11 +17,11 @@ public class BookingServiceTests
         new(
             db,
             razorpay ?? new FakeRazorpayService(),
-            new FakeFast2SmsWhatsAppService(),
+            new FakeWhatsAppService(),
             Options.Create(new OrganizerContactOptions { WhatsAppNumber = "919000000000" }),
             NullLogger<BookingService>.Instance);
 
-    private static BookingService CreateService(GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db, FakeFast2SmsWhatsAppService whatsApp) =>
+    private static BookingService CreateService(GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db, FakeWhatsAppService whatsApp) =>
         new(
             db,
             new FakeRazorpayService(),
@@ -347,7 +347,7 @@ public class BookingServiceTests
             new PickupPoint { TripId = trip.TripId, Location = "Rasulgarh", Time = "08:00", DisplayOrder = 2, CreatedAt = now });
         await db.SaveChangesAsync();
 
-        var whatsApp = new FakeFast2SmsWhatsAppService { BookingConfirmedTemplateConfigured = true };
+        var whatsApp = new FakeWhatsAppService { BookingConfirmedTemplateConfigured = true };
         var service = CreateService(db, whatsApp);
         var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true));
 
@@ -374,7 +374,7 @@ public class BookingServiceTests
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
-        var whatsApp = new FakeFast2SmsWhatsAppService { BookingConfirmedTemplateConfigured = false };
+        var whatsApp = new FakeWhatsAppService { BookingConfirmedTemplateConfigured = false };
         var service = CreateService(db, whatsApp);
         var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 1, null, AgreedToTerms: true));
 

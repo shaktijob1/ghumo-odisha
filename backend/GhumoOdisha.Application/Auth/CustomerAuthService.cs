@@ -16,7 +16,7 @@ public class CustomerAuthService(
     IGhumoOdishaDbContext db,
     IPinHasher pinHasher,
     IJwtTokenService jwtTokenService,
-    IFast2SmsWhatsAppService whatsAppService,
+    IWhatsAppService whatsAppService,
     IOptions<OtpSettings> otpOptions,
     IOptions<JwtSettings> jwtOptions,
     IMemoryCache cache,
@@ -73,7 +73,7 @@ public class CustomerAuthService(
 
         if (devBypass)
         {
-            logger.LogWarning("DEV OTP BYPASS active — skipping Fast2SMS, OTP for {Phone} is {Otp}", phone, otp);
+            logger.LogWarning("DEV OTP BYPASS active — skipping WhatsApp, OTP for {Phone} is {Otp}", phone, otp);
         }
         else
         {

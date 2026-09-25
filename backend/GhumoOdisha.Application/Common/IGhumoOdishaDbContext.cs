@@ -21,12 +21,18 @@ public interface IGhumoOdishaDbContext
     DbSet<ItineraryPoint> ItineraryPoints { get; }
     DbSet<TripDateSlot> TripDateSlots { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<BookingPayment> BookingPayments { get; }
+    DbSet<BookingTraveller> BookingTravellers { get; }
+    DbSet<BookingEvent> BookingEvents { get; }
     DbSet<Customer> Customers { get; }
     DbSet<AdminUser> AdminUsers { get; }
     DbSet<CustomerOtp> CustomerOtps { get; }
     DbSet<CustomerRefreshToken> CustomerRefreshTokens { get; }
     DbSet<CouponCode> CouponCodes { get; }
     DbSet<CouponRedemption> CouponRedemptions { get; }
+    DbSet<CouponPayout> CouponPayouts { get; }
+    DbSet<AppLog> AppLogs { get; }
+    DbSet<AdminActivity> AdminActivities { get; }
     DbSet<Destination> Destinations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

@@ -25,6 +25,7 @@ export class DestinationFormComponent implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly uploadingHero = signal(false);
+  readonly uploadingCover = signal(false);
   readonly destination = signal<AdminDestinationDetail | null>(null);
 
   // Picked on the "create" screen, before a destinationId exists — uploaded right after the
@@ -183,6 +184,22 @@ export class DestinationFormComponent implements OnInit {
         this.loadDestination(this.destinationId!);
       },
       error: () => this.uploadingHero.set(false),
+    });
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  onCoverImageSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file || !this.destinationId) return;
+
+    this.uploadingCover.set(true);
+    this.destinationService.updateCoverImage(this.destinationId, file).subscribe({
+      next: () => {
+        this.uploadingCover.set(false);
+        this.toast.success('Cover photo updated.');
+        this.loadDestination(this.destinationId!);
+      },
+      error: () => this.uploadingCover.set(false),
     });
     (event.target as HTMLInputElement).value = '';
   }

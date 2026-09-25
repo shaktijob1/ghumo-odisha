@@ -80,8 +80,8 @@
       <div class="sub">Section B · first photo is used as the card image</div>
 
       <label class="drop">
-        Click to choose an image (JPG or PNG, up to 5 MB)
-        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onPhotoSelected($event)" />
+        Click to choose an image (JPG, PNG or WebP, up to 5 MB)
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onPhotoSelected($event)" />
       </label>
 
       @if (t.photos.length > 0) {
@@ -124,7 +124,7 @@
           </div>
           <div class="fld" style="margin:0">
             <span class="lbl">Photo</span>
-            <input class="inp" type="file" accept="image/jpeg,image/png" (change)="onHighlightFileSelected($event)" />
+            <input class="inp" type="file" accept="image/jpeg,image/png,image/webp" (change)="onHighlightFileSelected($event)" />
           </div>
         </div>
         <button class="addbtn" style="margin-top:8px" (click)="addHighlight()">+ Add highlight</button>
@@ -224,7 +224,7 @@
 
       <label class="drop">
         Click to choose an accommodation image
-        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onRoomPhotoSelected($event)" />
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onRoomPhotoSelected($event)" />
       </label>
 
       @if (t.roomPhotos.length > 0) {
@@ -245,7 +245,7 @@
 
       <label class="drop">
         Click to choose a vehicle image
-        <input type="file" accept="image/jpeg,image/png" style="display:none" (change)="onVehiclePhotoSelected($event)" />
+        <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onVehiclePhotoSelected($event)" />
       </label>
 
       @if (t.vehiclePhotos.length > 0) {

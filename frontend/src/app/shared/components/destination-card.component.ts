@@ -11,8 +11,8 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
   template: `
     <a class="dcard" [routerLink]="['/destinations', destination.slug]">
       <div class="ph">
-        @if (destination.heroImageUrl) {
-          <img [src]="destination.heroImageUrl | imageUrl" alt="{{ destination.name }}" />
+        @if (destination.coverImageUrl || destination.heroImageUrl) {
+          <img [src]="(destination.coverImageUrl || destination.heroImageUrl) | imageUrl" alt="{{ destination.name }}" />
         }
       </div>
       <div class="cnt">

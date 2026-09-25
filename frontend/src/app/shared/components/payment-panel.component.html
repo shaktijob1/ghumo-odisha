@@ -1,51 +1,43 @@
-<div class="card pad">
+<div class="card pad bookpanel">
   <h2 style="font-size:17px;margin-bottom:4px">Secure your seats</h2>
-  <p class="note" style="margin-bottom:16px">Your booking is requested. Pay now to lock it in instantly.</p>
+  <p class="note" style="margin-bottom:4px">Your booking is requested. Pay now to lock it in instantly.</p>
 
-  <div class="paycard on">
-    <div class="radio on"></div>
-    <div style="flex:1">
-      <div class="row sp">
-        <b style="font-size:14px">Pay ₹99 per seat now</b>
-        <b style="font-size:14px">₹{{ 99 * booking.numberOfSeats | number:'1.0-0' }}</b>
-      </div>
-      <p class="note" style="margin-top:4px">Reserve instantly. Pay the rest in cash before the trip date.</p>
-    </div>
+  <app-booking-price-summary
+    [startDate]="booking.startDate"
+    [endDate]="booking.endDate"
+    [pricePerPerson]="booking.amountPerPerson"
+    [seats]="booking.numberOfSeats"
+    [couponDiscount]="couponDiscount()"
+  >
+    <app-coupon-field
+      couponSlot
+      [signedIn]="true"
+      [selection]="selection()"
+      [externalError]="couponError()"
+      (selectionChange)="onCouponChange($event)"
+    ></app-coupon-field>
+  </app-booking-price-summary>
+
+  <div class="bp-info">
+    <span class="bp-check" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </span>
+    <div class="bp-rowtext"><b>Pay only ₹{{ payNowAmount() | number:'1.0-0' }} today</b><small>Your seat will be confirmed instantly.</small></div>
   </div>
 
-  <div class="hr"></div>
-
-  <div class="lbl">Have a coupon code?</div>
-  @if (appliedCoupon(); as coupon) {
-    <div class="row sp" style="background:var(--accent-soft);border-radius:10px;padding:10px 12px">
-      <span style="font-size:13px;color:var(--accent);font-weight:600">{{ coupon.code }} applied — ₹{{ coupon.discountAmount | number:'1.0-0' }} off</span>
-      <button type="button" class="btn sm ghost" (click)="removeCoupon()">Remove</button>
-    </div>
-  } @else {
-    <div class="row" style="gap:8px">
-      <input class="inp" style="flex:1" placeholder="Enter coupon code" [ngModel]="couponInput()" (ngModelChange)="couponInput.set($event.toUpperCase())" />
-      <button type="button" class="btn sm ghost" [disabled]="couponChecking() || !couponInput().trim()" (click)="applyCoupon()">
-        @if (couponChecking()) { <span class="spin"></span> } @else { Apply }
-      </button>
-    </div>
-    @if (couponError()) {
-      <p class="note" style="color:var(--danger);margin-top:6px">{{ couponError() }}</p>
-    }
-  }
-
-  <div class="hr"></div>
-  <div class="sumrow"><span class="mut">Pay now</span><span>₹{{ payNowAmount() | number:'1.0-0' }}</span></div>
-  @if (cashDueAmount() > 0) {
-    <div class="sumrow"><span class="mut">Cash due before trip</span><span>₹{{ cashDueAmount() | number:'1.0-0' }}</span></div>
-  }
-
   @if (paymentError()) {
-    <div class="errorbox" style="margin-top:12px">{{ paymentError() }}</div>
+    <div class="errorbox">{{ paymentError() }}</div>
   }
 
-  <button class="btn block" style="margin-top:16px" [disabled]="payingNow()" (click)="payNow()">
-    @if (payingNow()) { <span class="spin"></span> } @else { Pay ₹{{ payNowAmount() | number:'1.0-0' }} Securely }
+  <button class="btn block bp-cta" [disabled]="payingNow() || revalidatingCoupon()" (click)="payNow()">
+    @if (payingNow() || revalidatingCoupon()) {
+      <span class="spin"></span>
+    } @else {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
+      <span>PAY ₹{{ payNowAmount() | number:'1.0-0' }} SECURELY</span>
+    }
   </button>
+
   @if (showSkip) {
     <div class="ordivider"><span>or</span></div>
 

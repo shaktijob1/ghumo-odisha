@@ -1,11 +1,12 @@
 namespace GhumoOdisha.Application.Auth;
 
 /// <summary>
-/// Sends the approved Fast2SMS WhatsApp template message. The template is fixed and takes exactly
-/// two variables — there is no per-message-type template, so every send (OTP, booking notices)
-/// reuses this same one. Implementations must never log the OTP or the API key.
+/// Sends approved WhatsApp template messages. The OTP template takes exactly two variables
+/// ("Hello {{1}}, This is your {{2}} ...") and has no per-message-type siblings, so booking
+/// notices without a dedicated template reuse it. Implementations must never log the OTP or
+/// the WhatsApp access token.
 /// </summary>
-public interface IFast2SmsWhatsAppService
+public interface IWhatsAppService
 {
     Task SendOtpAsync(string phoneNumber, string customerName, string otp, CancellationToken cancellationToken = default);
 
@@ -15,7 +16,7 @@ public interface IFast2SmsWhatsAppService
 
     /// <summary>
     /// Sends the dedicated "Booking Confirmed" template. Returns false without sending when that
-    /// template isn't configured (Fast2Sms:BookingConfirmedMessageId empty), so the caller can fall
+    /// template isn't configured (WhatsApp:BookingConfirmedTemplateName empty), so the caller can fall
     /// back to <see cref="SendTemplateAsync"/>. Throws WhatsAppDeliveryException if the send fails.
     /// </summary>
     Task<bool> SendBookingConfirmedAsync(string phoneNumber, BookingConfirmedWhatsAppMessage message, CancellationToken cancellationToken = default);

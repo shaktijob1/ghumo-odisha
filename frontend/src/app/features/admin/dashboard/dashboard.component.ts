@@ -31,9 +31,11 @@ export class DashboardComponent implements OnInit {
   readonly state = signal<LoadState>('loading');
   readonly dashboard = signal<Dashboard | null>(null);
   readonly contact = this.contactService.get();
-  readonly heroPhoto = this.heroPhotoService.get();
+  readonly heroPhoto = this.heroPhotoService.get('home');
+  readonly tripsHeroPhoto = this.heroPhotoService.get('trips');
   readonly uploadingPhoto = signal(false);
   readonly uploadingHeroPhoto = signal(false);
+  readonly uploadingTripsHeroPhoto = signal(false);
 
   ngOnInit(): void {
     this.load();
@@ -78,6 +80,22 @@ export class DashboardComponent implements OnInit {
         window.location.reload();
       },
       error: () => this.uploadingHeroPhoto.set(false),
+    });
+    (event.target as HTMLInputElement).value = '';
+  }
+
+  onTripsHeroPhotoSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    this.uploadingTripsHeroPhoto.set(true);
+    this.heroService.setPhoto(file, 'trips').subscribe({
+      next: () => {
+        this.uploadingTripsHeroPhoto.set(false);
+        this.toast.success('Trips page hero photo updated.');
+        window.location.reload();
+      },
+      error: () => this.uploadingTripsHeroPhoto.set(false),
     });
     (event.target as HTMLInputElement).value = '';
   }

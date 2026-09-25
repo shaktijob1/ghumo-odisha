@@ -13,13 +13,21 @@
         <h2>Booking #GO-{{ b.bookingId }}</h2>
         <div class="sub">Requested {{ b.requestedAt | date:'d MMM y, h:mm a' }}</div>
       </div>
-      <div class="row" style="gap:8px">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        @if (canChangeSeats) {
+          <button class="btn sm ghost" (click)="openSeatsModal()">Change seats</button>
+        }
         @if (b.bookingStatus === BookingStatus.Requested || b.bookingStatus === BookingStatus.Pending) {
           <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="showRejectModal.set(true)">Reject</button>
           <button class="btn sm" (click)="openConfirmModal()">Confirm booking</button>
         }
+        @if (canTakePayments) {
+          <button class="btn sm ghost" [disabled]="downloadingInvoice()" (click)="downloadInvoice()">
+            @if (downloadingInvoice()) { <span class="spin"></span> } @else { Download invoice }
+          </button>
+        }
         @if (b.bookingStatus === BookingStatus.Confirmed) {
-          <button class="btn sm ghost" (click)="showCancelModal.set(true)">Cancel</button>
+          <button class="btn sm ghost" (click)="openCancelModal()">Cancel</button>
         }
       </div>
     </div>
@@ -32,15 +40,31 @@
           <span class="k">Trip</span><b>{{ b.tripTitle }}</b>
           <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
           <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
+          <span class="k">Rooms allotted</span><b>{{ b.roomsAllotted }}</b>
+          <span class="k">Male / Female</span>
+          <span>
+            <b>{{ b.maleCount === null && b.femaleCount === null ? 'Not recorded' : (b.maleCount ?? 0) + ' male · ' + (b.femaleCount ?? 0) + ' female' }}</b>
+            @if (canEditTravellers) { <button class="linkbtn" (click)="openGenderModal()">Edit</button> }
+          </span>
           <span class="k">Price per person</span><b>₹{{ b.amountPerPerson | number:'1.0-0' }}</b>
+          @if (b.discountAmount > 0) {
+            <span class="k">Discount</span><b>−₹{{ b.discountAmount | number:'1.0-0' }}@if (b.couponCode) { <span class="mut"> · {{ b.couponCode }}</span> }</b>
+          }
           <span class="k">Total amount</span><b>₹{{ b.totalAmount | number:'1.0-0' }}</b>
-          <span class="k">Advance</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
-          <span class="k">Remaining</span><b>₹{{ b.remainingAmount | number:'1.0-0' }}</b>
+          <span class="k">Amount paid</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
+          <span class="k">Balance due</span><b [style.color]="b.remainingAmount > 0 ? 'var(--wait)' : 'var(--ok)'">₹{{ b.remainingAmount | number:'1.0-0' }}</b>
           <span class="k">Booking status</span><span><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></span>
           <span class="k">Payment status</span><span><app-status-badge kind="payment" [value]="b.paymentStatus"></app-status-badge></span>
           <span class="k">Requested at</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
           <span class="k">Confirmed at</span><b class="mut">{{ b.confirmedAt ? (b.confirmedAt | date:'d MMM y, h:mm a') : '—' }}</b>
           <span class="k">Cancelled at</span><b class="mut">{{ b.cancelledAt ? (b.cancelledAt | date:'d MMM y, h:mm a') : '—' }}</b>
+          @if (b.bookingStatus === BookingStatus.Cancelled && (b.cancellationReason || b.refundWaived)) {
+            <span class="k">Cancellation</span>
+            <b>
+              @if (b.refundWaived) { <span class="badge bad">No refund</span> }
+              {{ b.cancellationReason }}
+            </b>
+          }
         </div>
         <div class="hr"></div>
         <div class="lbl">Customer notes</div>
@@ -66,8 +90,300 @@
         <p class="note" style="margin-top:12px">Seats are deducted only when you confirm.</p>
       </div>
     </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="row sp" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div>
+          <h4>Payments</h4>
+          <div class="sub">
+            ₹{{ b.advanceAmount | number:'1.0-0' }} received of ₹{{ b.totalAmount | number:'1.0-0' }}
+            @if (b.remainingAmount > 0) { · <b style="color:var(--wait)">₹{{ b.remainingAmount | number:'1.0-0' }} due</b> } @else if (b.payments.length) { · <b style="color:var(--ok)">Fully paid</b> }
+          </div>
+        </div>
+        @if (canTakePayments && b.remainingAmount > 0) {
+          <button class="btn sm" (click)="openPaymentModal()">Record payment</button>
+        }
+      </div>
+
+      @if (b.payments.length === 0) {
+        <p class="note" style="margin-top:12px">
+          @if (canTakePayments) { No payments recorded yet. } @else { Payments can be recorded once the booking is confirmed. }
+        </p>
+      } @else {
+        <div class="tblwrap" style="margin-top:12px">
+          <table class="tbl">
+            <tr><th>Date</th><th>Method</th><th>Reference</th><th>Recorded by</th><th class="num">Amount</th><th></th></tr>
+            @for (p of b.payments; track p.bookingPaymentId) {
+              <tr>
+                <td>{{ p.paidAt | date:'d MMM y, h:mm a' }}</td>
+                <td>{{ PaymentMethodLabels[p.method] }}</td>
+                <td>
+                  {{ p.reference || '—' }}
+                  @if (p.notes) { <div class="note">{{ p.notes }}</div> }
+                </td>
+                <td>{{ p.recordedBy }}</td>
+                <td class="num"><b>₹{{ p.amount | number:'1.0-0' }}</b></td>
+                <td class="num">
+                  @if (canTakePayments && p.method !== PaymentMethod.Razorpay) {
+                    <button class="btn sm ghost" style="color:var(--danger)" (click)="paymentToRemove.set(p)">Remove</button>
+                  }
+                </td>
+              </tr>
+            }
+          </table>
+        </div>
+      }
+      @if (b.advanceAmount > b.totalAmount) {
+        <p class="note" style="margin-top:10px;color:var(--wait)">₹{{ b.advanceAmount - b.totalAmount | number:'1.0-0' }} paid above the current total — non-refundable.</p>
+      }
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="row sp" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div>
+          <h4>Travellers</h4>
+          <div class="sub">{{ b.travellers.length }} of {{ b.numberOfSeats }} seat(s) filled · Aadhaar: last 4 digits only · a mobile number adds this booking to that person's account (no OTP is sent)</div>
+        </div>
+        @if (canEditTravellers && !editingTravellers()) {
+          <button class="btn sm ghost" (click)="startEditTravellers()">{{ b.travellers.length ? 'Edit travellers' : 'Add travellers' }}</button>
+        }
+      </div>
+
+      @if (editingTravellers()) {
+        <div class="tblwrap" style="margin-top:12px">
+          <table class="tbl travtbl">
+            <tr><th>Seat</th><th>Full name</th><th>Gender</th><th>Age</th><th>Aadhaar (last 4)</th><th>Mobile (optional)</th></tr>
+            @for (r of travellerRows; track r.seatNumber) {
+              <tr>
+                <td class="mut">{{ r.seatNumber }}</td>
+                <td><input class="inp sm" maxlength="100" placeholder="Name as on ID" [(ngModel)]="r.fullName" /></td>
+                <td>
+                  <select class="inp sm" [(ngModel)]="r.gender">
+                    <option [ngValue]="null">—</option>
+                    @for (g of genders; track g) { <option [ngValue]="g">{{ GenderLabels[g] }}</option> }
+                  </select>
+                </td>
+                <td><input class="inp sm" style="width:70px" type="number" min="0" max="120" [(ngModel)]="r.age" /></td>
+                <td>
+                  <div class="numprefix inp sm" style="width:150px">
+                    <span class="numprefix-code">XXXX XXXX</span>
+                    <input inputmode="numeric" maxlength="14" placeholder="1234" [ngModel]="r.aadhaarLast4" (ngModelChange)="onAadhaarInput(r, $event)" />
+                  </div>
+                </td>
+                <td>
+                  <div class="numprefix inp sm" style="width:160px">
+                    <span class="numprefix-code">+91</span>
+                    <input inputmode="numeric" maxlength="10" [(ngModel)]="r.phoneNumber" />
+                  </div>
+                </td>
+              </tr>
+            }
+          </table>
+        </div>
+        <p class="note" style="margin-top:8px">Leave a row empty to skip that seat. Once every seat has a gender, the male / female count updates itself.</p>
+        @if (travellersError()) {
+          <div class="errorbox">{{ travellersError() }}</div>
+        }
+        <div class="row" style="gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn sm ghost" (click)="editingTravellers.set(false)">Cancel</button>
+          <button class="btn sm" [disabled]="submitting()" (click)="saveTravellers()">
+            @if (submitting()) { <span class="spin"></span> } @else { Save travellers }
+          </button>
+        </div>
+      } @else if (b.travellers.length === 0) {
+        <p class="note" style="margin-top:12px">No traveller details yet.</p>
+      } @else {
+        <div class="tblwrap" style="margin-top:12px">
+          <table class="tbl">
+            <tr><th>Seat</th><th>Name</th><th>Gender</th><th>Age</th><th>Aadhaar</th><th>Mobile</th></tr>
+            @for (t of b.travellers; track t.bookingTravellerId) {
+              <tr>
+                <td class="mut">{{ t.seatNumber }}</td>
+                <td><b>{{ t.fullName }}</b></td>
+                <td>{{ t.gender !== null ? GenderLabels[t.gender] : '—' }}</td>
+                <td>{{ t.age ?? '—' }}</td>
+                <td class="mut">{{ t.aadhaarLast4 ? 'XXXX XXXX ' + t.aadhaarLast4 : '—' }}</td>
+                <td>
+                  @if (t.phoneNumber) {
+                    {{ t.phoneNumber }}
+                    @if (t.linkedCustomerId) {
+                      <a class="badge ok" style="margin-left:6px" [routerLink]="['/admin/customers', t.linkedCustomerId]">
+                        {{ t.linkedCustomerId === b.customerId ? 'Booker' : 'Linked account' }}
+                      </a>
+                    }
+                  } @else { — }
+                </td>
+              </tr>
+            }
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <h4>Timeline</h4>
+      <div class="sub" style="margin-bottom:14px">Every change to this booking. Customers see the same steps, except internal corrections.</div>
+      <app-booking-timeline [events]="b.timeline" [showActor]="true"></app-booking-timeline>
+    </div>
   }
 }
+
+<!-- Change seats modal -->
+@if (showSeatsModal()) {
+  <div class="modal-backdrop" (click)="showSeatsModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Change seats</h4>
+      <p class="note" style="margin-bottom:14px">
+        Currently {{ booking()?.numberOfSeats }} seat(s).
+        @if (booking()?.bookingStatus === BookingStatus.Confirmed) { Extra seats are taken from this date; removed seats go back to it. }
+        Nothing is refunded when seats are reduced.
+      </p>
+      <div class="fld">
+        <span class="lbl">New number of seats</span>
+        <input class="inp" type="number" min="1" step="1" [(ngModel)]="newSeats" />
+      </div>
+      <div class="fld">
+        <span class="lbl">Reason (shown on the timeline)</span>
+        <input class="inp" maxlength="300" placeholder="e.g. One traveller cancelled" [(ngModel)]="seatsReason" />
+      </div>
+      @let p = seatsPreview;
+      <div class="card pad" style="background:var(--surface-2, #F7F8F8);margin-bottom:14px">
+        <div class="sumrow"><span class="mut">New total</span><b>₹{{ p.total | number:'1.0-0' }}</b></div>
+        <div class="sumrow"><span class="mut">Balance due</span><b>₹{{ p.balance | number:'1.0-0' }}</b></div>
+        <div class="sumrow"><span class="mut">Rooms allotted</span><b>{{ p.rooms }}</b></div>
+        @if (p.excess > 0) {
+          <p class="note" style="margin-top:6px;color:var(--wait)">₹{{ p.excess | number:'1.0-0' }} already paid is above the new total and will not be refunded.</p>
+        }
+      </div>
+      @if (seatsError()) {
+        <div class="errorbox">{{ seatsError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showSeatsModal.set(false)">Close</button>
+        <button class="btn" style="flex:1" [disabled]="submitting()" (click)="submitSeats()">
+          @if (submitting()) { <span class="spin"></span> } @else { Update seats }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Male / female modal -->
+@if (showGenderModal()) {
+  <div class="modal-backdrop" (click)="showGenderModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Male / female travellers</h4>
+      <p class="note" style="margin-bottom:14px">Of the {{ booking()?.numberOfSeats }} seat(s) on this booking.</p>
+      <div class="row" style="gap:10px">
+        <div class="fld" style="flex:1">
+          <span class="lbl">Male</span>
+          <input class="inp" type="number" min="0" [max]="booking()?.numberOfSeats ?? null" [(ngModel)]="maleCount" />
+        </div>
+        <div class="fld" style="flex:1">
+          <span class="lbl">Female</span>
+          <input class="inp" type="number" min="0" [max]="booking()?.numberOfSeats ?? null" [(ngModel)]="femaleCount" />
+        </div>
+      </div>
+      @if (genderError()) {
+        <div class="errorbox">{{ genderError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showGenderModal.set(false)">Close</button>
+        <button class="btn" style="flex:1" [disabled]="submitting()" (click)="submitGenderCounts()">Save</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Cancel modal -->
+@if (showCancelModal()) {
+  <div class="modal-backdrop" (click)="showCancelModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Cancel booking</h4>
+      <p class="note" style="margin-bottom:14px">Seats go back to this date either way.</p>
+      <label class="paycard" [class.on]="!cancelWaiveRefund" style="cursor:pointer;margin-bottom:8px">
+        <input type="radio" name="cancelmode" [value]="false" [(ngModel)]="cancelWaiveRefund" style="margin-top:3px" />
+        <div style="flex:1">
+          <b style="font-size:14px">Cancel and refund</b>
+          <p class="note" style="margin-top:2px">An online payment is refunded in full via Razorpay first; offline payments are marked refunded.</p>
+        </div>
+      </label>
+      <label class="paycard" [class.on]="cancelWaiveRefund" style="cursor:pointer">
+        <input type="radio" name="cancelmode" [value]="true" [(ngModel)]="cancelWaiveRefund" style="margin-top:3px" />
+        <div style="flex:1">
+          <b style="font-size:14px">Cancel without refund</b>
+          <p class="note" style="margin-top:2px">The ₹{{ booking()?.advanceAmount | number:'1.0-0' }} paid is kept. A reason is required.</p>
+        </div>
+      </label>
+      <div class="fld" style="margin-top:12px">
+        <span class="lbl">Reason {{ cancelWaiveRefund ? '(required)' : '(optional)' }}</span>
+        <textarea class="inp" rows="2" maxlength="500" [(ngModel)]="cancelReason"></textarea>
+      </div>
+      @if (cancelError()) {
+        <div class="errorbox">{{ cancelError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showCancelModal.set(false)">Keep booking</button>
+        <button class="btn dang" style="flex:1" [disabled]="submitting()" (click)="submitCancel()">
+          @if (submitting()) { <span class="spin"></span> } @else { {{ cancelWaiveRefund ? 'Cancel without refund' : 'Cancel and refund' }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Record payment modal -->
+@if (showPaymentModal()) {
+  <div class="modal-backdrop" (click)="showPaymentModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Record payment</h4>
+      <p class="note" style="margin-bottom:14px">Balance due: <b>₹{{ booking()?.remainingAmount | number:'1.0-0' }}</b></p>
+      <div class="fld">
+        <span class="lbl">Amount received (₹)</span>
+        <input class="inp" type="number" min="1" [max]="booking()?.remainingAmount ?? null" [(ngModel)]="paymentAmount" />
+      </div>
+      <div class="row" style="gap:10px">
+        <div class="fld" style="flex:1">
+          <span class="lbl">Method</span>
+          <select class="inp" [(ngModel)]="paymentMethod">
+            @for (m of offlineMethods; track m) { <option [ngValue]="m">{{ PaymentMethodLabels[m] }}</option> }
+          </select>
+        </div>
+        <div class="fld" style="flex:1">
+          <span class="lbl">Date received</span>
+          <input class="inp" type="date" [(ngModel)]="paymentDate" />
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Reference (UTR / receipt no.) — optional</span>
+        <input class="inp" maxlength="100" [(ngModel)]="paymentReference" />
+      </div>
+      <div class="fld">
+        <span class="lbl">Note — optional</span>
+        <input class="inp" maxlength="500" placeholder="e.g. Collected at pickup point" [(ngModel)]="paymentNotes" />
+      </div>
+      @if (paymentError()) {
+        <div class="errorbox">{{ paymentError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showPaymentModal.set(false)">Cancel</button>
+        <button class="btn" style="flex:1" [disabled]="submitting()" (click)="submitPayment()">
+          @if (submitting()) { <span class="spin"></span> } @else { Record ₹{{ paymentAmount | number:'1.0-0' }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<app-confirm-dialog
+  [open]="paymentToRemove() !== null"
+  title="Remove this payment?"
+  [message]="'₹' + (paymentToRemove()?.amount ?? 0) + ' will be taken off the amount paid and added back to the balance due. Use this only to correct a mistake.'"
+  confirmLabel="Remove payment"
+  [destructive]="true"
+  (confirm)="confirmRemovePayment()"
+  (cancel)="paymentToRemove.set(null)"
+></app-confirm-dialog>
 
 <!-- Confirm modal -->
 @if (showConfirmModal()) {
@@ -78,6 +394,20 @@
         <span class="lbl">Advance collected offline (₹)</span>
         <input class="inp" type="number" [(ngModel)]="advanceAmount" min="0" [max]="booking()?.totalAmount ?? null" />
       </div>
+      @if (advanceAmount > 0) {
+        <div class="row" style="gap:10px">
+          <div class="fld" style="flex:1">
+            <span class="lbl">Received via</span>
+            <select class="inp" [(ngModel)]="confirmMethod">
+              @for (m of offlineMethods; track m) { <option [ngValue]="m">{{ PaymentMethodLabels[m] }}</option> }
+            </select>
+          </div>
+          <div class="fld" style="flex:1">
+            <span class="lbl">Reference — optional</span>
+            <input class="inp" maxlength="100" [(ngModel)]="confirmReference" />
+          </div>
+        </div>
+      }
       <div class="row sp" style="font-size:14px;font-weight:700;margin-bottom:14px">
         <span>Remaining</span><span>₹{{ remaining | number:'1.0-0' }}</span>
       </div>
@@ -101,14 +431,4 @@
   [destructive]="true"
   (confirm)="submitReject()"
   (cancel)="showRejectModal.set(false)"
-></app-confirm-dialog>
-
-<app-confirm-dialog
-  [open]="showCancelModal()"
-  title="Cancel booking?"
-  message="Seats will be restored to this date slot. If this booking was paid online, it will be refunded in full via Razorpay before the booking is cancelled."
-  confirmLabel="Cancel booking"
-  [destructive]="true"
-  (confirm)="submitCancel()"
-  (cancel)="showCancelModal.set(false)"
 ></app-confirm-dialog>

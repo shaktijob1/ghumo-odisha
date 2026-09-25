@@ -160,19 +160,19 @@
           @if (bookingResult()) {
             <ng-container [ngTemplateOutlet]="afterBookingSteps"></ng-container>
           } @else {
-            <div class="card pad">
-              <div class="row sp" style="margin-bottom:14px">
-                <div class="price"><b>₹{{ t.amountPerPerson | number:'1.0-0' }}</b><small>per person</small></div>
-                @if (selectedSlot()) { <span class="badge ok">Seats open</span> }
+            <div class="card pad bookpanel">
+              <div class="bp-top">
+                <div class="bp-price"><b>₹{{ t.amountPerPerson | number:'1.0-0' }}</b><small>per person</small></div>
+                @if (selectedSlot()) { <span class="bp-open">Seats open</span> }
               </div>
 
               @if (t.itineraryPdfUrl) {
-                <a class="btn soft block" style="margin-bottom:16px" [href]="t.itineraryPdfUrl | imageUrl" target="_blank">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <a class="btn soft block bp-pdf" [href]="t.itineraryPdfUrl | imageUrl" target="_blank">
+                  <svg width="15" height="15"viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   Download Itinerary (PDF)
                 </a>
               } @else {
-                <button type="button" class="btn soft block" style="margin-bottom:16px" (click)="downloadItineraryDemo()">
+                <button type="button" class="btn soft block bp-pdf" (click)="downloadItineraryDemo()">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   Download Itinerary (PDF)
                 </button>
@@ -228,35 +228,51 @@
                 <app-seat-selector [(value)]="seats" [max]="slot.availableSeats"></app-seat-selector>
                 <p class="note" style="margin-top:8px">Maximum {{ slot.availableSeats }} on this date</p>
 
-                <div class="hr"></div>
-                <div class="sumrow"><span class="mut">Date</span><span>{{ slot.startDate | date:'d MMM y' }} → {{ slot.endDate | date:'d MMM y' }}</span></div>
-                <div class="sumrow"><span class="mut">Trip Price</span><span>₹{{ t.amountPerPerson | number:'1.0-0' }} × {{ seats() }}</span></div>
-                <div class="sumrow"><span class="mut">Booking Advance</span><span>₹99 × {{ seats() }}</span></div>
-                <div class="sumrow total" style="background:var(--accent-soft);border-radius:10px;padding:10px 12px;border-top:none;margin-top:10px">
-                  <span>Pay Now</span><span style="color:var(--accent)">₹{{ bookingAdvance() | number:'1.0-0' }}</span>
-                </div>
-                <div class="sumrow" style="margin-top:4px"><span class="mut">Remaining Amount</span><span>₹{{ remainingAmount() | number:'1.0-0' }}</span></div>
-                <p class="note" style="margin:10px 0 14px">Pay ₹99 per seat to confirm your booking. Remaining amount can be paid manually before the trip.</p>
+                <app-booking-price-summary [startDate]="slot.startDate" [endDate]="slot.endDate" [pricePerPerson]="t.amountPerPerson" [seats]="seats()" [couponDiscount]="couponDiscount()">
+                  <app-coupon-field couponSlot [signedIn]="auth.isAuthenticated()" [selection]="coupon()" (selectionChange)="onCouponChange($event)"></app-coupon-field>
+                </app-booking-price-summary>
 
-                @if (auth.isAuthenticated()) {
-                  <div class="fld">
-                    <span class="lbl">Anything we should know? (optional)</span>
-                    <textarea class="inp" rows="2" [ngModel]="customerNotes()" (ngModelChange)="customerNotes.set($event)"></textarea>
-                  </div>
-                }
+                <div class="bp-info">
+                  <span class="bp-check" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </span>
+                  <div class="bp-rowtext"><b>Pay only ₹{{ bookingAdvance() | number:'1.0-0' }} today</b><small>Your seat will be confirmed instantly.</small></div>
+                </div>
+
 
                 @if (submitError()) {
                   <div class="errorbox">{{ submitError() }}</div>
                 }
 
-                <label class="row" style="gap:8px;margin-bottom:12px;align-items:flex-start;cursor:pointer">
-                  <input type="checkbox" style="margin-top:2px" [ngModel]="termsAccepted()" (ngModelChange)="termsAccepted.set($event)" />
-                  <span class="note">I have read and accept the <a routerLink="/terms" target="_blank" style="color:var(--accent);font-weight:600">Terms &amp; Conditions</a>.</span>
+                <label class="bp-terms">
+                  <input type="checkbox" [ngModel]="termsAccepted()" (ngModelChange)="termsAccepted.set($event)" />
+                  <span>I have read and accept the <a routerLink="/terms" target="_blank">Terms &amp; Conditions</a>.</span>
                 </label>
 
-                <button class="btn block" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">
-                  @if (submitting()) { <span class="spin"></span> } @else { PAY ₹{{ bookingAdvance() | number:'1.0-0' }} &amp; CONFIRM BOOKING }
+                <button class="btn block bp-cta" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">
+                  @if (submitting()) {
+                    <span class="spin"></span>
+                  } @else {
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
+                    <span>PAY ₹{{ bookingAdvance() | number:'1.0-0' }} &amp; CONFIRM BOOKING</span>
+                    <svg class="bp-cta-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                  }
                 </button>
+
+                <div class="bp-benefits">
+                  <span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    Secure Payment
+                  </span>
+                  <span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"></path></svg>
+                    Instant Confirmation
+                  </span>
+                  <span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+                    Trusted Travel Partner
+                  </span>
+                </div>
               }
             </div>
 
@@ -337,6 +353,8 @@
         </div>
       } @else if (bookingResult() && !skippedPayment()) {
         <app-payment-panel
+          [coupon]="coupon()"
+          (couponChange)="coupon.set($event)"
           [booking]="bookingResult()!.booking"
           (confirmed)="onPaymentConfirmed()"
           (skip)="skippedPayment.set(true)"

@@ -12,6 +12,9 @@ public class SiteHeroPhotoConfiguration : IEntityTypeConfiguration<SiteHeroPhoto
 
         builder.HasKey(h => h.SiteHeroPhotoId);
 
+        builder.Property(h => h.Page).HasConversion<int>();
+        builder.HasIndex(h => h.Page).IsUnique();
+
         builder.Property(h => h.ImageUrl)
             .IsRequired()
             .HasMaxLength(500);

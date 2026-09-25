@@ -25,6 +25,27 @@ public class AdminCouponsController(ICouponService couponService) : ControllerBa
         return Ok(ApiResponse<IReadOnlyList<AdminCouponBookingDto>>.Ok(result));
     }
 
+    [HttpGet("{id:int}/payouts")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CouponPayoutDto>>>> GetPayouts(int id, CancellationToken cancellationToken)
+    {
+        var result = await couponService.GetPayoutsAsync(id, cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<CouponPayoutDto>>.Ok(result));
+    }
+
+    [HttpPost("{id:int}/payouts")]
+    public async Task<ActionResult<ApiResponse<object>>> AddPayout(int id, AddCouponPayoutRequest request, CancellationToken cancellationToken)
+    {
+        await couponService.AddPayoutAsync(id, request, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Payout recorded."));
+    }
+
+    [HttpDelete("{id:int}/payouts/{payoutId:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> RemovePayout(int id, int payoutId, CancellationToken cancellationToken)
+    {
+        await couponService.RemovePayoutAsync(id, payoutId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Payout removed."));
+    }
+
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object>>> CreateCoupon(AdminCreateCouponRequest request, CancellationToken cancellationToken)
     {

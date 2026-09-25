@@ -12,14 +12,17 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         {
             t.HasCheckConstraint("CK_Booking_NumberOfSeats", "NumberOfSeats > 0");
             t.HasCheckConstraint("CK_Booking_AdvanceAmount_NonNegative", "AdvanceAmount >= 0");
-            t.HasCheckConstraint("CK_Booking_AdvanceAmount_LteTotal", "AdvanceAmount <= TotalAmount");
-            t.HasCheckConstraint("CK_Booking_RemainingAmount", "RemainingAmount = TotalAmount - AdvanceAmount");
+            // An admin reducing seats after payment can leave AmountPaid above the new total — no
+            // refund is given, the balance just floors at zero. So paid <= total is no longer an invariant.
+            t.HasCheckConstraint("CK_Booking_RemainingAmount", "RemainingAmount = GREATEST(TotalAmount - AdvanceAmount, 0)");
+            t.HasCheckConstraint("CK_Booking_GenderCounts", "COALESCE(MaleCount, 0) + COALESCE(FemaleCount, 0) <= NumberOfSeats");
         });
 
         builder.HasKey(b => b.BookingId);
 
         builder.Property(b => b.AmountPerPerson).HasColumnType("decimal(10,2)");
         builder.Property(b => b.TotalAmount).HasColumnType("decimal(10,2)");
+        builder.Property(b => b.DiscountAmount).HasColumnType("decimal(10,2)");
         builder.Property(b => b.AdvanceAmount).HasColumnType("decimal(10,2)");
         builder.Property(b => b.RemainingAmount).HasColumnType("decimal(10,2)");
 
@@ -29,6 +32,7 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.Property(b => b.CustomerNotes).HasColumnType("text");
         builder.Property(b => b.AdminNotes).HasColumnType("text");
+        builder.Property(b => b.CancellationReason).HasMaxLength(500);
         builder.Property(b => b.RazorpayOrderId).HasMaxLength(64);
         builder.Property(b => b.RazorpayPaymentId).HasMaxLength(64);
         builder.Property(b => b.RazorpayRefundId).HasMaxLength(64);

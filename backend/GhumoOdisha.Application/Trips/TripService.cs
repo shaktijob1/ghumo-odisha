@@ -9,7 +9,7 @@ namespace GhumoOdisha.Application.Trips;
 
 public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) : ITripService
 {
-    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png"];
+    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp"];
     private const long MaxImageSizeBytes = 5 * 1024 * 1024;
     private const long MaxItineraryPdfSizeBytes = 10 * 1024 * 1024;
 
@@ -67,8 +67,9 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 
     public async Task<IReadOnlyList<DateSlotDto>> GetActiveDateSlotsAsync(int tripId, CancellationToken cancellationToken = default)
     {
+        var today = TripCalendar.Today();
         var slots = await db.TripDateSlots
-            .Where(s => s.TripId == tripId && s.Status == TripDateSlotStatus.Active)
+            .Where(s => s.TripId == tripId && s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
             .OrderBy(s => s.StartDate)
             .ToListAsync(cancellationToken);
 
@@ -682,7 +683,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 
         if (!AllowedImageContentTypes.Contains(image.ContentType, StringComparer.OrdinalIgnoreCase))
         {
-            errors.Add("Only JPG or PNG images are allowed.");
+            errors.Add("Only JPG, PNG or WebP images are allowed.");
         }
 
         if (image.Length <= 0 || image.Length > MaxImageSizeBytes)
@@ -699,8 +700,9 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
     internal static TripSummaryDto MapToSummary(Trip trip)
     {
         var coverImage = trip.TripPhotos.OrderBy(p => p.DisplayOrder).FirstOrDefault()?.ImageUrl;
+        var today = TripCalendar.Today();
         var nextSlot = trip.TripDateSlots
-            .Where(s => s.Status == TripDateSlotStatus.Active)
+            .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
             .OrderBy(s => s.StartDate)
             .FirstOrDefault();
 
@@ -717,7 +719,22 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             MapInclusions(trip),
             trip.TripHighlights.OrderBy(h => h.DisplayOrder).Select(h => h.PlaceName).ToList(),
             MapPhotos(trip),
-            trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList());
+            trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList(),
+            MapUpcomingSlots(trip));
+    }
+
+    // Feeds the trip card's rolling dates strip — information only, never used for booking.
+    private const int MaxUpcomingSlotsOnCard = 8;
+
+    private static IReadOnlyList<UpcomingSlotDto> MapUpcomingSlots(Trip trip)
+    {
+        var today = TripCalendar.Today();
+        return trip.TripDateSlots
+            .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
+            .OrderBy(s => s.StartDate)
+            .Take(MaxUpcomingSlotsOnCard)
+            .Select(s => new UpcomingSlotDto(s.StartDate, s.AvailableSeats))
+            .ToList();
     }
 
     private static AdminTripListItemDto MapToAdminListItem(Trip trip, int confirmedBookingCount)
@@ -748,7 +765,9 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         MapRoomPhotos(trip),
         MapVehiclePhotos(trip),
         MapPickupPoints(trip),
-        trip.TripDateSlots.Where(s => s.Status == TripDateSlotStatus.Active).OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
+        // Departed dates are never offered to customers — not just hidden by the UI.
+        trip.TripDateSlots.Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= TripCalendar.Today())
+            .OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
         trip.ItineraryPdfUrl);
 
     private static AdminTripDetailDto MapToAdminDetail(Trip trip) => new(

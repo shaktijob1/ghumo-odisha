@@ -60,7 +60,7 @@
       <select class="inp" [(ngModel)]="selectedSlotId" [disabled]="!selectedTripId">
         <option [ngValue]="null">Select a date…</option>
         @for (s of slots(); track s.tripDateSlotId) {
-          <option [ngValue]="s.tripDateSlotId">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }} ({{ s.availableSeats }} available)</option>
+          <option [ngValue]="s.tripDateSlotId" [disabled]="s.availableSeats <= 0">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }} ({{ s.availableSeats > 0 ? s.availableSeats + ' available' : 'Full' }})</option>
         }
       </select>
     </div>

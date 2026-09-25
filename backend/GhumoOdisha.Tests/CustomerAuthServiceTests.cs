@@ -13,7 +13,7 @@ public class CustomerAuthServiceTests
     public async Task RequestOtp_ForNewCustomer_NameIsOptional_CreatesCustomerWithBlankName()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 
@@ -32,7 +32,7 @@ public class CustomerAuthServiceTests
     public async Task RequestOtpThenVerify_NewCustomer_CreatesCustomerAndIssuesTokens()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 
@@ -72,7 +72,7 @@ public class CustomerAuthServiceTests
         });
         await db.SaveChangesAsync();
 
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
 
         // No name supplied — an existing customer's name must never be overwritten with blank.
@@ -90,7 +90,7 @@ public class CustomerAuthServiceTests
     public async Task Resend_InvalidatesThePreviousOtp()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         // Cooldown disabled here specifically to isolate "resend invalidates the prior OTP"
         // from the resend-cooldown behavior (which is a separate, deliberate rate limit).
         var otpSettings = new OtpSettings { Length = 6, ExpiryMinutes = 5, MaxAttempts = 5, ResendCooldownSeconds = 0, MaxRequestsPerHour = 5 };
@@ -115,7 +115,7 @@ public class CustomerAuthServiceTests
     public async Task VerifyOtp_WrongCode_IncrementsAttemptsThenLocksOutAfterMax()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var otpSettings = new OtpSettings { Length = 6, ExpiryMinutes = 5, MaxAttempts = 2, ResendCooldownSeconds = 30, MaxRequestsPerHour = 5 };
         var service = TestServices.CreateCustomerAuthService(db, fake, otpSettings);
         var phone = TestDb.RandomPhoneNumber();
@@ -136,7 +136,7 @@ public class CustomerAuthServiceTests
     public async Task VerifyOtp_Expired_IsRejected()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 
@@ -155,7 +155,7 @@ public class CustomerAuthServiceTests
     public async Task Refresh_RotatesTokenAndRevokesThePrevious()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 
@@ -176,7 +176,7 @@ public class CustomerAuthServiceTests
     public async Task Logout_RevokesTheRefreshToken()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService();
+        var fake = new FakeWhatsAppService();
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 
@@ -193,7 +193,7 @@ public class CustomerAuthServiceTests
     public async Task SendOtp_ProviderFailure_DoesNotCreateAnyBookingOrSession()
     {
         await using var db = TestDb.CreateContext();
-        var fake = new FakeFast2SmsWhatsAppService { ShouldFail = true };
+        var fake = new FakeWhatsAppService { ShouldFail = true };
         var service = TestServices.CreateCustomerAuthService(db, fake);
         var phone = TestDb.RandomPhoneNumber();
 

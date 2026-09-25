@@ -17,4 +17,5 @@ public class CouponCode
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<CouponRedemption> Redemptions { get; set; } = new List<CouponRedemption>();
+    public ICollection<CouponPayout> Payouts { get; set; } = new List<CouponPayout>();
 }

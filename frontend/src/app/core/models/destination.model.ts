@@ -4,6 +4,8 @@ export interface DestinationSummary {
   slug: string;
   tagline: string | null;
   heroImageUrl: string | null;
+  /** Card photo; falls back to heroImageUrl when null. */
+  coverImageUrl: string | null;
   tripCount: number;
   startingPrice: number | null;
 }
@@ -30,6 +32,8 @@ export interface AdminDestinationListItem {
   isActive: boolean;
   displayOrder: number;
   heroImageUrl: string | null;
+  /** Card photo; falls back to heroImageUrl when null. */
+  coverImageUrl: string | null;
   tripCount: number;
 }
 
@@ -40,6 +44,8 @@ export interface AdminDestinationDetail {
   tagline: string | null;
   region: string | null;
   heroImageUrl: string | null;
+  /** Card photo; falls back to heroImageUrl when null. */
+  coverImageUrl: string | null;
   aboutText: string | null;
   bestSeason: string | null;
   distanceFromBhubaneswar: string | null;

@@ -1,0 +1,189 @@
+<div class="pp">
+  <div class="pp-bg" aria-hidden="true">
+    <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  </div>
+
+  <header class="pp-top">
+    <div class="pp-brand">Ghumo <span>Odisha</span></div>
+    <span class="pp-tag">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.57 3H4a1 1 0 0 0-1 1v5.57a2 2 0 0 0 .83 1.42l9.59 9.58a2 2 0 0 0 2.83 0l4.34-4.34a2 2 0 0 0 0-2.82z"></path><path d="M7.5 7.5h.01"></path></svg>
+      Partner earnings
+    </span>
+  </header>
+
+  <main class="pp-main">
+    @if (state() !== 'ready') {
+      <section class="pp-hero rise">
+        <div class="pp-hero-icon" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"></path><path d="M2 7h20v5H2z"></path><path d="M12 22V7"></path><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+        </div>
+        <h1>Track your coupon earnings</h1>
+        <p class="pp-sub">Enter the coupon code Ghumo Odisha gave you to see your bookings, commission and payouts. No login needed.</p>
+
+        <form class="pp-search" (ngSubmit)="lookup()">
+          <input
+            name="code"
+            class="pp-input"
+            placeholder="Your coupon code, e.g. RAHUL200"
+            autocomplete="off"
+            autocapitalize="characters"
+            maxlength="32"
+            [(ngModel)]="code"
+            [attr.aria-invalid]="state() === 'notfound'"
+          />
+          <button class="pp-go" type="submit" [disabled]="!code.trim() || state() === 'loading'">
+            @if (state() === 'loading') { <span class="spin"></span> } @else {
+              See my earnings
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            }
+          </button>
+        </form>
+
+        @if (errorMessage()) {
+          <p class="pp-error shake" role="alert">{{ errorMessage() }}</p>
+        }
+
+        <ul class="pp-points">
+          <li><span class="dot"></span>Live totals, updated as bookings happen</li>
+          <li><span class="dot"></span>Every payout you've received</li>
+          <li><span class="dot"></span>Private — traveller details are never shown</li>
+        </ul>
+      </section>
+
+      @if (state() === 'loading') {
+        <section class="pp-skeleton" aria-hidden="true">
+          <div class="sk sk-wide"></div>
+          <div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+        </section>
+      }
+    } @else if (summary(); as s) {
+      <!-- Greeting + coupon card -->
+      <section class="pp-hello rise" style="--d:0ms">
+        <div>
+          <p class="pp-eyebrow">Welcome back</p>
+          <h1>Hi, {{ firstName() }}</h1>
+          <p class="pp-sub">Here's how your code is doing.</p>
+        </div>
+        <div class="pp-coupon">
+          <span class="pp-coupon-code">{{ s.code }}</span>
+          <span class="pp-status" [class.off]="!s.isActive">
+            <span class="pulse"></span>{{ s.isActive ? 'Active' : 'Inactive' }}
+          </span>
+          <span class="pp-coupon-meta">
+            ₹{{ s.discountAmount | number: '1.0-0' }} off for your followers · ₹{{ s.commissionPerSeat | number: '1.0-0' }} per seat for you
+            @if (s.validUntil) { · valid till {{ s.validUntil | date: 'd MMM y' }} }
+          </span>
+        </div>
+      </section>
+
+      <!-- Balance + ring -->
+      <section class="pp-balance rise" style="--d:90ms" [class.neg]="s.balanceDue < 0" [class.clear]="s.balanceDue === 0">
+        <div class="pp-balance-text">
+          <p class="pp-eyebrow light">{{ s.balanceDue < 0 ? 'Paid in advance' : 'Balance due to you' }}</p>
+          <div class="pp-balance-amount" [appCountUp]="s.balanceDue < 0 ? -s.balanceDue : s.balanceDue" countPrefix="₹">₹0</div>
+          <p class="pp-balance-note">
+            @if (s.balanceDue > 0) {
+              Ghumo Odisha will pay this to you. Payouts are sent by UPI or bank transfer.
+            } @else if (s.balanceDue < 0) {
+              A booking was cancelled after you were paid — this is adjusted against your next commission.
+            } @else {
+              You're all settled up. New bookings will show here.
+            }
+          </p>
+        </div>
+        <div class="pp-ring" role="img" [attr.aria-label]="paidPercent() + '% of your earnings paid out'">
+          <svg viewBox="0 0 120 120">
+            <circle class="track" cx="60" cy="60" r="52"></circle>
+            <circle class="bar" cx="60" cy="60" r="52"
+              [attr.stroke-dasharray]="ringCircumference"
+              [style.stroke-dashoffset]="ringOffset()"></circle>
+          </svg>
+          <div class="pp-ring-label"><b>{{ paidPercent() }}%</b><span>paid out</span></div>
+        </div>
+      </section>
+
+      <!-- Stat cards -->
+      <section class="pp-stats">
+        <div class="pp-stat rise" style="--d:160ms">
+          <span class="ic ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg></span>
+          <span class="k">Commission earned</span>
+          <b [appCountUp]="s.commissionEarned" countPrefix="₹">₹0</b>
+          @if (s.commissionReversed > 0) { <small>₹{{ s.commissionReversed | number: '1.0-0' }} reversed from cancellations</small> } @else { <small>From trips that are going ahead</small> }
+        </div>
+        <div class="pp-stat rise" style="--d:220ms">
+          <span class="ic info"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></span>
+          <span class="k">Paid to you</span>
+          <b [appCountUp]="s.commissionPaid" countPrefix="₹">₹0</b>
+          <small>{{ s.payouts.length }} {{ s.payouts.length === 1 ? 'payout' : 'payouts' }} so far</small>
+        </div>
+        <div class="pp-stat rise" style="--d:280ms">
+          <span class="ic wait"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span>
+          <span class="k">Bookings with your code</span>
+          <b [appCountUp]="s.activeBookings">0</b>
+          <small>{{ s.seatsTravelling }} {{ s.seatsTravelling === 1 ? 'traveller' : 'travellers' }}@if (s.cancelledBookings) { · {{ s.cancelledBookings }} cancelled }</small>
+        </div>
+      </section>
+
+      <div class="pp-cols">
+        <!-- Payouts -->
+        <section class="pp-card rise" style="--d:340ms">
+          <h2>Payouts</h2>
+          @if (s.payouts.length === 0) {
+            <div class="pp-empty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+              <p>No payouts yet. They'll appear here as soon as Ghumo Odisha pays you.</p>
+            </div>
+          } @else {
+            <ol class="pp-list">
+              @for (p of s.payouts; track $index) {
+                <li class="slide" [style.--i]="$index">
+                  <span class="pp-list-dot ok"></span>
+                  <div class="pp-list-main">
+                    <b>₹{{ p.amount | number: '1.0-0' }}</b>
+                    <span>{{ methodLabel(p.method) }}</span>
+                  </div>
+                  <span class="pp-list-date">{{ p.paidAt | date: 'd MMM y' }}</span>
+                </li>
+              }
+            </ol>
+          }
+        </section>
+
+        <!-- Activity -->
+        <section class="pp-card rise" style="--d:400ms">
+          <h2>Bookings with your code</h2>
+          @if (s.activity.length === 0) {
+            <div class="pp-empty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l19-9-9 19-2-8-8-2z"></path></svg>
+              <p>No bookings yet. Share your code — every seat booked with it earns you ₹{{ s.commissionPerSeat | number: '1.0-0' }}.</p>
+            </div>
+          } @else {
+            <ol class="pp-list">
+              @for (a of s.activity; track $index) {
+                <li class="slide" [style.--i]="$index" [class.cancelled]="!a.counts">
+                  <span class="pp-list-dot" [class.ok]="a.counts" [class.bad]="!a.counts"></span>
+                  <div class="pp-list-main">
+                    <b>{{ a.tripTitle }}</b>
+                    <span>{{ a.seats }} {{ a.seats === 1 ? 'seat' : 'seats' }} · travels {{ a.travelDate | date: 'd MMM y' }}@if (!a.counts) { · cancelled }</span>
+                  </div>
+                  <span class="pp-list-amt" [class.struck]="!a.counts">+₹{{ a.commission | number: '1.0-0' }}</span>
+                </li>
+              }
+            </ol>
+            <p class="pp-privacy">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Traveller names and contact details are kept private.
+            </p>
+          }
+        </section>
+      </div>
+
+      <div class="pp-foot rise" style="--d:460ms">
+        <button type="button" class="pp-link" (click)="checkAnother()">Check a different code</button>
+        @if (contact()?.phone) {
+          <span>Questions about a payout? <a [href]="'https://wa.me/' + contact()?.whatsAppNumber" target="_blank" rel="noopener">WhatsApp us</a> or call {{ contact()?.phone }}</span>
+        }
+      </div>
+    }
+  </main>
+</div>

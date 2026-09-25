@@ -32,9 +32,9 @@
         </div>
         <!-- Date filters hidden for now (kept in the component so the filter logic is intact); re-add
              a .sfield/.dateinput block here identical to the ones on the destination page to bring them back. -->
-        <button type="button" class="btn searchbtn" (click)="applyFilters()">
+        <button type="button" class="btn searchbtn" aria-label="Search" (click)="applyFilters()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-          Search
+          <span class="searchbtn-label">Search</span>
         </button>
       </div>
     </div>
@@ -92,8 +92,8 @@
 
           <div class="dmobile">
             <ng-template #cardInner let-d="d">
-              @if (d.heroImageUrl) {
-                <img [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" draggable="false" />
+              @if (d.coverImageUrl || d.heroImageUrl) {
+                <img [src]="(d.coverImageUrl || d.heroImageUrl) | imageUrl" alt="{{ d.name }}" draggable="false" />
               }
               <span class="mcard-badge">{{ d.tripCount }} trip{{ d.tripCount === 1 ? '' : 's' }}</span>
               <div class="mcard-info">
@@ -107,8 +107,8 @@
             @if (displayedDestination(); as ad) {
               <a class="dfeatured" [class.reduced-motion]="reducedMotion" [routerLink]="['/destinations', ad.slug]">
                 @for (d of destinations(); track $index; let i = $index) {
-                  @if (d.heroImageUrl) {
-                    <img class="dfeatured-img" [class.show]="i === activeIndex()" [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" />
+                  @if (d.coverImageUrl || d.heroImageUrl) {
+                    <img class="dfeatured-img" [class.show]="i === activeIndex()" [src]="(d.coverImageUrl || d.heroImageUrl) | imageUrl" alt="{{ d.name }}" />
                   }
                 }
                 <div class="dfeatured-scrim" aria-hidden="true"></div>
@@ -312,49 +312,47 @@
 
 <section id="organizer-contact" class="sect">
   <div class="container">
-    <div class="orgbanner">
-      <div class="orgbanner-photo">
-        @if (heroImage()) {
+    <div class="orgcard">
+      <div class="orgcard-photo">
+        @if (contact()?.photoUrl && !orgPhotoFailed()) {
+          <img [src]="contact()!.photoUrl! | imageUrl" alt="{{ contact()?.name }}" (error)="orgPhotoFailed.set(true)" />
+        } @else if (heroImage()) {
           <img [src]="heroImage() | imageUrl" alt="" (error)="onHeroImageError()" />
         }
-        <span class="orgbanner-caption">Let's plan your next adventure</span>
+        <span class="orgcard-caption">Let's plan your next adventure</span>
       </div>
 
-      <div class="orgbanner-profile">
-        <div class="row" style="gap:12px;align-items:center;margin-bottom:14px">
-          @if (contact()?.photoUrl) {
-            <img [src]="contact()!.photoUrl! | imageUrl" alt="{{ contact()?.name }}" class="orgbanner-avatar" />
-          } @else {
-            <div class="orgbanner-avatar orgbanner-avatar-fallback">{{ (contact()?.name || 'G')[0] }}</div>
-          }
-          <div>
-            <div class="eyebrow" style="margin-bottom:3px">Travel Organizer</div>
-            <b style="font-size:16px;display:block">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</b>
-            <span class="mut" style="font-size:12px">{{ contact()?.role || 'Your Travel Expert' }}</span>
+      <div class="orgcard-body">
+        <span class="eyebrow">Travel Organizer</span>
+        <h3 class="orgcard-name">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</h3>
+        <span class="orgcard-role">{{ contact()?.role || 'Your Travel Expert' }}</span>
+
+        <blockquote class="orgcard-quote">&ldquo;Ask anything about trips, itineraries or custom plans. I'm here to help!&rdquo;</blockquote>
+
+        <div class="orgcard-lines">
+          <div class="oc-line">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
+            <span>{{ contact()?.phone || '—' }}</span>
+          </div>
+          <div class="oc-line">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2z"></path><path d="m2 6 10 7 10-7"></path></svg>
+            <span>{{ contact()?.email || '—' }}</span>
           </div>
         </div>
-        <div class="oc-line">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
-          <span>{{ contact()?.phone || '—' }}</span>
-        </div>
-        <div class="oc-line">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
-          <button type="button" (click)="openWhatsApp()" style="background:none;border:none;padding:0;font:inherit;cursor:pointer;color:var(--accent);font-weight:600">Chat on WhatsApp</button>
-        </div>
-        <div class="oc-line">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2z"></path><path d="m2 6 10 7 10-7"></path></svg>
-          <span>{{ contact()?.email || '—' }}</span>
-        </div>
-      </div>
 
-      <div class="orgbanner-quote">
-        <p>&ldquo;Ask anything about trips, itineraries or custom plans. I'm here to help!&rdquo;</p>
-        <div class="row" style="gap:10px;margin-top:16px">
-          <button type="button" class="btn sm iconbtn" (click)="openWhatsApp()" aria-label="Chat on WhatsApp">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
+        <div class="orgcard-help">
+          <b>Need help planning your trip?</b>
+          <span>Ask about trips, itineraries or custom plans.</span>
+        </div>
+
+        <div class="orgcard-actions">
+          <button type="button" class="btn block" (click)="openWhatsApp()">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
+            Chat on WhatsApp →
           </button>
-          <a class="btn sm ghost iconbtn" [href]="'tel:' + contact()?.phone" aria-label="Call now">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
+          <a class="btn ghost block" [href]="'tel:' + contact()?.phone">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.7a2 2 0 0 1-.5 2.1L7.9 9.9a16 16 0 0 0 6 6l1.4-1.4a2 2 0 0 1 2.1-.5c.9.3 1.8.5 2.7.6a2 2 0 0 1 1.9 2.3z"></path></svg>
+            Call Now →
           </a>
         </div>
       </div>

@@ -29,7 +29,7 @@ public static class TestServices
 
     public static CustomerAuthService CreateCustomerAuthService(
         GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db,
-        FakeFast2SmsWhatsAppService fakeWhatsApp,
+        FakeWhatsAppService fakeWhatsApp,
         OtpSettings? otpSettings = null)
     {
         return new CustomerAuthService(

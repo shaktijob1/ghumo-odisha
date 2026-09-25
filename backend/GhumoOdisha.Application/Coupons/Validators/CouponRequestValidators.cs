@@ -40,3 +40,18 @@ public class ValidateCouponRequestValidator : AbstractValidator<ValidateCouponRe
         RuleFor(x => x.Code).NotEmpty().MaximumLength(32);
     }
 }
+
+public class AddCouponPayoutRequestValidator : AbstractValidator<AddCouponPayoutRequest>
+{
+    public AddCouponPayoutRequestValidator()
+    {
+        RuleFor(x => x.Amount).GreaterThan(0);
+        RuleFor(x => x.Method).IsInEnum();
+        RuleFor(x => x.Reference).MaximumLength(100);
+        RuleFor(x => x.Notes).MaximumLength(500);
+        RuleFor(x => x.PaidAt)
+            .Must(d => d!.Value <= DateTime.UtcNow.AddMinutes(5))
+            .When(x => x.PaidAt.HasValue)
+            .WithMessage("Payout date can't be in the future.");
+    }
+}

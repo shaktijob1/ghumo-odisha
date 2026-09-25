@@ -45,7 +45,44 @@ public record AdminBookingDetailDto(
     string? AdminNotes,
     DateTime RequestedAt,
     DateTime? ConfirmedAt,
-    DateTime? CancelledAt);
+    DateTime? CancelledAt,
+    decimal DiscountAmount,
+    string? CouponCode,
+    IReadOnlyList<BookingPaymentDto> Payments,
+    int RoomsAllotted,
+    int? MaleCount,
+    int? FemaleCount,
+    string? CancellationReason,
+    bool RefundWaived,
+    IReadOnlyList<AdminTravellerDto> Travellers,
+    IReadOnlyList<BookingEventDto> Timeline);
+
+public record AdminTravellerDto(
+    int BookingTravellerId,
+    int SeatNumber,
+    string FullName,
+    Gender? Gender,
+    int? Age,
+    string? AadhaarLast4,
+    string? PhoneNumber,
+    int? LinkedCustomerId,
+    string? LinkedCustomerName);
+
+public record BookingEventDto(
+    BookingEventType EventType,
+    string Title,
+    string? Description,
+    string Actor,
+    DateTime CreatedAt);
+
+public record BookingPaymentDto(
+    int BookingPaymentId,
+    decimal Amount,
+    PaymentMethod Method,
+    string? Reference,
+    string? Notes,
+    string RecordedBy,
+    DateTime PaidAt);
 
 public record AdminBookingFilter(
     BookingStatus? BookingStatus = null,

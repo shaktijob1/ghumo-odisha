@@ -3,11 +3,11 @@ using GhumoOdisha.Application.Auth;
 namespace GhumoOdisha.Tests.Fixtures;
 
 /// <summary>
-/// Stands in for the real Fast2SMS call so the OTP flow can be exercised end-to-end in tests
+/// Stands in for the real WhatsApp Cloud API call so the OTP flow can be exercised end-to-end in tests
 /// without live credentials. Capturing the plaintext OTP here is test-only visibility — it
 /// never touches the real API response contract, so it doesn't relax "never return the OTP."
 /// </summary>
-public class FakeFast2SmsWhatsAppService : IFast2SmsWhatsAppService
+public class FakeWhatsAppService : IWhatsAppService
 {
     public string? LastOtp { get; private set; }
     public string? LastPhoneNumber { get; private set; }
@@ -19,7 +19,7 @@ public class FakeFast2SmsWhatsAppService : IFast2SmsWhatsAppService
     public string? LastTemplateVariable2 { get; private set; }
     public int TemplateCallCount { get; private set; }
 
-    /// <summary>Set to simulate Fast2Sms:BookingConfirmedMessageId being configured.</summary>
+    /// <summary>Set to simulate WhatsApp:BookingConfirmedTemplateName being configured.</summary>
     public bool BookingConfirmedTemplateConfigured { get; set; }
     public BookingConfirmedWhatsAppMessage? LastBookingConfirmed { get; private set; }
     public int BookingConfirmedCallCount { get; private set; }

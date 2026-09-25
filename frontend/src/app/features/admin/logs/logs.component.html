@@ -1,0 +1,275 @@
+<div class="ahead">
+  <div>
+    <h2>Logs</h2>
+    <div class="sub">What happened on the server, for which user — from the overview down to the exact error. Kept for 180 days.</div>
+  </div>
+  <div class="logtabs" role="tablist">
+    <button type="button" role="tab" [class.on]="tab() === 'overview'" (click)="showTab('overview')">Overview</button>
+    <button type="button" role="tab" [class.on]="tab() === 'logs'" (click)="showTab('logs')">All logs</button>
+    <button type="button" role="tab" [class.on]="tab() === 'activity'" (click)="showTab('activity')">Admin activity</button>
+  </div>
+</div>
+
+<!-- ================= Overview ================= -->
+@if (tab() === 'overview') {
+  @switch (summaryState()) {
+    @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
+    @case ('error') { <app-state-panel kind="error" message="Could not load the log overview."></app-state-panel> }
+    @case ('ready') {
+      @let s = summary()!;
+      <div class="kpis">
+        <div class="kpi"><div class="k">Requests · last 24 h</div><div class="v">{{ s.requests24h | number }}</div></div>
+        <div class="kpi"><div class="k">Failed requests · 24 h</div><div class="v" [style.color]="s.failedRequests24h ? 'var(--wait)' : null">{{ s.failedRequests24h | number }}</div></div>
+        <div class="kpi"><div class="k">Warnings · 24 h</div><div class="v" [style.color]="s.warnings24h ? 'var(--wait)' : null">{{ s.warnings24h | number }}</div></div>
+        <div class="kpi"><div class="k">Errors · 24 h <span class="mut">({{ s.errors7d }} in 7 days)</span></div><div class="v" [style.color]="s.errors24h ? 'var(--danger)' : 'var(--ok)'">{{ s.errors24h | number }}</div></div>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h4>Most failing actions</h4>
+          <div class="sub">Server errors (500) in the last 7 days, grouped by API call</div>
+          @if (s.topFailing.length === 0) {
+            <p class="note" style="margin-top:12px">No server errors in the last 7 days.</p>
+          } @else {
+            <div class="tblwrap" style="margin-top:10px">
+              <table class="tbl">
+                <tr><th>Action</th><th class="num">Failures</th><th>Last</th></tr>
+                @for (f of s.topFailing; track f.method + f.path) {
+                  <tr class="clickrow" (click)="showFailuresFor(f.path)">
+                    <td><code class="mono">{{ f.method }} {{ f.path }}</code></td>
+                    <td class="num"><b style="color:var(--danger)">{{ f.count }}</b></td>
+                    <td class="note">{{ f.lastAtUtc + 'Z' | date: 'd MMM, h:mm a' }}</td>
+                  </tr>
+                }
+              </table>
+            </div>
+          }
+        </div>
+
+        <div class="panel">
+          <h4>Recent errors</h4>
+          <div class="sub">Click one to see what happened</div>
+          @if (s.recentErrors.length === 0) {
+            <p class="note" style="margin-top:12px">No errors recorded. 🎉</p>
+          } @else {
+            <ul class="loglist">
+              @for (e of s.recentErrors; track e.appLogId) {
+                <li (click)="openLog(e)">
+                  <span class="lv bad"></span>
+                  <div>
+                    <b>{{ e.message }}</b>
+                    <small>{{ e.timestampUtc + 'Z' | date: 'd MMM, h:mm:ss a' }} · {{ e.userLabel || 'Visitor' }} · ref <code class="mono">{{ e.requestId }}</code></small>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h4>Helping a customer?</h4>
+        <p class="note" style="margin-top:4px">When something fails, customers see a message ending in <b>“Error ref: XXXXXXXX”</b>. Paste that code — or their phone number — into <b>All logs</b> to see exactly what happened to them.</p>
+      </div>
+    }
+  }
+}
+
+<!-- ================= All logs ================= -->
+@if (tab() === 'logs') {
+  <div class="panel logfilters">
+    <div class="fld grow">
+      <span class="lbl">Search</span>
+      <input class="inp" placeholder="Error ref, phone number, booking id or any text" [(ngModel)]="search" (keydown.enter)="runSearch()" />
+    </div>
+    <div class="fld">
+      <span class="lbl">Level</span>
+      <select class="inp" [(ngModel)]="level" (ngModelChange)="runSearch()">
+        <option value="">All</option>
+        <option value="Error">Errors</option>
+        <option value="Warning">Warnings</option>
+        <option value="Information">Info</option>
+      </select>
+    </div>
+    <div class="fld">
+      <span class="lbl">From</span>
+      <input class="inp" type="date" [(ngModel)]="fromDate" (ngModelChange)="runSearch()" />
+    </div>
+    <div class="fld">
+      <span class="lbl">To</span>
+      <input class="inp" type="date" [(ngModel)]="toDate" (ngModelChange)="runSearch()" />
+    </div>
+    <div class="fld actions">
+      <button class="btn" (click)="runSearch()">Search</button>
+      <button class="btn ghost" (click)="clearFilters()">Clear</button>
+    </div>
+  </div>
+
+  @switch (listState()) {
+    @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
+    @case ('error') { <app-state-panel kind="error" message="Could not load logs."></app-state-panel> }
+    @case ('ready') {
+      @if (logs().length === 0) {
+        <app-state-panel kind="empty" message="No logs match these filters."></app-state-panel>
+      } @else {
+        <div class="panel" style="padding:16px">
+          <div class="sub" style="margin-bottom:8px">{{ total() | number }} entr{{ total() === 1 ? 'y' : 'ies' }} · newest first · click a row for details</div>
+          <div class="tblwrap">
+            <table class="tbl logtbl">
+              <tr><th>Time</th><th>Level</th><th>Who</th><th>What happened</th><th>Request</th><th>Ref</th></tr>
+              @for (l of logs(); track l.appLogId) {
+                <tr class="clickrow" (click)="openLog(l)">
+                  <td class="note nowrap">{{ l.timestampUtc + 'Z' | date: 'd MMM, h:mm:ss a' }}</td>
+                  <td><span class="badge" [class]="levelClass(l.level)">{{ levelLabel(l.level) }}</span></td>
+                  <td class="nowrap">{{ l.userLabel || '—' }}</td>
+                  <td class="msg">
+                    {{ l.message }}
+                    @if (l.hasException) { <span class="badge bad" style="margin-left:4px">stack trace</span> }
+                  </td>
+                  <td class="nowrap">
+                    @if (l.statusCode) { <span class="badge" [class]="statusClass(l.statusCode)">{{ l.statusCode }}</span> }
+                    @if (l.elapsedMs !== null) { <span class="note"> {{ l.elapsedMs | number: '1.0-0' }} ms</span> }
+                    @if (!l.statusCode && l.source) { <span class="note">{{ l.source }}</span> }
+                  </td>
+                  <td><code class="mono">{{ l.requestId || '—' }}</code></td>
+                </tr>
+              }
+            </table>
+          </div>
+          <div class="pager">
+            <span>Page {{ page() }} of {{ pageCount() }}</span>
+            <div class="pg">
+              <button [disabled]="page() <= 1" (click)="goToPage(page() - 1)" aria-label="Previous page">‹</button>
+              <button [disabled]="page() >= pageCount()" (click)="goToPage(page() + 1)" aria-label="Next page">›</button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+}
+
+<!-- ================= Admin activity ================= -->
+@if (tab() === 'activity') {
+  <div class="panel logfilters">
+    <div class="fld grow">
+      <span class="lbl">Search</span>
+      <input class="inp" placeholder="Action (e.g. payment), area (bookings) or a record id" [(ngModel)]="activitySearch" (keydown.enter)="activityPage.set(1); loadActivity()" />
+    </div>
+    <div class="fld actions">
+      <button class="btn" (click)="activityPage.set(1); loadActivity()">Search</button>
+    </div>
+  </div>
+
+  @switch (activityState()) {
+    @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
+    @case ('error') { <app-state-panel kind="error" message="Could not load admin activity."></app-state-panel> }
+    @case ('ready') {
+      @if (activity().length === 0) {
+        <app-state-panel kind="empty" message="No admin changes recorded yet."></app-state-panel>
+      } @else {
+        <div class="panel" style="padding:16px">
+          <div class="sub" style="margin-bottom:8px">Every change made in admin — kept for 2 years</div>
+          <div class="tblwrap">
+            <table class="tbl">
+              <tr><th>Time</th><th>Admin</th><th>Action</th><th>On</th><th>Result</th><th>Ref</th></tr>
+              @for (a of activity(); track a.adminActivityId) {
+                <tr>
+                  <td class="note nowrap">{{ a.createdAtUtc + 'Z' | date: 'd MMM y, h:mm a' }}</td>
+                  <td>{{ a.adminName }}</td>
+                  <td><b>{{ a.action }}</b></td>
+                  <td>
+                    {{ a.area }}
+                    @if (a.targetId) {
+                      @if (activityLink(a); as link) { <a [routerLink]="link">#{{ a.targetId }}</a> } @else { #{{ a.targetId }} }
+                    }
+                  </td>
+                  <td><span class="badge" [class]="a.succeeded ? 'ok' : 'bad'">{{ a.succeeded ? 'Done' : 'Failed (' + a.statusCode + ')' }}</span></td>
+                  <td>
+                    @if (a.requestId) { <button class="linkbtn mono" style="padding:0" (click)="showRequest(a.requestId)">{{ a.requestId }}</button> }
+                  </td>
+                </tr>
+              }
+            </table>
+          </div>
+          <div class="pager">
+            <span>Page {{ activityPage() }} of {{ activityPageCount() }}</span>
+            <div class="pg">
+              <button [disabled]="activityPage() <= 1" (click)="goToActivityPage(activityPage() - 1)" aria-label="Previous page">‹</button>
+              <button [disabled]="activityPage() >= activityPageCount()" (click)="goToActivityPage(activityPage() + 1)" aria-label="Next page">›</button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+}
+
+<!-- ================= Detail ================= -->
+@if (detail() || detailLoading()) {
+  <div class="modal-backdrop" (click)="closeDetail()">
+    <div class="modal logmodal" (click)="$event.stopPropagation()">
+      @if (detailLoading()) {
+        <app-state-panel kind="loading"></app-state-panel>
+      } @else if (detail(); as d) {
+        <div class="row sp" style="align-items:flex-start;gap:12px">
+          <div>
+            <span class="badge" [class]="levelClass(d.log.level)">{{ levelLabel(d.log.level) }}</span>
+            <span class="note" style="margin-left:6px">{{ d.log.timestampUtc + 'Z' | date: 'd MMM y, h:mm:ss.SSS a' }}</span>
+          </div>
+          <button type="button" class="linkbtn" (click)="closeDetail()">Close</button>
+        </div>
+        <h4 style="margin:10px 0 12px;line-height:1.4">{{ d.log.message }}</h4>
+
+        <div class="kv">
+          <span class="k">Who</span>
+          <b>
+            @if (userLink(d.log); as link) { <a [routerLink]="link" (click)="closeDetail()">{{ d.log.userLabel }}</a> }
+            @else { {{ d.log.userLabel || 'Not signed in' }} }
+          </b>
+          @if (d.log.requestPath) {
+            <span class="k">Request</span><b><code class="mono">{{ d.log.requestMethod }} {{ d.log.requestPath }}</code></b>
+          }
+          @if (d.log.statusCode) {
+            <span class="k">Result</span>
+            <b><span class="badge" [class]="statusClass(d.log.statusCode)">{{ d.log.statusCode }}</span>
+              @if (d.log.elapsedMs !== null) { <span class="note"> in {{ d.log.elapsedMs | number: '1.0-0' }} ms</span> }</b>
+          }
+          <span class="k">Error ref</span>
+          <b>
+            <code class="mono">{{ d.log.requestId || '—' }}</code>
+            @if (d.log.requestId) { <button type="button" class="linkbtn" (click)="copy(d.log.requestId, 'Error ref')">Copy</button> }
+          </b>
+          @if (d.log.source) { <span class="k">Written by</span><b class="mut">{{ d.log.source }}</b> }
+          @if (d.clientIp) { <span class="k">IP address</span><b class="mut">{{ d.clientIp }}</b> }
+        </div>
+
+        @if (d.requestTrail.length > 1) {
+          <div class="hr"></div>
+          <div class="lbl">Everything that happened in this request</div>
+          <ol class="trail">
+            @for (t of d.requestTrail; track t.appLogId) {
+              <li [class.me]="t.appLogId === d.log.appLogId" (click)="openLog(t)">
+                <span class="lv" [class]="levelClass(t.level)"></span>
+                <span class="off">+{{ offsetMs(t, d.requestTrail) }} ms</span>
+                <span class="txt">{{ t.message }}</span>
+              </li>
+            }
+          </ol>
+        }
+
+        @if (d.exception) {
+          <div class="hr"></div>
+          <div class="row sp"><div class="lbl">Technical details (stack trace)</div><button type="button" class="linkbtn" (click)="copy(d.exception, 'Stack trace')">Copy</button></div>
+          <pre class="stack">{{ d.exception }}</pre>
+        }
+
+        @if (prettyJson(d.propertiesJson); as props) {
+          <div class="hr"></div>
+          <div class="lbl">Extra data</div>
+          <pre class="stack small">{{ props }}</pre>
+        }
+      }
+    </div>
+  </div>
+}

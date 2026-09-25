@@ -71,4 +71,17 @@ public class AdminDestinationsController(IDestinationService destinationService)
         await destinationService.UpdateDestinationHeroImageAsync(id, image, cancellationToken);
         return Ok(ApiResponse<object>.Ok(new { }, "Hero image updated."));
     }
+
+    [HttpPost("{id:int}/cover-image")]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateCoverImage(int id, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new ValidationAppException(["A photo file is required."]);
+        }
+
+        var image = new UploadedImage(file.OpenReadStream(), file.FileName, file.ContentType, file.Length);
+        await destinationService.UpdateDestinationCoverImageAsync(id, image, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Cover image updated."));
+    }
 }

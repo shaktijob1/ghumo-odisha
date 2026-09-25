@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using FluentValidation;
 using GhumoOdisha.Api.BackgroundServices;
 using GhumoOdisha.Api.Filters;
+using GhumoOdisha.Api.Logging;
 using GhumoOdisha.Api.Middleware;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
@@ -16,6 +17,7 @@ using GhumoOdisha.Application.Dashboard;
 using GhumoOdisha.Application.Destinations;
 using GhumoOdisha.Application.Homepage;
 using GhumoOdisha.Application.Invoices;
+using GhumoOdisha.Application.Logs;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Application.Trips;
 using GhumoOdisha.Infrastructure.Auth;
@@ -37,16 +39,36 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, services, configuration) => configuration
-    .ReadFrom.Configuration(context.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .WriteTo.File("logs/ghumo-odisha-.log", rollingInterval: RollingInterval.Day));
+// Every line carries the request id + who made the request (see Logging/RequestContextMiddleware).
+const string LogLineTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {ErrorRef} {UserRole}{UserId} {SourceContext}: {Message:lj}{NewLine}{Exception}";
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(outputTemplate: LogLineTemplate)
+        // 180 daily files = CERT-In minimum. In Docker, mount a volume at /app/logs so they survive redeploys.
+        .WriteTo.File(context.Configuration["Logging:FilePath"] ?? "logs/ghumo-odisha-.log",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: context.Configuration.GetValue("Logging:RetentionDays", 180),
+            outputTemplate: LogLineTemplate);
+
+    // The admin Logs screen reads from the AppLogs table.
+    var logConnection = context.Configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrWhiteSpace(logConnection))
+    {
+        configuration.WriteTo.Sink(new DatabaseLogSink(logConnection),
+            new Serilog.Configuration.BatchingOptions { BatchSizeLimit = 100, BufferingTimeLimit = TimeSpan.FromSeconds(2), QueueLimit = 10000 });
+    }
+});
 
 // Add services to the container.
 
 builder.Services.AddControllers(options =>
 {
+    // Registered first so it also records admin calls the validation filter rejects.
+    options.Filters.Add<AdminActivityFilter>();
     options.Filters.Add<ValidationFilter>();
 });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -67,8 +89,8 @@ var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<
     ?? throw new InvalidOperationException("Jwt configuration section is missing.");
 
 builder.Services.Configure<OtpSettings>(builder.Configuration.GetSection(OtpSettings.SectionName));
-builder.Services.Configure<Fast2SmsOptions>(builder.Configuration.GetSection(Fast2SmsOptions.SectionName));
-builder.Services.AddHttpClient<IFast2SmsWhatsAppService, Fast2SmsWhatsAppService>(client =>
+builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection(WhatsAppOptions.SectionName));
+builder.Services.AddHttpClient<IWhatsAppService, MetaWhatsAppService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
 });
@@ -80,6 +102,7 @@ builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IBookingTravellerService, BookingTravellerService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 
 builder.Services.Configure<RazorpayOptions>(builder.Configuration.GetSection(RazorpayOptions.SectionName));
@@ -91,6 +114,8 @@ builder.Services.AddScoped<IBookingPaymentService, BookingPaymentService>();
 builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddHostedService<BookingCompletionBackgroundService>();
+builder.Services.AddHostedService<LogRetentionBackgroundService>();
+builder.Services.AddScoped<ILogQueryService, LogQueryService>();
 
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
@@ -161,6 +186,14 @@ builder.Services.AddRateLimiter(options =>
             PermitLimit = 20,
             Window = TimeSpan.FromMinutes(1)
         }));
+    // Public partner earnings lookup — generous for a real person retyping a code, tight for guessing.
+    options.AddPolicy("PartnerLookup", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 15,
+            Window = TimeSpan.FromMinutes(1)
+        }));
 });
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -174,6 +207,36 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// The OTP and payment bypasses let anyone sign in as any number and confirm bookings without paying.
+// Refuse to start rather than run a non-Development environment with either one switched on.
+if (!app.Environment.IsDevelopment() &&
+    (builder.Configuration.GetValue<bool>($"{OtpSettings.SectionName}:DevBypassEnabled") ||
+     builder.Configuration.GetValue<bool>($"{RazorpayOptions.SectionName}:DevBypassEnabled")))
+{
+    throw new InvalidOperationException("Otp/Razorpay DevBypassEnabled must be false outside the Development environment.");
+}
+
+// Request id first, so every log line of the request (including the summary line below) carries it.
+app.UseMiddleware<RequestIdMiddleware>();
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "{RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0} ms";
+    // Only API calls are worth a line; static files and page loads stay out of the logs.
+    options.GetLevel = (http, _, ex) =>
+        !http.Request.Path.StartsWithSegments("/api") ? Serilog.Events.LogEventLevel.Verbose
+        : ex is not null || http.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
+        : http.Response.StatusCode >= 400 ? Serilog.Events.LogEventLevel.Warning
+        : Serilog.Events.LogEventLevel.Information;
+    options.EnrichDiagnosticContext = (diagnostics, http) =>
+    {
+        var (userId, role) = UserLogContextMiddleware.CallerOf(http.User);
+        if (userId is not null)
+        {
+            diagnostics.Set(LogProperties.UserId, userId);
+            diagnostics.Set(LogProperties.UserRole, role);
+        }
+    };
+});
 app.UseCors("Default");
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -228,9 +291,20 @@ app.UseHttpsRedirection();
 app.UseRateLimiter();
 
 app.UseAuthentication();
+app.UseMiddleware<UserLogContextMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Development only: a deliberate crash, to see an unexpected error end to end
+// (customer gets an "Error ref", admin finds it on the Logs screen).
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/api/dev/test-error", () =>
+    {
+        throw new InvalidOperationException("Test error triggered from /api/dev/test-error (development only).");
+    });
+}
 
 // Angular SPA fallback: any GET without a file extension and not under /api
 // (e.g. /trips, /booking, /trip/123 on a hard refresh) serves index.html so

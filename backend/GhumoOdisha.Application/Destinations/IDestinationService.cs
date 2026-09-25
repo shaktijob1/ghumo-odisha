@@ -27,4 +27,7 @@ public interface IDestinationService
     Task DeleteDestinationAsync(int destinationId, CancellationToken cancellationToken = default);
 
     Task UpdateDestinationHeroImageAsync(int destinationId, UploadedImage image, CancellationToken cancellationToken = default);
+
+    /// <summary>Photo for destination cards (trending row). Cards fall back to the hero photo when unset.</summary>
+    Task UpdateDestinationCoverImageAsync(int destinationId, UploadedImage image, CancellationToken cancellationToken = default);
 }

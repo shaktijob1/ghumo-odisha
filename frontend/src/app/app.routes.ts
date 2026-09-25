@@ -43,6 +43,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/auth/admin-login.component').then((m) => m.AdminLoginComponent),
   },
   {
+    // Public partner / influencer earnings page — sits under /admin but deliberately has no guard
+    // and no admin layout: anyone with the link can open it and look up their own coupon code.
+    path: 'admin/influencer',
+    title: 'Partner earnings · Ghumo Odisha',
+    loadComponent: () => import('./features/admin/influencer/influencer-portal.component').then((m) => m.InfluencerPortalComponent),
+  },
+  {
     path: 'admin',
     loadComponent: () => import('./layouts/admin-layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
     canActivate: [adminGuard],
@@ -94,6 +101,10 @@ export const routes: Routes = [
       {
         path: 'customers',
         loadComponent: () => import('./features/admin/customers/customer-list.component').then((m) => m.CustomerListComponent),
+      },
+      {
+        path: 'logs',
+        loadComponent: () => import('./features/admin/logs/logs.component').then((m) => m.LogsComponent),
       },
       {
         path: 'coupons',

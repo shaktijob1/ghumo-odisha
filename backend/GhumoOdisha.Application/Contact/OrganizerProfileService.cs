@@ -9,7 +9,7 @@ namespace GhumoOdisha.Application.Contact;
 /// <summary>Manages the single organizer photo shown on the customer dashboard's contact section.</summary>
 public class OrganizerProfileService(IGhumoOdishaDbContext db, IImageStorage imageStorage) : IOrganizerProfileService
 {
-    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png"];
+    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp"];
     private const long MaxImageSizeBytes = 5 * 1024 * 1024;
 
     public async Task<string?> GetPhotoUrlAsync(CancellationToken cancellationToken = default)
@@ -22,7 +22,7 @@ public class OrganizerProfileService(IGhumoOdishaDbContext db, IImageStorage ima
     {
         if (!AllowedImageContentTypes.Contains(image.ContentType, StringComparer.OrdinalIgnoreCase))
         {
-            throw new ValidationAppException(["Only JPG or PNG images are allowed."]);
+            throw new ValidationAppException(["Only JPG, PNG or WebP images are allowed."]);
         }
 
         if (image.Length <= 0 || image.Length > MaxImageSizeBytes)

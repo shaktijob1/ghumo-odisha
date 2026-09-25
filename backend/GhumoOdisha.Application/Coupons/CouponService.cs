@@ -1,3 +1,4 @@
+using System.Data;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Coupons.Dtos;
 using GhumoOdisha.Application.Exceptions;
@@ -63,10 +64,11 @@ public class CouponService(IGhumoOdishaDbContext db) : ICouponService
         var coupon = await db.CouponCodes.FirstOrDefaultAsync(c => c.CouponCodeId == couponCodeId, cancellationToken)
             ?? throw new NotFoundException("Coupon not found.");
 
-        var everRedeemed = await db.CouponRedemptions.AnyAsync(r => r.CouponCodeId == couponCodeId, cancellationToken);
+        var everRedeemed = await db.CouponRedemptions.AnyAsync(r => r.CouponCodeId == couponCodeId, cancellationToken)
+            || await db.CouponPayouts.AnyAsync(p => p.CouponCodeId == couponCodeId, cancellationToken);
         if (everRedeemed)
         {
-            // Keep the audit trail (and any invoice referencing it) intact — deactivate instead of deleting.
+            // Keep the audit trail (invoices, payout history) intact — deactivate instead of deleting.
             coupon.IsActive = false;
             coupon.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
@@ -79,30 +81,182 @@ public class CouponService(IGhumoOdishaDbContext db) : ICouponService
 
     public async Task<IReadOnlyList<AdminCouponDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var coupons = await db.CouponCodes
+        var rows = await db.CouponCodes
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new AdminCouponDto(
-                c.CouponCodeId,
-                c.Code,
-                c.HolderName,
-                c.DiscountAmount,
-                c.CommissionPerSeat,
-                c.ValidFrom,
-                c.ValidUntil,
-                c.IsActive,
-                c.IsFirstTimeCustomerOnly,
-                c.Redemptions.Count,
-                c.Redemptions.Count(r => r.IsNewCustomer),
-                c.Redemptions.Count(r => !r.IsNewCustomer),
-                c.Redemptions.Sum(r => (int?)r.NumberOfSeats) ?? 0,
-                c.Redemptions
-                    .Where(r => r.Booking.BookingStatus != BookingStatus.Cancelled
-                        && r.Booking.BookingStatus != BookingStatus.Rejected)
+            .Select(c => new
+            {
+                Coupon = c,
+                RedemptionCount = c.Redemptions.Count,
+                NewCustomerCount = c.Redemptions.Count(r => r.IsNewCustomer),
+                ExistingCustomerCount = c.Redemptions.Count(r => !r.IsNewCustomer),
+                ActiveCount = c.Redemptions.Count(r => r.Booking.BookingStatus != BookingStatus.Cancelled && r.Booking.BookingStatus != BookingStatus.Rejected),
+                ActiveSeats = c.Redemptions
+                    .Where(r => r.Booking.BookingStatus != BookingStatus.Cancelled && r.Booking.BookingStatus != BookingStatus.Rejected)
+                    .Sum(r => (int?)r.NumberOfSeats) ?? 0,
+                Earned = c.Redemptions
+                    .Where(r => r.Booking.BookingStatus != BookingStatus.Cancelled && r.Booking.BookingStatus != BookingStatus.Rejected)
                     .Sum(r => (decimal?)r.CommissionAmount) ?? 0m,
-                c.CreatedAt))
+                Reversed = c.Redemptions
+                    .Where(r => r.Booking.BookingStatus == BookingStatus.Cancelled || r.Booking.BookingStatus == BookingStatus.Rejected)
+                    .Sum(r => (decimal?)r.CommissionAmount) ?? 0m,
+                Paid = c.Payouts.Sum(p => (decimal?)p.Amount) ?? 0m
+            })
             .ToListAsync(cancellationToken);
 
-        return coupons;
+        return rows.Select(r => new AdminCouponDto(
+                r.Coupon.CouponCodeId,
+                r.Coupon.Code,
+                r.Coupon.HolderName,
+                r.Coupon.DiscountAmount,
+                r.Coupon.CommissionPerSeat,
+                r.Coupon.ValidFrom,
+                r.Coupon.ValidUntil,
+                r.Coupon.IsActive,
+                r.Coupon.IsFirstTimeCustomerOnly,
+                r.RedemptionCount,
+                r.NewCustomerCount,
+                r.ExistingCustomerCount,
+                r.ActiveSeats,
+                r.Earned,
+                r.Coupon.CreatedAt,
+                r.ActiveCount,
+                r.RedemptionCount - r.ActiveCount,
+                r.Reversed,
+                r.Paid,
+                r.Earned - r.Paid))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<CouponPayoutDto>> GetPayoutsAsync(int couponCodeId, CancellationToken cancellationToken = default)
+    {
+        if (!await db.CouponCodes.AnyAsync(c => c.CouponCodeId == couponCodeId, cancellationToken))
+        {
+            throw new NotFoundException("Coupon not found.");
+        }
+
+        return await db.CouponPayouts.AsNoTracking()
+            .Where(p => p.CouponCodeId == couponCodeId)
+            .OrderByDescending(p => p.PaidAt).ThenByDescending(p => p.CouponPayoutId)
+            .Select(p => new CouponPayoutDto(p.CouponPayoutId, p.Amount, p.Method, p.Reference, p.Notes, p.PaidAt))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task AddPayoutAsync(int couponCodeId, AddCouponPayoutRequest request, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        try
+        {
+            // Locked so two admins paying the same holder at once can't both pass the balance check.
+            var coupon = await db.CouponCodes
+                .FromSqlInterpolated($"SELECT * FROM CouponCodes WHERE CouponCodeId = {couponCodeId} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken)
+                ?? throw new NotFoundException("Coupon not found.");
+
+            var amount = decimal.Round(request.Amount, 2);
+            if (amount <= 0)
+            {
+                throw new ValidationAppException(["Amount must be greater than zero."]);
+            }
+
+            var balance = await GetBalanceAsync(couponCodeId, cancellationToken);
+            if (amount > balance)
+            {
+                throw new ValidationAppException([balance <= 0
+                    ? $"Nothing is due to {coupon.HolderName} right now."
+                    : $"Amount can't be more than the Rs {balance:N2} currently due to {coupon.HolderName}."]);
+            }
+
+            var now = DateTime.UtcNow;
+            db.CouponPayouts.Add(new CouponPayout
+            {
+                CouponCodeId = couponCodeId,
+                Amount = amount,
+                Method = request.Method,
+                Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
+                Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                PaidAt = request.PaidAt?.ToUniversalTime() ?? now,
+                CreatedAt = now
+            });
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task RemovePayoutAsync(int couponCodeId, int couponPayoutId, CancellationToken cancellationToken = default)
+    {
+        var payout = await db.CouponPayouts
+            .FirstOrDefaultAsync(p => p.CouponPayoutId == couponPayoutId && p.CouponCodeId == couponCodeId, cancellationToken)
+            ?? throw new NotFoundException("Payout not found.");
+
+        db.CouponPayouts.Remove(payout);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<PartnerCouponSummaryDto> GetPartnerSummaryAsync(string code, CancellationToken cancellationToken = default)
+    {
+        var normalized = Normalize(code ?? "");
+        var coupon = await db.CouponCodes.AsNoTracking().FirstOrDefaultAsync(c => c.Code == normalized, cancellationToken)
+            ?? throw new NotFoundException("We couldn't find that coupon code. Check the spelling and try again.");
+
+        // Deliberately no customer or booking identifiers in this projection — the page is public.
+        var redemptions = await db.CouponRedemptions.AsNoTracking()
+            .Where(r => r.CouponCodeId == coupon.CouponCodeId)
+            .OrderByDescending(r => r.RedeemedAt)
+            .Select(r => new
+            {
+                r.RedeemedAt,
+                TripTitle = r.Booking.Trip.Title,
+                TravelDate = r.Booking.TripDateSlot.StartDate,
+                r.NumberOfSeats,
+                r.CommissionAmount,
+                Counts = r.Booking.BookingStatus != BookingStatus.Cancelled && r.Booking.BookingStatus != BookingStatus.Rejected
+            })
+            .ToListAsync(cancellationToken);
+
+        var payouts = await db.CouponPayouts.AsNoTracking()
+            .Where(p => p.CouponCodeId == coupon.CouponCodeId)
+            .OrderByDescending(p => p.PaidAt)
+            .Select(p => new PartnerPayoutDto(p.PaidAt, p.Amount, p.Method))
+            .ToListAsync(cancellationToken);
+
+        var earned = redemptions.Where(r => r.Counts).Sum(r => r.CommissionAmount);
+        var paid = payouts.Sum(p => p.Amount);
+
+        return new PartnerCouponSummaryDto(
+            coupon.Code,
+            coupon.HolderName,
+            coupon.DiscountAmount,
+            coupon.CommissionPerSeat,
+            coupon.IsActive,
+            coupon.ValidUntil,
+            redemptions.Count(r => r.Counts),
+            redemptions.Count(r => !r.Counts),
+            redemptions.Where(r => r.Counts).Sum(r => r.NumberOfSeats),
+            earned,
+            redemptions.Where(r => !r.Counts).Sum(r => r.CommissionAmount),
+            paid,
+            earned - paid,
+            payouts,
+            redemptions.Select(r => new PartnerActivityDto(r.RedeemedAt, r.TripTitle, r.TravelDate, r.NumberOfSeats, r.CommissionAmount, r.Counts)).ToList());
+    }
+
+    private async Task<decimal> GetBalanceAsync(int couponCodeId, CancellationToken cancellationToken)
+    {
+        var earned = await db.CouponRedemptions
+            .Where(r => r.CouponCodeId == couponCodeId
+                && r.Booking.BookingStatus != BookingStatus.Cancelled
+                && r.Booking.BookingStatus != BookingStatus.Rejected)
+            .SumAsync(r => (decimal?)r.CommissionAmount, cancellationToken) ?? 0m;
+        var paid = await db.CouponPayouts
+            .Where(p => p.CouponCodeId == couponCodeId)
+            .SumAsync(p => (decimal?)p.Amount, cancellationToken) ?? 0m;
+        return earned - paid;
     }
 
     public async Task<IReadOnlyList<AdminCouponBookingDto>> GetBookingsAsync(int couponCodeId, CancellationToken cancellationToken = default)

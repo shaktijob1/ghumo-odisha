@@ -8,6 +8,10 @@ public class Destination
     public string? Tagline { get; set; }
     public string? Region { get; set; }
     public string? HeroImageUrl { get; set; }
+
+    // Shown on destination cards (trending row). Separate from the destination page's hero banner;
+    // cards fall back to HeroImageUrl when this is unset.
+    public string? CoverImageUrl { get; set; }
     public string? AboutText { get; set; }
     public string? BestSeason { get; set; }
     public string? DistanceFromBhubaneswar { get; set; }

@@ -4,12 +4,16 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, PagedResult } from '../models/api-response.model';
 import {
+  AddBookingPaymentRequest,
   AdminBookingDetail,
   AdminBookingFilter,
   AdminBookingListItem,
   BookingResponse,
   CancelBookingRequest,
+  ChangeSeatsRequest,
   ConfirmBookingRequest,
+  TravellerInput,
+  UpdateGenderCountsRequest,
   CreateManualBookingRequest,
   RejectBookingRequest,
 } from '../models/booking.model';
@@ -44,6 +48,30 @@ export class AdminBookingService {
 
   confirmBooking(id: number, request: ConfirmBookingRequest): Observable<void> {
     return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/confirm`, request).pipe(map(() => undefined));
+  }
+
+  addPayment(id: number, request: AddBookingPaymentRequest): Observable<void> {
+    return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/payments`, request).pipe(map(() => undefined));
+  }
+
+  removePayment(id: number, paymentId: number): Observable<void> {
+    return this.http.delete<ApiResponse<object>>(`${base()}/bookings/${id}/payments/${paymentId}`).pipe(map(() => undefined));
+  }
+
+  changeSeats(id: number, request: ChangeSeatsRequest): Observable<void> {
+    return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/seats`, request).pipe(map(() => undefined));
+  }
+
+  updateTravellers(id: number, travellers: TravellerInput[]): Observable<void> {
+    return this.http.put<ApiResponse<object>>(`${base()}/bookings/${id}/travellers`, { travellers }).pipe(map(() => undefined));
+  }
+
+  updateGenderCounts(id: number, request: UpdateGenderCountsRequest): Observable<void> {
+    return this.http.put<ApiResponse<object>>(`${base()}/bookings/${id}/gender-counts`, request).pipe(map(() => undefined));
+  }
+
+  downloadInvoice(id: number): Observable<Blob> {
+    return this.http.get(`${base()}/bookings/${id}/invoice`, { responseType: 'blob' });
   }
 
   rejectBooking(id: number, request: RejectBookingRequest): Observable<void> {

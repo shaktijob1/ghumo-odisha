@@ -35,11 +35,12 @@
                 <b style="font-size:14.5px">{{ b.tripTitle }}</b>
                 <span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
                 <span class="badge">{{ PaymentStatusLabels[b.paymentStatus] }}</span>
+                @if (!b.isOwner) { <span class="badge info" title="Ghumo Odisha added you as a traveller on this booking">Added by organizer</span> }
               </div>
               <div class="mut" style="font-size:12px;margin-bottom:9px">#GO-{{ b.bookingId }} · {{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }} · {{ b.numberOfSeats }} seat(s)</div>
               <div class="money">
                 <span>Total<b>₹{{ b.totalAmount | number:'1.0-0' }}</b></span>
-                <span>Advance<b>₹{{ b.advanceAmount | number:'1.0-0' }}</b></span>
+                <span>Paid<b>₹{{ b.advanceAmount | number:'1.0-0' }}</b></span>
                 <span>Remaining<b>₹{{ b.remainingAmount | number:'1.0-0' }}</b></span>
               </div>
             </div>
@@ -72,10 +73,14 @@
         <span class="k">Booking</span><b>#GO-{{ b.bookingId }}</b>
         <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
         <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
+        <span class="k">Rooms</span><b>{{ b.roomsAllotted }}</b>
+        @if (b.pickupPointLocation) {
+          <span class="k">Pickup</span><b>{{ b.pickupPointLocation }}@if (b.pickupPointTime) { · {{ b.pickupPointTime }} }</b>
+        }
         <span class="k">Price per person</span><b>₹{{ b.amountPerPerson | number:'1.0-0' }}</b>
         <span class="k">Total</span><b>₹{{ b.totalAmount | number:'1.0-0' }}</b>
-        <span class="k">Advance</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
-        <span class="k">Remaining</span><b>₹{{ b.remainingAmount | number:'1.0-0' }}</b>
+        <span class="k">Paid</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
+        <span class="k">Remaining</span><b [style.color]="b.remainingAmount > 0 ? 'var(--wait)' : null">₹{{ b.remainingAmount | number:'1.0-0' }}</b>
         <span class="k">Status</span><span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
         <span class="k">Payment</span>
         @if (b.bookingStatus === BookingStatus.Cancelled && b.paymentStatus === PaymentStatus.Refunded) {
@@ -92,10 +97,25 @@
         }
         <span class="k">Requested</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
       </div>
-      @if (b.customerNotes) {
+      @if (!b.isOwner) {
+        <p class="note" style="margin-top:10px">Ghumo Odisha added you as a traveller on this booking. The person who booked it manages payments and changes.</p>
+      }
+
+      @if (b.payments.length > 0) {
         <div class="hr"></div>
-        <div class="lbl">Your notes</div>
-        <p class="note">{{ b.customerNotes }}</p>
+        <div class="lbl">Payments</div>
+        @for (p of b.payments; track p.bookingPaymentId) {
+          <div class="sumrow">
+            <span class="mut">{{ p.paidAt | date:'d MMM y' }} · {{ PaymentMethodLabels[p.method] }}</span>
+            <b>₹{{ p.amount | number:'1.0-0' }}</b>
+          </div>
+        }
+      }
+
+      @if (b.timeline.length > 0) {
+        <div class="hr"></div>
+        <div class="lbl" style="margin-bottom:12px">Booking status</div>
+        <app-booking-timeline [events]="b.timeline"></app-booking-timeline>
       }
 
       @if (isSlotFull(b)) {

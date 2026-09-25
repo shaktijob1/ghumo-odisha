@@ -19,7 +19,7 @@ public class CouponServiceTests
         new(
             db,
             new FakeRazorpayService(),
-            new FakeFast2SmsWhatsAppService(),
+            new FakeWhatsAppService(),
             Options.Create(new OrganizerContactOptions { WhatsAppNumber = "919000000000" }),
             NullLogger<BookingService>.Instance);
 
@@ -146,9 +146,9 @@ public class CouponServiceTests
         await bookings.ConfirmBookingAsync(booking.Booking.BookingId, new ConfirmBookingRequest(0m));
         await coupons.RedeemAsync(couponId, customer.CustomerId, booking.Booking.BookingId, 100m);
 
-        var entity = await db.Bookings.FindAsync(booking.Booking.BookingId);
-        entity!.BookingStatus = BookingStatus.Cancelled;
-        await db.SaveChangesAsync();
+        // Through the real cancel path — setting the status directly left rows with no cancelled
+        // date and no timeline step, which then showed up in the admin as a mismatched booking.
+        await bookings.CancelBookingAsync(booking.Booking.BookingId, new CancelBookingRequest(null));
 
         var row = Assert.Single(await coupons.GetBookingsAsync(couponId));
         Assert.Equal(400m, row.CommissionAmount);

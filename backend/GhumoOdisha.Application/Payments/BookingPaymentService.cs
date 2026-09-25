@@ -32,6 +32,8 @@ public class BookingPaymentService(
     private const decimal PerSeatAdvanceAmount = 99m;
     private const decimal FullPaymentDiscountPerSeat = 199m;
 
+    private const string DevOrderPrefix = "dev_order_";
+
     private readonly RazorpayOptions _razorpayOptions = razorpayOptions.Value;
 
     public async Task<CreatePaymentOrderResult> CreateOrderAsync(int customerId, int bookingId, BookingPaymentPlan plan, string? couponCode, CancellationToken cancellationToken = default)
@@ -67,6 +69,12 @@ public class BookingPaymentService(
             var trip = await db.Trips.AsNoTracking().FirstOrDefaultAsync(t => t.TripId == booking.TripId, cancellationToken)
                 ?? throw new NotFoundException("Trip not found.");
 
+            // Never take money for a departure that can't be confirmed — a full, hidden or departed
+            // slot is rejected here, before a Razorpay order even exists.
+            var slot = await db.TripDateSlots.AsNoTracking().FirstOrDefaultAsync(s => s.TripDateSlotId == booking.TripDateSlotId, cancellationToken)
+                ?? throw new NotFoundException("Date slot not found.");
+            SlotBookingRules.EnsureBookable(slot, booking.NumberOfSeats);
+
             var (advanceAmount, totalDiscount) = ComputeAmounts(booking, trip, plan, couponDiscount);
             var amountPaise = ToPaise(advanceAmount);
 
@@ -74,15 +82,18 @@ public class BookingPaymentService(
             // instead of minting a fresh one on every call (background prefetch, plan/coupon
             // re-selection, a retried click).
             if (!string.IsNullOrEmpty(booking.RazorpayOrderId)
+                && booking.RazorpayOrderId.StartsWith(DevOrderPrefix, StringComparison.Ordinal) == _razorpayOptions.DevBypassEnabled
                 && booking.PendingAdvanceAmount == advanceAmount
                 && booking.PendingDiscountAmount == totalDiscount
                 && booking.PendingCouponCodeId == couponCodeId)
             {
                 await transaction.CommitAsync(cancellationToken);
-                return new CreatePaymentOrderResult(booking.RazorpayOrderId, amountPaise, "INR", _razorpayOptions.KeyId, totalDiscount);
+                return new CreatePaymentOrderResult(booking.RazorpayOrderId, amountPaise, "INR", _razorpayOptions.KeyId, totalDiscount, _razorpayOptions.DevBypassEnabled);
             }
 
-            var order = await razorpay.CreateOrderAsync(amountPaise, $"GO-{booking.BookingId}-{(int)plan}", cancellationToken);
+            var order = _razorpayOptions.DevBypassEnabled
+                ? new RazorpayOrder($"{DevOrderPrefix}{Guid.NewGuid():N}", amountPaise, "INR")
+                : await razorpay.CreateOrderAsync(amountPaise, $"GO-{booking.BookingId}-{(int)plan}", cancellationToken);
 
             booking.RazorpayOrderId = order.Id;
             booking.PendingAdvanceAmount = advanceAmount;
@@ -93,7 +104,7 @@ public class BookingPaymentService(
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            return new CreatePaymentOrderResult(order.Id, order.AmountPaise, order.Currency, _razorpayOptions.KeyId, totalDiscount);
+            return new CreatePaymentOrderResult(order.Id, order.AmountPaise, order.Currency, _razorpayOptions.KeyId, totalDiscount, _razorpayOptions.DevBypassEnabled);
         }
         catch
         {
@@ -121,7 +132,11 @@ public class BookingPaymentService(
             throw new PaymentVerificationException();
         }
 
-        var signatureMatches = razorpay.VerifySignature(request.RazorpayOrderId, request.RazorpayPaymentId, request.RazorpaySignature);
+        // Dev bypass: the order id was minted locally in CreateOrderAsync and never reached Razorpay,
+        // so there is no signature to check. The prefix check keeps real orders on the real check.
+        var devBypassPayment = _razorpayOptions.DevBypassEnabled && request.RazorpayOrderId.StartsWith(DevOrderPrefix, StringComparison.Ordinal);
+        var signatureMatches = devBypassPayment
+            || razorpay.VerifySignature(request.RazorpayOrderId, request.RazorpayPaymentId, request.RazorpaySignature);
         logger.LogInformation("Payment verify signature check: booking {BookingId}, matches {SignatureMatches}", bookingId, signatureMatches);
         if (!signatureMatches)
         {
@@ -146,10 +161,25 @@ public class BookingPaymentService(
         var couponCodeId = booking.PendingCouponCodeId;
         var couponDiscount = booking.PendingCouponDiscountAmount ?? 0m;
 
-        await bookingService.ConfirmBookingAsync(
-            bookingId,
-            new ConfirmBookingRequest(advanceAmount, discountAmount, request.RazorpayPaymentId),
-            cancellationToken);
+        try
+        {
+            await bookingService.ConfirmBookingAsync(
+                bookingId,
+                // No payment id for a dev-bypassed payment — otherwise a later cancel would try to refund
+                // a Razorpay payment that doesn't exist and block the cancellation.
+                new ConfirmBookingRequest(advanceAmount, discountAmount, devBypassPayment ? null : request.RazorpayPaymentId,
+                    PaymentMethod.Razorpay, devBypassPayment ? "dev-bypass" : null),
+                cancellationToken);
+        }
+        // Only seat/departure failures — never a status conflict (e.g. a duplicate verify racing the
+        // first one), which would otherwise refund a payment for a booking that did get confirmed.
+        catch (Exception ex) when (ex is InsufficientSeatsException or DepartureClosedException)
+        {
+            // The slot filled up (or closed) between order creation and payment — the money was
+            // captured but the seats can't be given, so hand it straight back rather than keeping it.
+            await RefundUnconfirmablePaymentAsync(bookingId, devBypassPayment ? null : request.RazorpayPaymentId, cancellationToken);
+            throw new ConflictException("Sorry — these seats were taken while you were paying. Your payment has been refunded in full.");
+        }
 
         if (couponCodeId.HasValue)
         {
@@ -179,6 +209,28 @@ public class BookingPaymentService(
         }
 
         return await razorpay.GetRefundStatusAsync(booking.RazorpayRefundId, cancellationToken);
+    }
+
+    private async Task RefundUnconfirmablePaymentAsync(int bookingId, string? razorpayPaymentId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(razorpayPaymentId))
+        {
+            return;
+        }
+
+        try
+        {
+            var refundId = await razorpay.RefundAsync(razorpayPaymentId, cancellationToken);
+            logger.LogWarning("Booking {BookingId} could not be confirmed after payment {PaymentId} — refunded as {RefundId}.",
+                bookingId, razorpayPaymentId, refundId);
+        }
+        catch (Exception ex)
+        {
+            // Nothing more can be done automatically — this needs a manual refund from the Razorpay dashboard.
+            logger.LogError(ex, "Booking {BookingId} could not be confirmed and the automatic refund of payment {PaymentId} FAILED — refund manually.",
+                bookingId, razorpayPaymentId);
+            throw new ConflictException("These seats were taken while you were paying. We couldn't refund you automatically — please contact us and we'll refund you right away.");
+        }
     }
 
     private async Task<Booking> LoadOwnedPayableBookingAsync(int customerId, int bookingId, CancellationToken cancellationToken)

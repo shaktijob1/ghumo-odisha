@@ -11,7 +11,7 @@ namespace GhumoOdisha.Application.Destinations;
 
 public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageStorage) : IDestinationService
 {
-    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png"];
+    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/png", "image/webp"];
     private const long MaxImageSizeBytes = 5 * 1024 * 1024;
 
     // ---------- Public ----------
@@ -39,6 +39,7 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
                 x.Destination.Slug,
                 x.Destination.Tagline,
                 x.Destination.HeroImageUrl,
+                x.Destination.CoverImageUrl,
                 x.ActiveTrips.Count,
                 x.ActiveTrips.Min(t => (decimal?)t.AmountPerPerson)))
             .ToList();
@@ -205,17 +206,24 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateDestinationHeroImageAsync(int destinationId, UploadedImage image, CancellationToken cancellationToken = default)
+    public Task UpdateDestinationHeroImageAsync(int destinationId, UploadedImage image, CancellationToken cancellationToken = default) =>
+        ReplaceImageAsync(destinationId, image, d => d.HeroImageUrl, (d, url) => d.HeroImageUrl = url, cancellationToken);
+
+    public Task UpdateDestinationCoverImageAsync(int destinationId, UploadedImage image, CancellationToken cancellationToken = default) =>
+        ReplaceImageAsync(destinationId, image, d => d.CoverImageUrl, (d, url) => d.CoverImageUrl = url, cancellationToken);
+
+    private async Task ReplaceImageAsync(
+        int destinationId, UploadedImage image, Func<Destination, string?> getUrl, Action<Destination, string> setUrl, CancellationToken cancellationToken)
     {
         var destination = await db.Destinations.FirstOrDefaultAsync(d => d.DestinationId == destinationId, cancellationToken)
             ?? throw new NotFoundException("Destination not found.");
 
         ValidateImage(image);
 
-        var oldUrl = destination.HeroImageUrl;
+        var oldUrl = getUrl(destination);
         var url = await imageStorage.SaveAsync(image.Content, image.FileName, image.ContentType, "destinations", cancellationToken);
 
-        destination.HeroImageUrl = url;
+        setUrl(destination, url);
         destination.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
@@ -248,6 +256,7 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
         destination.IsActive,
         destination.DisplayOrder,
         destination.HeroImageUrl,
+        destination.CoverImageUrl,
         destination.Trips.Count);
 
     private static AdminDestinationDetailDto MapToAdminDetail(Destination destination) => new(
@@ -257,6 +266,7 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
         destination.Tagline,
         destination.Region,
         destination.HeroImageUrl,
+        destination.CoverImageUrl,
         destination.AboutText,
         destination.BestSeason,
         destination.DistanceFromBhubaneswar,
@@ -275,7 +285,7 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
 
         if (!AllowedImageContentTypes.Contains(image.ContentType, StringComparer.OrdinalIgnoreCase))
         {
-            errors.Add("Only JPG or PNG images are allowed.");
+            errors.Add("Only JPG, PNG or WebP images are allowed.");
         }
 
         if (image.Length <= 0 || image.Length > MaxImageSizeBytes)

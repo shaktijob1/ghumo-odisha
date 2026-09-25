@@ -3,7 +3,14 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { AdminCoupon, AdminCouponBooking, AdminCreateCouponRequest, AdminUpdateCouponRequest } from '../models/coupon.model';
+import {
+  AddCouponPayoutRequest,
+  AdminCoupon,
+  AdminCouponBooking,
+  AdminCreateCouponRequest,
+  AdminUpdateCouponRequest,
+  CouponPayout,
+} from '../models/coupon.model';
 
 const base = () => `${environment.apiUrl}/admin/coupons`;
 
@@ -17,6 +24,18 @@ export class AdminCouponService {
 
   getCouponBookings(id: number): Observable<AdminCouponBooking[]> {
     return this.http.get<ApiResponse<AdminCouponBooking[]>>(`${base()}/${id}/bookings`).pipe(map((r) => r.data!));
+  }
+
+  getPayouts(id: number): Observable<CouponPayout[]> {
+    return this.http.get<ApiResponse<CouponPayout[]>>(`${base()}/${id}/payouts`).pipe(map((r) => r.data!));
+  }
+
+  addPayout(id: number, request: AddCouponPayoutRequest): Observable<void> {
+    return this.http.post<ApiResponse<object>>(`${base()}/${id}/payouts`, request).pipe(map(() => undefined));
+  }
+
+  removePayout(id: number, payoutId: number): Observable<void> {
+    return this.http.delete<ApiResponse<object>>(`${base()}/${id}/payouts/${payoutId}`).pipe(map(() => undefined));
   }
 
   createCoupon(request: AdminCreateCouponRequest): Observable<void> {
