@@ -428,6 +428,10 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.updateAllRows();
   }
 
+  tripPhotoUrls(t: TripDetail): string[] {
+    return t.photos.map((p) => p.imageUrl);
+  }
+
   roomUrls(t: TripDetail): string[] {
     return t.roomPhotos.map((p) => p.imageUrl);
   }
@@ -496,7 +500,11 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.showAuthModal.set(false);
     this.showNamePrompt.set(false);
     this.setAsideBooking();
-    if (!this.bookingResult()) this.selectedPickupPointId.set(null);
+    // Reopening starts fresh: 1 seat, pickup to choose again (a matching draft is still reused).
+    if (!this.bookingResult()) {
+      this.selectedPickupPointId.set(null);
+      this.seats.set(1);
+    }
     this.bookingStep.set('date');
   }
 
@@ -656,18 +664,54 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       next: (booking) => {
         this.confirmedBooking.set(booking);
         this.paymentConfirmed.set(true);
+        this.invoiceEmail.set(this.auth.currentCustomer()?.email ?? '');
+      },
+    });
+  }
+
+  // ---------- Invoice by email (shown once the booking is confirmed) ----------
+
+  readonly invoiceEmail = signal('');
+  readonly sendingInvoiceEmail = signal(false);
+  readonly invoiceEmailError = signal<string | null>(null);
+  readonly invoiceEmailSentTo = signal<string | null>(null);
+
+  emailInvoice(): void {
+    const bookingId = this.bookingResult()?.booking.bookingId;
+    const email = this.invoiceEmail().trim();
+    if (!bookingId || this.sendingInvoiceEmail()) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.invoiceEmailError.set('Enter a valid email ID.');
+      return;
+    }
+
+    this.sendingInvoiceEmail.set(true);
+    this.invoiceEmailError.set(null);
+    this.bookingService.emailInvoice(bookingId, email).subscribe({
+      next: () => {
+        this.sendingInvoiceEmail.set(false);
+        this.invoiceEmailSentTo.set(email);
+      },
+      error: (err) => {
+        this.sendingInvoiceEmail.set(false);
+        this.invoiceEmailError.set(
+          err?.status === 429
+            ? 'Too many requests. Please try again in a few minutes.'
+            : err?.error?.errors?.[0] || err?.error?.message || 'Could not send the invoice. Please try again.',
+        );
       },
     });
   }
 
   downloadInvoice(): void {
-    const bookingId = this.bookingResult()?.booking.bookingId;
+    const booking = this.bookingResult()?.booking;
+    const bookingId = booking?.bookingId;
     if (!bookingId || this.downloadingInvoice()) return;
 
     this.downloadingInvoice.set(true);
     this.bookingService.downloadInvoice(bookingId).subscribe({
       next: (blob) => {
-        downloadFile(blob, `GhumoOdisha-Invoice-GO-${bookingId}.pdf`);
+        downloadFile(blob, `GhumoOdisha-Invoice-${booking.bookingReference}.pdf`);
         this.downloadingInvoice.set(false);
       },
       error: () => this.downloadingInvoice.set(false),

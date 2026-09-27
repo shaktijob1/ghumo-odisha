@@ -3,14 +3,16 @@ using GhumoOdisha.Application.Bookings;
 using GhumoOdisha.Application.Bookings.Dtos;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Invoices;
+using GhumoOdisha.Application.Notifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GhumoOdisha.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Customer")]
-public class BookingsController(IBookingService bookingService, IInvoiceService invoiceService) : ControllerBase
+public class BookingsController(IBookingService bookingService, IInvoiceService invoiceService, IBookingEmailService bookingEmails) : ControllerBase
 {
     [HttpPost("api/bookings/request")]
     public async Task<ActionResult<ApiResponse<CreateBookingResult>>> RequestBooking(CreateBookingRequest request, CancellationToken cancellationToken)
@@ -42,7 +44,16 @@ public class BookingsController(IBookingService bookingService, IInvoiceService 
     {
         var customerId = User.GetCustomerId();
         var pdf = await invoiceService.GenerateInvoicePdfAsync(customerId, id, cancellationToken);
-        return File(pdf, "application/pdf", $"GhumoOdisha-Invoice-GO-{id}.pdf");
+        return File(pdf, "application/pdf", "GhumoOdisha-Invoice.pdf");
+    }
+
+    [HttpPost("api/customer/bookings/{id:int}/invoice/email")]
+    [EnableRateLimiting("InvoiceEmail")]
+    public async Task<ActionResult<ApiResponse<object?>>> EmailInvoice(int id, EmailInvoiceRequest request, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        await bookingEmails.SendInvoiceAsync(customerId, id, request.Email.Trim(), cancellationToken);
+        return Ok(ApiResponse<object?>.Ok(null, "Invoice sent to your email."));
     }
 
     [HttpPost("api/customer/bookings/{id:int}/cancel")]

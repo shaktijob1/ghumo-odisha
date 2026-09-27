@@ -46,6 +46,7 @@ public class RefundService(
     internal static readonly Expression<Func<BookingRefund, AdminRefundDto>> ToAdminDto = r => new AdminRefundDto(
         r.BookingRefundId,
         r.BookingId,
+        "GO-" + r.Booking.BookingNumber,
         r.AmountPaid,
         r.Amount,
         r.Booking.Payments.Where(p => p.Method == PaymentMethod.Razorpay).Sum(p => (decimal?)p.Amount) ?? 0m,
@@ -77,9 +78,9 @@ public class RefundService(
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            var bookingId = int.TryParse(term.Replace("GO-", "", StringComparison.OrdinalIgnoreCase), out var id) ? id : (int?)null;
+            var bookingNumber = int.TryParse(term.Replace("GO-", "", StringComparison.OrdinalIgnoreCase), out var number) ? number : (int?)null;
             query = query.Where(r =>
-                r.BookingId == bookingId ||
+                r.Booking.BookingNumber == bookingNumber ||
                 r.Booking.Customer.Name.Contains(term) ||
                 (r.Booking.Customer.PhoneNumber != null && r.Booking.Customer.PhoneNumber.Contains(term)) ||
                 (r.Booking.Customer.Email != null && r.Booking.Customer.Email.Contains(term)) ||
@@ -341,7 +342,7 @@ public class RefundService(
             var siteUrl = (emailOptions?.Value.SiteUrl ?? "https://www.ghumoodisha.com").TrimEnd('/');
             var (html, text) = EmailTemplates.RefundCompleted(new EmailTemplates.RefundCompletedModel(
                 string.IsNullOrWhiteSpace(customer.Name) ? "there" : customer.Name.Trim(),
-                $"GO-{refund.BookingId}",
+                refund.Booking.Reference,
                 refund.Booking.Trip.Title,
                 BookingTimeline.Money(refund.Amount),
                 refund.Method is { } method ? BookingTimeline.MethodLabel(method) : "",
@@ -349,7 +350,7 @@ public class RefundService(
                 $"{siteUrl}/my-bookings"));
 
             await emailSender.SendAsync(new EmailMessage(customer.Email, customer.Name,
-                $"Refund processed · GO-{refund.BookingId}", html, text), cancellationToken);
+                $"Refund processed · {refund.Booking.Reference}", html, text), cancellationToken);
         }
         catch (Exception ex)
         {

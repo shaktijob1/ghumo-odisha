@@ -89,7 +89,7 @@
               <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Seats</th><th>Status</th></tr>
               @for (b of d.recentRequests; track b.bookingId) {
                 <tr>
-                  <td><a [routerLink]="['/admin/bookings', b.bookingId]">#GO-{{ b.bookingId }}</a></td>
+                  <td><a [routerLink]="['/admin/bookings', b.bookingId]">{{ b.bookingReference }}</a></td>
                   <td>{{ b.customerName }}</td>
                   <td>{{ b.tripTitle }}</td>
                   <td>{{ b.numberOfSeats }}</td>
@@ -127,7 +127,7 @@
             <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th></tr>
             @for (b of d.recentlyConfirmed; track b.bookingId) {
               <tr>
-                <td><a [routerLink]="['/admin/bookings', b.bookingId]">#GO-{{ b.bookingId }}</a></td>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]">{{ b.bookingReference }}</a></td>
                 <td>{{ b.customerName }}</td>
                 <td>{{ b.tripTitle }}</td>
                 <td>{{ b.startDate | date:'d MMM y' }}</td>

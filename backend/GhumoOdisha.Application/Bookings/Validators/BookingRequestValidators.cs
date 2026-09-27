@@ -127,3 +127,13 @@ public class CreateManualBookingRequestValidator : AbstractValidator<CreateManua
         RuleFor(x => x.AdminNotes).MaximumLength(1000);
     }
 }
+
+public class EmailInvoiceRequestValidator : AbstractValidator<EmailInvoiceRequest>
+{
+    public EmailInvoiceRequestValidator()
+    {
+        RuleFor(x => x.Email).NotEmpty().WithMessage("Enter your email address.")
+            .MaximumLength(254)
+            .EmailAddress().WithMessage("Enter a valid email address.");
+    }
+}

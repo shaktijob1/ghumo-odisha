@@ -126,7 +126,7 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
                     c.Item().PaddingTop(6).AlignRight().Text(t =>
                     {
                         t.Span("Invoice No  ").FontColor(Muted);
-                        t.Span($"INV-GO-{b.BookingId}").SemiBold();
+                        t.Span($"INV-{b.Reference}").SemiBold();
                     });
                     c.Item().AlignRight().Text(t =>
                     {
@@ -182,7 +182,7 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
             row.RelativeItem().Column(c =>
             {
                 SectionLabel(c.Item(), "Booking");
-                KeyValue(c, "Booking ref", $"GO-{b.BookingId}");
+                KeyValue(c, "Booking ref", b.Reference);
                 KeyValue(c, "Booked on", FormatDate(b.RequestedAt));
                 KeyValue(c, "Confirmed on", b.ConfirmedAt.HasValue ? FormatDateTime(b.ConfirmedAt.Value) : "-");
                 KeyValue(c, "Booked via", Humanize(b.BookingSource.ToString()));

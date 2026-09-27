@@ -40,7 +40,7 @@
           <div class="row sp" style="align-items:flex-start;gap:16px;flex-wrap:wrap">
             <div style="min-width:220px;flex:1">
               <div class="row" style="gap:8px;margin-bottom:4px">
-                <a [routerLink]="['/admin/bookings', r.bookingId]"><b>#GO-{{ r.bookingId }}</b></a>
+                <a [routerLink]="['/admin/bookings', r.bookingId]"><b>{{ r.bookingReference }}</b></a>
                 @switch (r.status) {
                   @case (RefundStatus.Pending) { <span class="badge wait">Pending</span> }
                   @case (RefundStatus.Processing) { <span class="badge info">Processing</span> }

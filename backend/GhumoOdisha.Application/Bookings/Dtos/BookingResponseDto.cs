@@ -4,6 +4,7 @@ namespace GhumoOdisha.Application.Bookings.Dtos;
 
 public record BookingResponseDto(
     int BookingId,
+    string BookingReference,
     int TripId,
     string TripTitle,
     string? TripCoverImageUrl,

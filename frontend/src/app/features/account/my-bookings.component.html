@@ -37,7 +37,7 @@
                 <span class="badge">{{ PaymentStatusLabels[b.paymentStatus] }}</span>
                 @if (!b.isOwner) { <span class="badge info" title="Ghumo Odisha added you as a traveller on this booking">Added by organizer</span> }
               </div>
-              <div class="mut" style="font-size:12px;margin-bottom:9px">#GO-{{ b.bookingId }} · {{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }} · {{ b.numberOfSeats }} seat(s)</div>
+              <div class="mut" style="font-size:12px;margin-bottom:9px">{{ b.bookingReference }} · {{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }} · {{ b.numberOfSeats }} seat(s)</div>
               <div class="money">
                 <span>Total<b>₹{{ b.totalAmount | number:'1.0-0' }}</b></span>
                 <span>Paid<b>₹{{ b.advanceAmount | number:'1.0-0' }}</b></span>
@@ -70,7 +70,7 @@
     <div class="modal" (click)="$event.stopPropagation()">
       <h4>{{ b.tripTitle }}</h4>
       <div class="kv">
-        <span class="k">Booking</span><b>#GO-{{ b.bookingId }}</b>
+        <span class="k">Booking</span><b>{{ b.bookingReference }}</b>
         <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
         <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
         <span class="k">Rooms</span><b>{{ b.roomsAllotted }}</b>

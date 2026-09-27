@@ -361,7 +361,8 @@ public class BookingServiceTests
         Assert.Equal("Test Customer", message.PassengerName);
         Assert.Equal("2", message.Seats);
         Assert.Equal("1,500", message.AmountPaid);
-        Assert.Equal($"GO-{requested.Booking.BookingId}", message.BookingReference);
+        Assert.Equal(requested.Booking.BookingReference, message.BookingReference);
+        Assert.Matches(@"^GO-\d{6}$", message.BookingReference);
         Assert.Equal("Rasulgarh", message.PickupPoint);
         Assert.Equal("6:00 AM", message.ReportingTime);
         // The dedicated template replaces the old customer text; only the organizer's copy uses the shared one.
@@ -418,7 +419,7 @@ public class BookingServiceTests
     {
         var email = new FakeEmailSender();
         var bookingEmails = new GhumoOdisha.Application.Notifications.BookingEmailService(
-            email, new FakeInvoiceService(),
+            email, new FakeInvoiceService(), db,
             Options.Create(new GhumoOdisha.Application.Notifications.EmailOptions { SiteUrl = "https://www.ghumoodisha.com" }),
             NullLogger<GhumoOdisha.Application.Notifications.BookingEmailService>.Instance);
         var service = new BookingService(db, new FakeRazorpayService(), new FakeWhatsAppService(),
@@ -443,7 +444,7 @@ public class BookingServiceTests
 
         var sent = Assert.Single(email.Sent);
         Assert.Equal(customer.Email, sent.ToEmail);
-        Assert.Contains($"GO-{requested.Booking.BookingId}", sent.Subject);
+        Assert.Contains(requested.Booking.BookingReference, sent.Subject);
         Assert.Contains("https://www.ghumoodisha.com/my-bookings", sent.HtmlBody);
         var invoice = Assert.Single(sent.Attachments!);
         Assert.Equal("application/pdf", invoice.ContentType);

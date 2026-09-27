@@ -21,6 +21,7 @@ using GhumoOdisha.Application.Logs;
 using GhumoOdisha.Application.Notifications;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Application.Refunds;
+using GhumoOdisha.Application.SearchLogs;
 using GhumoOdisha.Application.Trips;
 using GhumoOdisha.Infrastructure.Auth;
 using GhumoOdisha.Infrastructure.Invoices;
@@ -127,6 +128,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddHostedService<BookingCompletionBackgroundService>();
 builder.Services.AddHostedService<LogRetentionBackgroundService>();
 builder.Services.AddScoped<ILogQueryService, LogQueryService>();
+builder.Services.AddScoped<ISearchLogService, SearchLogService>();
 
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
@@ -197,12 +199,29 @@ builder.Services.AddRateLimiter(options =>
             PermitLimit = 20,
             Window = TimeSpan.FromMinutes(1)
         }));
+    // Invoice-by-email sends to an address the customer types — capped per customer so it can’t be used to spam.
+    options.AddPolicy("InvoiceEmail", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.User.FindFirst("sub")?.Value
+                      ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(10)
+        }));
     // Public partner earnings lookup — generous for a real person retyping a code, tight for guessing.
     options.AddPolicy("PartnerLookup", context => RateLimitPartition.GetFixedWindowLimiter(
         partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         factory: _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 15,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+    // Home-page search tracking — plenty for a person changing filters, not enough to flood the table.
+    options.AddPolicy("SearchLog", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
             Window = TimeSpan.FromMinutes(1)
         }));
 });
@@ -299,9 +318,9 @@ app.UseStaticFiles();
 
 app.UseHttpsRedirection();
 
-app.UseRateLimiter();
-
 app.UseAuthentication();
+// After authentication so per-customer policies (InvoiceEmail) can read the signed-in user.
+app.UseRateLimiter();
 app.UseMiddleware<UserLogContextMiddleware>();
 app.UseAuthorization();
 

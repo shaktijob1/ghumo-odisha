@@ -70,7 +70,7 @@ export class MyBookingsComponent implements OnInit {
     this.downloadingInvoiceId.set(booking.bookingId);
     this.bookingService.downloadInvoice(booking.bookingId).subscribe({
       next: (blob) => {
-        downloadFile(blob, `GhumoOdisha-Invoice-GO-${booking.bookingId}.pdf`);
+        downloadFile(blob, `GhumoOdisha-Invoice-${booking.bookingReference}.pdf`);
         this.downloadingInvoiceId.set(null);
       },
       error: () => this.downloadingInvoiceId.set(null),

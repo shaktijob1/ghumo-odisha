@@ -34,6 +34,7 @@ public interface IGhumoOdishaDbContext
     DbSet<CouponPayout> CouponPayouts { get; }
     DbSet<AppLog> AppLogs { get; }
     DbSet<AdminActivity> AdminActivities { get; }
+    DbSet<SearchLog> SearchLogs { get; }
     DbSet<Destination> Destinations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicDestinationService } from '../../core/services/public-destination.service';
@@ -38,13 +38,49 @@ export class DestinationDetailComponent implements OnInit {
   readonly factList = computed(() => {
     const d = this.destination();
     if (!d) return [];
-    return [
-      { label: 'Best season', value: d.bestSeason },
-      { label: 'From Bhubaneswar', value: d.distanceFromBhubaneswar },
-      { label: 'Ideal duration', value: d.idealDuration },
-      { label: 'Known for', value: d.knownFor },
-    ].filter((f): f is { label: string; value: string } => !!f.value);
+    const facts: { label: string; value: string | null; icon: 'sun' | 'route' | 'clock' | 'star' }[] = [
+      { label: 'Best season', value: d.bestSeason, icon: 'sun' },
+      { label: 'From Bhubaneswar', value: d.distanceFromBhubaneswar, icon: 'route' },
+      { label: 'Ideal duration', value: d.idealDuration, icon: 'clock' },
+      { label: 'Known for', value: d.knownFor, icon: 'star' },
+    ];
+    return facts.filter((f): f is { label: string; value: string; icon: 'sun' | 'route' | 'clock' | 'star' } => !!f.value);
   });
+
+  // --- Trips row: same scroll + prev/next arrows as the home page's Upcoming Trips ---
+  private readonly tripScroll = viewChild<ElementRef<HTMLElement>>('tripScroll');
+  readonly tripCanScrollPrev = signal(false);
+  readonly tripCanScrollNext = signal(false);
+  private readonly tripArrowSync = effect(() => {
+    this.trips();
+    const el = this.tripScroll()?.nativeElement;
+    if (el) setTimeout(() => { el.scrollLeft = 0; this.updateTripArrows(); });
+  });
+  private readonly reducedMotion =
+    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  updateTripArrows(): void {
+    const el = this.tripScroll()?.nativeElement;
+    if (!el) return;
+    this.tripCanScrollPrev.set(el.scrollLeft > 2);
+    this.tripCanScrollNext.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }
+
+  /** Moves the row by 2 cards (1 on phones, where about one card fits). */
+  scrollTrips(direction: 1 | -1): void {
+    const el = this.tripScroll()?.nativeElement;
+    const card = el?.querySelector<HTMLElement>('.tslot');
+    if (!el || !card) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    const step = card.getBoundingClientRect().width + gap;
+    const cards = step * 2 <= el.clientWidth ? 2 : 1;
+    el.scrollBy({ left: direction * cards * step, behavior: this.reducedMotion ? 'auto' : 'smooth' });
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateTripArrows();
+  }
 
   private slug = '';
 

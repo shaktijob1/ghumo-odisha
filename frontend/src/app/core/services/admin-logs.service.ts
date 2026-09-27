@@ -56,6 +56,23 @@ export interface AdminActivity {
   requestId: string | null;
 }
 
+export interface SearchLogItem {
+  searchLogId: number;
+  createdAtUtc: string;
+  month: string | null;
+  place: string | null;
+  resultCount: number;
+  customerId: number | null;
+  customerLabel: string | null;
+}
+
+export interface SearchSummary {
+  searches30d: number;
+  noResult30d: number;
+  topPlaces: { value: string; count: number }[];
+  topMonths: { value: string; count: number }[];
+}
+
 export interface LogQuery {
   search?: string;
   level?: string;
@@ -92,5 +109,15 @@ export class AdminLogsService {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (search) params = params.set('search', search);
     return this.http.get<ApiResponse<PagedResult<AdminActivity>>>(`${base()}/activity`, { params }).pipe(map((r) => r.data!));
+  }
+
+  searchSummary(): Observable<SearchSummary> {
+    return this.http.get<ApiResponse<SearchSummary>>(`${base()}/searches/summary`).pipe(map((r) => r.data!));
+  }
+
+  searches(search: string, page: number, pageSize: number): Observable<PagedResult<SearchLogItem>> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (search) params = params.set('search', search);
+    return this.http.get<ApiResponse<PagedResult<SearchLogItem>>>(`${base()}/searches`, { params }).pipe(map((r) => r.data!));
   }
 }

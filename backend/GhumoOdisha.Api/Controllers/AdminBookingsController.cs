@@ -90,7 +90,7 @@ public class AdminBookingsController(IBookingService bookingService, IBookingTra
     public async Task<IActionResult> DownloadInvoice(int id, CancellationToken cancellationToken)
     {
         var pdf = await invoiceService.GenerateAdminInvoicePdfAsync(id, cancellationToken);
-        return File(pdf, "application/pdf", $"GhumoOdisha-Invoice-GO-{id}.pdf");
+        return File(pdf, "application/pdf", "GhumoOdisha-Invoice.pdf");
     }
 
     [HttpPost("{id:int}/reject")]

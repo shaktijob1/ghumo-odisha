@@ -54,10 +54,14 @@ public class LogRetentionBackgroundService(IServiceScopeFactory scopeFactory, IC
         var activity = await db.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM AdminActivities WHERE CreatedAtUtc < {activityCutoff}", cancellationToken);
 
-        if (total > 0 || activity > 0)
+        // Home-page search logs follow the regular log retention.
+        var searches = await db.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM SearchLogs WHERE CreatedAtUtc < {logCutoff}", cancellationToken);
+
+        if (total > 0 || activity > 0 || searches > 0)
         {
-            logger.LogInformation("Log retention: removed {Logs} log entries older than {LogDays} days and {Activity} admin activity rows older than {ActivityDays} days.",
-                total, logDays, activity, activityDays);
+            logger.LogInformation("Log retention: removed {Logs} log entries and {Searches} search logs older than {LogDays} days and {Activity} admin activity rows older than {ActivityDays} days.",
+                total, searches, logDays, activity, activityDays);
         }
     }
 }

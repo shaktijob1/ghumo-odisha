@@ -45,7 +45,7 @@
             <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Date</th><th>Seats</th><th>Total</th><th>Advance</th><th>Booking</th><th>Payment</th><th>Source</th></tr>
             @for (b of r.items; track b.bookingId) {
               <tr>
-                <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#GO-{{ b.bookingId }}</b></a></td>
+                <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>{{ b.bookingReference }}</b></a></td>
                 <td>{{ b.customerName }}<div class="note">{{ b.customerPhone || "—" }}</div></td>
                 <td>{{ b.tripTitle }}</td>
                 <td>{{ b.startDate | date:'d MMM y' }}</td>

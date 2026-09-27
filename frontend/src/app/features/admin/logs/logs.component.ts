@@ -8,11 +8,13 @@ import {
   LogDetail,
   LogItem,
   LogSummary,
+  SearchLogItem,
+  SearchSummary,
 } from '../../../core/services/admin-logs.service';
 import { StatePanelComponent } from '../../../shared/components/state-panel.component';
 import { ToastService } from '../../../core/services/toast.service';
 
-type Tab = 'overview' | 'logs' | 'activity';
+type Tab = 'overview' | 'logs' | 'activity' | 'searches';
 type LoadState = 'loading' | 'ready' | 'error';
 
 const PAGE_SIZE = 50;
@@ -62,6 +64,15 @@ export class LogsComponent implements OnInit {
   readonly activityPageCount = computed(() => Math.max(1, Math.ceil(this.activityTotal() / PAGE_SIZE)));
   activitySearch = '';
 
+  // Visitor searches (home-page month/place search)
+  readonly searchesState = signal<LoadState>('loading');
+  readonly searchSummary = signal<SearchSummary | null>(null);
+  readonly searchRows = signal<SearchLogItem[]>([]);
+  readonly searchesTotal = signal(0);
+  readonly searchesPage = signal(1);
+  readonly searchesPageCount = computed(() => Math.max(1, Math.ceil(this.searchesTotal() / PAGE_SIZE)));
+  searchesFilter = '';
+
   ngOnInit(): void {
     const q = this.route.snapshot.queryParamMap;
     if (q.get('search')) {
@@ -77,6 +88,40 @@ export class LogsComponent implements OnInit {
     if (tab === 'overview') this.loadSummary();
     if (tab === 'logs') this.loadLogs();
     if (tab === 'activity') this.loadActivity();
+    if (tab === 'searches') this.loadSearches(true);
+  }
+
+  loadSearches(withSummary = false): void {
+    this.searchesState.set('loading');
+    if (withSummary) {
+      this.logsService.searchSummary().subscribe({ next: (s) => this.searchSummary.set(s), error: () => this.searchSummary.set(null) });
+    }
+    this.logsService.searches(this.searchesFilter.trim(), this.searchesPage(), PAGE_SIZE).subscribe({
+      next: (r) => {
+        this.searchRows.set(r.items);
+        this.searchesTotal.set(r.totalCount);
+        this.searchesState.set('ready');
+      },
+      error: () => this.searchesState.set('error'),
+    });
+  }
+
+  runSearchesFilter(): void {
+    this.searchesPage.set(1);
+    this.loadSearches();
+  }
+
+  goToSearchesPage(page: number): void {
+    if (page < 1 || page > this.searchesPageCount()) return;
+    this.searchesPage.set(page);
+    this.loadSearches();
+  }
+
+  /** "2026-10" → "Oct 2026". */
+  monthLabel(month: string | null): string {
+    if (!month) return 'Any month';
+    const [y, m] = month.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
   }
 
   loadSummary(): void {

@@ -7,8 +7,104 @@
     <button type="button" role="tab" [class.on]="tab() === 'overview'" (click)="showTab('overview')">Overview</button>
     <button type="button" role="tab" [class.on]="tab() === 'logs'" (click)="showTab('logs')">All logs</button>
     <button type="button" role="tab" [class.on]="tab() === 'activity'" (click)="showTab('activity')">Admin activity</button>
+    <button type="button" role="tab" [class.on]="tab() === 'searches'" (click)="showTab('searches')">Visitor searches</button>
   </div>
 </div>
+
+<!-- ================= Visitor searches ================= -->
+@if (tab() === 'searches') {
+  @if (searchSummary(); as ss) {
+    <div class="kpis">
+      <div class="kpi"><div class="k">Searches · last 30 days</div><div class="v">{{ ss.searches30d | number }}</div></div>
+      <div class="kpi"><div class="k">Found no trips · 30 days</div><div class="v" [style.color]="ss.noResult30d ? 'var(--wait)' : null">{{ ss.noResult30d | number }}</div></div>
+    </div>
+    <div class="panels">
+      <div class="panel">
+        <h4>Most searched places</h4>
+        <div class="sub">Last 30 days</div>
+        @if (ss.topPlaces.length === 0) {
+          <p class="note" style="margin-top:12px">No place searches yet.</p>
+        } @else {
+          <div class="tblwrap" style="margin-top:10px">
+            <table class="tbl">
+              <tr><th>Place</th><th class="num">Searches</th></tr>
+              @for (p of ss.topPlaces; track p.value) {
+                <tr class="clickrow" (click)="searchesFilter = p.value; runSearchesFilter()"><td>{{ p.value }}</td><td class="num"><b>{{ p.count }}</b></td></tr>
+              }
+            </table>
+          </div>
+        }
+      </div>
+      <div class="panel">
+        <h4>Most searched months</h4>
+        <div class="sub">Last 30 days</div>
+        @if (ss.topMonths.length === 0) {
+          <p class="note" style="margin-top:12px">No month searches yet.</p>
+        } @else {
+          <div class="tblwrap" style="margin-top:10px">
+            <table class="tbl">
+              <tr><th>Month</th><th class="num">Searches</th></tr>
+              @for (m of ss.topMonths; track m.value) {
+                <tr class="clickrow" (click)="searchesFilter = m.value; runSearchesFilter()"><td>{{ monthLabel(m.value) }}</td><td class="num"><b>{{ m.count }}</b></td></tr>
+              }
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="panel logfilters" style="margin-top:16px">
+    <div class="fld grow">
+      <span class="lbl">Search</span>
+      <input class="inp" placeholder="Place (e.g. Koraput) or month (e.g. 2026-10)" [(ngModel)]="searchesFilter" (keydown.enter)="runSearchesFilter()" />
+    </div>
+    <div class="fld actions">
+      <button class="btn" (click)="runSearchesFilter()">Search</button>
+      <button class="btn ghost" (click)="searchesFilter = ''; runSearchesFilter()">Clear</button>
+    </div>
+  </div>
+
+  @switch (searchesState()) {
+    @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
+    @case ('error') { <app-state-panel kind="error" message="Could not load visitor searches."></app-state-panel> }
+    @case ('ready') {
+      @if (searchRows().length === 0) {
+        <app-state-panel kind="empty" message="No visitor searches recorded yet."></app-state-panel>
+      } @else {
+        <div class="panel" style="padding:16px">
+          <div class="sub" style="margin-bottom:8px">{{ searchesTotal() | number }} search{{ searchesTotal() === 1 ? '' : 'es' }} from the home page · newest first · kept for 180 days</div>
+          <div class="tblwrap">
+            <table class="tbl">
+              <tr><th>Time</th><th>Month</th><th>Place</th><th class="num">Trips shown</th><th>Who</th></tr>
+              @for (s of searchRows(); track s.searchLogId) {
+                <tr>
+                  <td class="note nowrap">{{ s.createdAtUtc | date: 'd MMM y, h:mm a' }}</td>
+                  <td [class.mut]="!s.month">{{ monthLabel(s.month) }}</td>
+                  <td [class.mut]="!s.place">{{ s.place || 'Any place' }}</td>
+                  <td class="num">
+                    @if (s.resultCount === 0) { <span class="badge wait">0</span> } @else { {{ s.resultCount }} }
+                  </td>
+                  <td class="nowrap">
+                    @if (s.customerId) { <a [routerLink]="['/admin/customers', s.customerId]">{{ s.customerLabel }}</a> }
+                    @else { <span class="mut">Visitor</span> }
+                  </td>
+                </tr>
+              }
+            </table>
+          </div>
+          <div class="pager">
+            <span>Page {{ searchesPage() }} of {{ searchesPageCount() }}</span>
+            <div class="pg">
+              <button [disabled]="searchesPage() <= 1" (click)="goToSearchesPage(searchesPage() - 1)" aria-label="Previous page">‹</button>
+              <button [disabled]="searchesPage() >= searchesPageCount()" (click)="goToSearchesPage(searchesPage() + 1)" aria-label="Next page">›</button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+}
 
 <!-- ================= Overview ================= -->
 @if (tab() === 'overview') {

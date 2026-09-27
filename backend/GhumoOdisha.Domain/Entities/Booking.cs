@@ -5,6 +5,9 @@ namespace GhumoOdisha.Domain.Entities;
 public class Booking
 {
     public int BookingId { get; set; }
+    /// <summary>Random customer-facing number, shown as "GO-985676" (see BookingNumbers). Unique.</summary>
+    public int BookingNumber { get; set; }
+    public string Reference => $"GO-{BookingNumber}";
     public int CustomerId { get; set; }
     public int TripId { get; set; }
     public int TripDateSlotId { get; set; }

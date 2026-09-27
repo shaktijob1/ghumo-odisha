@@ -61,3 +61,6 @@ public record CreateManualBookingRequest(
     BookingSource BookingSource,
     BookingStatus InitialStatus,
     string? AdminNotes);
+
+/// <summary>Customer asks for their booking invoice to be emailed to this address.</summary>
+public record EmailInvoiceRequest(string Email);

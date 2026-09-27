@@ -38,6 +38,7 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<CouponPayout> CouponPayouts => Set<CouponPayout>();
     public DbSet<AppLog> AppLogs => Set<AppLog>();
     public DbSet<AdminActivity> AdminActivities => Set<AdminActivity>();
+    public DbSet<SearchLog> SearchLogs => Set<SearchLog>();
     public DbSet<Destination> Destinations => Set<Destination>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

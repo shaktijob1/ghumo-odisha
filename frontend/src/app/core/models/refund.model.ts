@@ -14,6 +14,7 @@ export interface CustomerRefund {
 export interface AdminRefund {
   refundId: number;
   bookingId: number;
+  bookingReference: string;
   amountPaid: number;
   amount: number;
   /** Paid through Razorpay — the most a Razorpay refund can return. */

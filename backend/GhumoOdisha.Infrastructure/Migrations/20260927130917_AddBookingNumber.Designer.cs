@@ -4,6 +4,7 @@ using GhumoOdisha.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GhumoOdisha.Infrastructure.Migrations
 {
     [DbContext(typeof(GhumoOdishaDbContext))]
-    partial class GhumoOdishaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927130917_AddBookingNumber")]
+    partial class AddBookingNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1056,46 +1059,6 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.HasIndex("TripId", "DisplayOrder");
 
                     b.ToTable("RoomPhotos", (string)null);
-                });
-
-            modelBuilder.Entity("GhumoOdisha.Domain.Entities.SearchLog", b =>
-                {
-                    b.Property<long>("SearchLogId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("SearchLogId"));
-
-                    b.Property<string>("ClientIp")
-                        .HasMaxLength(45)
-                        .HasColumnType("varchar(45)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("CustomerId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Month")
-                        .HasMaxLength(7)
-                        .HasColumnType("varchar(7)");
-
-                    b.Property<string>("Place")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<int>("ResultCount")
-                        .HasColumnType("int");
-
-                    b.HasKey("SearchLogId");
-
-                    b.HasIndex("CreatedAtUtc");
-
-                    b.HasIndex("Month", "CreatedAtUtc");
-
-                    b.HasIndex("Place", "CreatedAtUtc");
-
-                    b.ToTable("SearchLogs", (string)null);
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.SiteHeroPhoto", b =>

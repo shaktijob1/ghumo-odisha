@@ -71,6 +71,7 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
 
     private static AdminBookingListItemDto MapToListItem(Domain.Entities.Booking booking) => new(
         booking.BookingId,
+        booking.Reference,
         booking.CustomerId,
         booking.Customer.Name,
         booking.Customer.PhoneNumber,

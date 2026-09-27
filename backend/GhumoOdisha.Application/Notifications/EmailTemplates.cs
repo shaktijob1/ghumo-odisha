@@ -107,6 +107,26 @@ public static class EmailTemplates
         return (Layout("Your refund has been processed", body), text);
     }
 
+    public record InvoiceModel(
+        string CustomerName,
+        string BookingReference,
+        string TripTitle,
+        string TravelDates,
+        string MyBookingsUrl);
+
+    public static (string Html, string Text) Invoice(InvoiceModel m)
+    {
+        var body = $"""
+            <p style="margin:0 0 6px">Hi {E(m.CustomerName)},</p>
+            <p style="margin:0 0 16px">As requested, the invoice for your booking <b>{E(m.BookingReference)}</b> — {E(m.TripTitle)}, {E(m.TravelDates)} — is attached to this email as a PDF.</p>
+            <div style="text-align:center;margin:20px 0 4px">
+              <a href="{E(m.MyBookingsUrl)}" style="display:inline-block;background:{Accent};color:#FFFFFF;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">View my bookings</a>
+            </div>
+            """;
+        var text = $"Hi {m.CustomerName}, the invoice for your booking {m.BookingReference} ({m.TripTitle}, {m.TravelDates}) is attached as a PDF. {m.MyBookingsUrl}";
+        return (Layout($"Your invoice · {m.BookingReference}", body), text);
+    }
+
     private static string Layout(string heading, string bodyHtml) => $"""
         <!doctype html>
         <html><body style="margin:0;padding:0;background:#F7F8F8;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;color:{Ink}">

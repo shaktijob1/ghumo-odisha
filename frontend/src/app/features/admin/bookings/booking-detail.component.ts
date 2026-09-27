@@ -444,7 +444,7 @@ export class BookingDetailComponent implements OnInit {
     this.bookingService.downloadInvoice(this.bookingId).subscribe({
       next: (blob) => {
         this.downloadingInvoice.set(false);
-        downloadFile(blob, `GhumoOdisha-Invoice-GO-${this.bookingId}.pdf`);
+        downloadFile(blob, `GhumoOdisha-Invoice-${this.booking()?.bookingReference ?? this.bookingId}.pdf`);
       },
       error: () => {
         this.downloadingInvoice.set(false);

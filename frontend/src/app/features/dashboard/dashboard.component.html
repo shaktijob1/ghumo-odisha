@@ -11,27 +11,56 @@
 
     <div class="dhero-search">
       <div class="searchbar">
-        <div class="sfield">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-          <input
-            class="sinput"
-            placeholder="Where do you want to go?"
-            autocomplete="off"
-            [ngModel]="locationSearch()"
-            (ngModelChange)="locationSearch.set($event)"
-            (focus)="onLocationFieldFocus()"
-            (blur)="onLocationFieldBlur()"
-          />
-          @if (showLocationSuggestions() && locationSuggestions().length > 0) {
-            <div class="loc-suggest">
-              @for (loc of locationSuggestions(); track loc) {
-                <button type="button" (mousedown)="selectLocationSuggestion(loc)">{{ loc }}</button>
+        <!-- Month: the whole section opens a month-only picker (next 12 months). -->
+        <div class="sfield hs-field hs-month" [class.open]="monthOpen()">
+          <button type="button" class="hs-trigger" aria-haspopup="listbox" [attr.aria-expanded]="monthOpen()" (click)="toggleMonth()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+            @if (searchMonthOption(); as m) {
+              <span class="hs-value"><span class="m-long">{{ m.label }}</span><span class="m-short">{{ m.short }}</span></span>
+            } @else {
+              <span class="hs-value ph">Month</span>
+            }
+            <svg class="hs-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          @if (monthOpen()) {
+            <div class="hs-pop hs-months" role="listbox" aria-label="Month">
+              @for (m of monthOptions; track m.value) {
+                <button type="button" role="option" [class.on]="searchMonth() === m.value" [attr.aria-selected]="searchMonth() === m.value" (click)="pickMonth(m.value)">{{ m.label }}</button>
               }
             </div>
           }
         </div>
-        <!-- Date filters hidden for now (kept in the component so the filter logic is intact); re-add
-             a .sfield/.dateinput block here identical to the ones on the destination page to bring them back. -->
+        <span class="sdiv hero-sdiv" aria-hidden="true"></span>
+        <!-- Place: the whole section focuses a text box with matching suggestions below it. -->
+        <div class="sfield hs-field hs-place" [class.open]="placeOpen()" (click)="openPlace()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+          <input
+            #placeInput
+            class="sinput hs-input"
+            placeholder="Place"
+            aria-label="Place"
+            autocomplete="off"
+            [ngModel]="searchPlace()"
+            (ngModelChange)="searchPlace.set($event); placeOpen.set(true)"
+            (focus)="placeOpen.set(true); monthOpen.set(false)"
+            (keydown.enter)="applyFilters()"
+          />
+          @if (searchPlace()) {
+            <button type="button" class="hs-clear" aria-label="Clear place" (click)="clearSearchPlace($event)">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          }
+          @if (placeOpen() && placeSuggestions().length > 0) {
+            <div class="hs-pop hs-places" role="listbox" aria-label="Places">
+              @for (p of placeSuggestions(); track p) {
+                <button type="button" role="option" [class.on]="searchPlace() === p" (mousedown)="$event.preventDefault()" (click)="pickPlace(p); $event.stopPropagation()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                  {{ p }}
+                </button>
+              }
+            </div>
+          }
+        </div>
         <button type="button" class="btn searchbtn" aria-label="Search" (click)="applyFilters()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
           <span class="searchbtn-label">Search</span>
@@ -43,19 +72,14 @@
 
 <section id="trending-destinations" class="sect tight">
   <div class="container">
-   <!-- Desktop: white panel with a horizontal card row + arrows. Mobile (≤640px): panel is transparent, unchanged layout. -->
+   <!-- White panel with a horizontal card row + prev/next arrows, on desktop and mobile alike. -->
    <div class="trend-panel">
     <div class="sechead">
       <div class="sechead-text">
         <span class="eyebrow">Trending Now</span>
-        <h2>Trending Odisha Destinations</h2>
-        <p class="sub sub-full">Pick a destination to see every trip we run there — dates, seats and prices, all in one place.</p>
-        <p class="sub sub-mobile">Explore trips by destination</p>
+        <h2><span class="h-full">Trending Odisha Destinations</span><span class="h-mobile">Trending in Odisha</span></h2>
+        <p class="sub coupon-sub">Apply Coupon <span class="coupon-code">GHUMO200</span> to get extra &#8377;200 discount</p>
       </div>
-      <button type="button" class="viewall-mobile" (click)="scrollTo('upcoming-trips')">
-        View All
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-      </button>
       <div class="trend-arrows">
         <button type="button" aria-label="Previous destinations" [disabled]="!canScrollPrev()" (click)="scrollTrending(-1)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
@@ -72,14 +96,6 @@
           @for (i of [1, 2, 3, 4]; track i) {
             <div class="dcard skel"><div class="ph"></div></div>
           }
-        </div>
-        <div class="dmobile">
-          <div class="dfeatured skel"></div>
-          <div class="dmini-row">
-            @for (i of [1, 2, 3]; track i) {
-              <div class="dmini skel"></div>
-            }
-          </div>
         </div>
       }
       @case ('error') {
@@ -99,110 +115,6 @@
               <app-destination-card [destination]="d"></app-destination-card>
             }
           </div>
-
-          <div class="dmobile">
-            <ng-template #cardInner let-d="d">
-              @if (d.coverImageUrl || d.heroImageUrl) {
-                <img [src]="(d.coverImageUrl || d.heroImageUrl) | imageUrl" alt="{{ d.name }}" draggable="false" />
-              }
-              <span class="mcard-badge">{{ d.tripCount }} trip{{ d.tripCount === 1 ? '' : 's' }}</span>
-              <div class="mcard-info">
-                <b>{{ d.name }}</b>
-                @if (d.startingPrice !== null) {
-                  <span>From &#8377;{{ d.startingPrice | number: '1.0-0' }}</span>
-                }
-              </div>
-            </ng-template>
-
-            @if (displayedDestination(); as ad) {
-              <a class="dfeatured" [class.reduced-motion]="reducedMotion" [routerLink]="['/destinations', ad.slug]">
-                @for (d of destinations(); track $index; let i = $index) {
-                  @if (d.coverImageUrl || d.heroImageUrl) {
-                    <img class="dfeatured-img" [class.show]="i === activeIndex()" [src]="(d.coverImageUrl || d.heroImageUrl) | imageUrl" alt="{{ d.name }}" />
-                  }
-                }
-                <div class="dfeatured-scrim" aria-hidden="true"></div>
-
-                @if (displayedIndex() === 0) {
-                  <span class="dfeatured-badge pop" [class.fade]="heroTextFading()">&#128081; Most Popular</span>
-                }
-                <span class="dfeatured-badge count" [class.fade]="heroTextFading()">{{ ad.tripCount }} trip{{ ad.tripCount === 1 ? '' : 's' }}</span>
-
-                <div class="dfeatured-text" [class.fade]="heroTextFading()">
-                  <span class="dfeatured-loc">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-                    {{ ad.name }}
-                  </span>
-                  <b>{{ ad.name }}</b>
-                  @if (ad.startingPrice !== null) {
-                    <span class="dfeatured-price">From &#8377;{{ ad.startingPrice | number: '1.0-0' }}</span>
-                  }
-                  @if (tagsFor(ad).length > 0) {
-                    <div class="dfeatured-tags">
-                      @for (tag of tagsFor(ad); track tag; let last = $last) {
-                        <span class="dftag">
-                          @switch (tagIcon(tag)) {
-                            @case ('water') {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"></path></svg>
-                            }
-                            @case ('mountain') {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19h18L14 6l-3.5 5L8 8z"></path></svg>
-                            }
-                            @case ('tree') {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 7 10h3l-4 6h5v5h2v-5h5l-4-6h3z"></path></svg>
-                            }
-                            @case ('landmark') {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21V9l7-5 7 5v12M9 21v-6h6v6"></path></svg>
-                            }
-                            @case ('sun') {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path></svg>
-                            }
-                            @default {
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M15 9l-2 6-6 2 2-6 6-2z"></path></svg>
-                            }
-                          }
-                          {{ tag }}
-                        </span>
-                        @if (!last) { <span class="dftag-div" aria-hidden="true"></span> }
-                      }
-                    </div>
-                  }
-                </div>
-
-                <span class="dfeatured-arrow" aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-                </span>
-              </a>
-            }
-
-            @if (destinations().length > 1) {
-              <div
-                class="mcarousel"
-                #carouselTrack
-                [class.reduced-motion]="reducedMotion"
-                [class.dragging]="dragging()"
-                (pointerdown)="onPointerDown($event)"
-              >
-                @for (d of destinations(); track $index; let i = $index) {
-                  @if (i === activeIndex()) {
-                    <a class="mcard active" [style.--x.px]="offsetPx(i)" [routerLink]="['/destinations', d.slug]" (click)="onActiveCardClick($event)">
-                      <ng-container [ngTemplateOutlet]="cardInner" [ngTemplateOutletContext]="{ d: d }"></ng-container>
-                    </a>
-                  } @else {
-                    <div class="mcard" role="button" tabindex="0" [style.--x.px]="offsetPx(i)" (click)="onSideCardClick(i)" (keydown.enter)="onSideCardClick(i)">
-                      <ng-container [ngTemplateOutlet]="cardInner" [ngTemplateOutletContext]="{ d: d }"></ng-container>
-                    </div>
-                  }
-                }
-              </div>
-
-              <div class="mdots" role="tablist" aria-label="Select destination">
-                @for (d of destinations(); track $index; let i = $index) {
-                  <button type="button" class="mdot" [class.active]="i === activeIndex()" (click)="goTo(i)" [attr.aria-label]="'Show ' + d.name"></button>
-                }
-              </div>
-            }
-          </div>
         }
       }
     }
@@ -212,13 +124,13 @@
 
 <section id="upcoming-trips" class="sect">
   <div class="container" [class.section-flash]="highlightUpcoming()">
-   <!-- Desktop: white panel, one row of 3 cards with arrows. Mobile (≤640px): transparent, first 3 trips + View more. -->
+   <!-- White panel with one scrollable row of trip cards + prev/next arrows, on desktop and mobile alike. -->
    <div class="trend-panel">
     <div class="sechead">
       <div>
         <span class="eyebrow">Upcoming Departures</span>
-        <h2>Upcoming Trips</h2>
-        <p class="sub">Fixed departures across Odisha, with seats you can check in real time before you request a booking.</p>
+        <h2>Book Now at &#8377;99 only</h2>
+        <p class="sub coupon-sub">Apply Code <span class="coupon-code">GO200</span> to get extra &#8377;200 discount</p>
       </div>
       <div class="trend-arrows">
         <button type="button" aria-label="Previous trips" [disabled]="!tripCanScrollPrev()" (click)="scrollTrips(-1)">
@@ -241,26 +153,20 @@
 
     @if (hasActiveFilters()) {
       <div class="filterchips">
-        @if (locationSearch()) {
+        @if (appliedMonth()) {
           <span class="chip">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-            {{ locationSearch() }}
-            <button type="button" class="chipx" (click)="clearLocationFilter()" aria-label="Remove location filter">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+            {{ appliedMonthLabel() }}
+            <button type="button" class="chipx" (click)="clearMonthFilter()" aria-label="Remove month filter">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
             </button>
           </span>
         }
-        @if (fromDate() || toDate()) {
+        @if (placeQuery()) {
           <span class="chip">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-            @if (fromDate() && toDate()) {
-              {{ fromDate() | date:'d MMM y' }} &rarr; {{ toDate() | date:'d MMM y' }}
-            } @else if (fromDate()) {
-              From {{ fromDate() | date:'d MMM y' }}
-            } @else {
-              Until {{ toDate() | date:'d MMM y' }}
-            }
-            <button type="button" class="chipx" (click)="clearDateFilter()" aria-label="Remove date filter">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+            &ldquo;{{ placeQuery() }}&rdquo;
+            <button type="button" class="chipx" (click)="clearPlaceQuery()" aria-label="Remove place filter">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
             </button>
           </span>
@@ -293,22 +199,21 @@
       @case ('ready') {
         @if (upcomingTrips().length === 0) {
           <div class="state-panel">
-            <p class="mut">No upcoming trips are available right now. Please check back soon.</p>
+            @if (hasActiveFilters() || selectedLocation()) {
+              <p class="mut" style="margin-bottom:14px">No trips match your search. Try another month or place.</p>
+              <button class="btn sm ghost" (click)="clearAllFilters()">Show all trips</button>
+            } @else {
+              <p class="mut">No upcoming trips are available right now. Please check back soon.</p>
+            }
           </div>
         } @else {
-          <!-- One list for both layouts: desktop scrolls the whole row; mobile hides trips past visibleTripsCount. -->
           <div class="tgrid trow" #tripScroll (scroll)="updateTripArrows()">
-            @for (t of upcomingTrips(); track $index; let i = $index) {
-              <div class="tslot" [class.beyond]="i >= visibleTripsCount()">
+            @for (t of upcomingTrips(); track $index) {
+              <div class="tslot">
                 <app-trip-card [trip]="t" [showNextDeparture]="true"></app-trip-card>
               </div>
             }
           </div>
-          @if (visibleTripsCount() < upcomingTrips().length) {
-            <div class="tmore">
-              <button type="button" class="btn sm ghost" (click)="showMoreTrips()">View more</button>
-            </div>
-          }
         }
       }
     }

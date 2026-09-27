@@ -9,7 +9,28 @@
     @let t = trip()!;
 
     <div class="container">
-      <section class="dhero">
+      <!-- Desktop: photo gallery — big first photo with the trip name, up to four more beside it.
+           Phones keep the single rotating hero below. -->
+      @if (t.photos.length > 0) {
+        @let shown = t.photos.slice(0, 5);
+        <section class="tdgallery" [attr.data-count]="shown.length">
+          @for (p of shown; track p.tripPhotoId; let i = $index; let last = $last) {
+            <button type="button" class="tdg-item" [class.tdg-main]="i === 0" (click)="openPhotos(t.title, tripPhotoUrls(t), i)" [attr.aria-label]="'View trip photo ' + (i + 1)">
+              <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' photo ' + (i + 1)" />
+              @if (i === 0) {
+                <span class="tdg-title">
+                  <h1>{{ t.title }}</h1>
+                  <span>From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</span>
+                </span>
+              }
+              @if (last && t.photos.length > shown.length) {
+                <span class="tdg-more">+{{ t.photos.length - shown.length }} photos</span>
+              }
+            </button>
+          }
+        </section>
+      }
+      <section class="dhero" [class.has-gallery]="t.photos.length > 0">
         @if (t.photos.length > 0) {
           <img [src]="t.photos[heroIndex()].imageUrl | imageUrl" alt="{{ t.title }}" />
         }
@@ -406,6 +427,7 @@
           <p style="font-size:13.5px;color:#2A4F45;line-height:1.6;margin-bottom:16px">Your payment was verified and your seats are confirmed.</p>
           <div class="card pad" style="background:#fff">
             <div class="kv">
+              <span class="k">Booking ID</span><b>{{ confirmedBooking()!.bookingReference }}</b>
               <span class="k">Trip</span><b>{{ confirmedBooking()!.tripTitle }}</b>
               <span class="k">Date</span><b>{{ confirmedBooking()!.startDate | date:'d MMM y' }} → {{ confirmedBooking()!.endDate | date:'d MMM y' }}</b>
               <span class="k">Seats</span><b>{{ confirmedBooking()!.numberOfSeats }}</b>
@@ -418,6 +440,34 @@
           } @else {
             <p class="note" style="margin-top:14px">Fully paid — nothing else is due.</p>
           }
+
+          <div class="invmail">
+            <label class="invmail-lbl" for="invoiceEmail">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>
+              Get your invoice on email
+            </label>
+            <p class="invmail-sub">Enter your email ID and we'll send the invoice PDF straight to your inbox.</p>
+            <div class="invmail-row">
+              <input id="invoiceEmail" class="inp" type="email" inputmode="email" autocomplete="email" placeholder="Enter your email ID"
+                [ngModel]="invoiceEmail()" (ngModelChange)="invoiceEmail.set($event); invoiceEmailError.set(null)" (keyup.enter)="emailInvoice()" />
+              <button type="button" class="btn invmail-btn" [disabled]="sendingInvoiceEmail()" (click)="emailInvoice()" aria-label="Send invoice to this email">
+                @if (sendingInvoiceEmail()) {
+                  <span class="spin"></span>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="M22 2 15 22l-4-9-9-4z"></path></svg>
+                }
+              </button>
+            </div>
+            @if (invoiceEmailError()) {
+              <p class="invmail-err">{{ invoiceEmailError() }}</p>
+            } @else if (invoiceEmailSentTo()) {
+              <p class="invmail-ok">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Invoice sent to {{ invoiceEmailSentTo() }}
+              </p>
+            }
+          </div>
+
           <div class="row" style="gap:10px;margin-top:16px">
             <button class="btn" style="flex:1" [disabled]="downloadingInvoice()" (click)="downloadInvoice()">
               @if (downloadingInvoice()) { <span class="spin"></span> } @else { Download Invoice }

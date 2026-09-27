@@ -3,6 +3,8 @@ import { BookingEventType, BookingSource, BookingStatus, Gender, PaymentMethod, 
 
 export interface AdminBookingListItem {
   bookingId: number;
+  /** Customer-facing number, e.g. "GO-985676". */
+  bookingReference: string;
   customerId: number;
   customerName: string;
   customerPhone: string | null;
@@ -22,6 +24,7 @@ export interface AdminBookingListItem {
 
 export interface AdminBookingDetail {
   bookingId: number;
+  bookingReference: string;
   customerId: number;
   customerName: string;
   customerPhone: string | null;
@@ -171,6 +174,8 @@ export interface CreateBookingResult {
 
 export interface BookingResponse {
   bookingId: number;
+  /** Customer-facing number, e.g. "GO-985676". */
+  bookingReference: string;
   tripId: number;
   tripTitle: string;
   tripCoverImageUrl: string | null;

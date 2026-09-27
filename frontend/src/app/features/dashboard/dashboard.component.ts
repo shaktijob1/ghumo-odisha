@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { PublicTripService } from '../../core/services/public-trip.service';
 import { PublicDestinationService } from '../../core/services/public-destination.service';
 import { ContactService } from '../../core/services/contact.service';
 import { HeroService } from '../../core/services/hero.service';
+import { SearchLogService } from '../../core/services/search-log.service';
 import { TripSummary } from '../../core/models/trip.model';
 import { DestinationSummary } from '../../core/models/destination.model';
 import { TripCardComponent } from '../../shared/components/trip-card.component';
@@ -14,6 +14,32 @@ import { FeatureCardComponent, FeatureIcon } from '../../shared/components/featu
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+interface MonthOption {
+  value: string; // "yyyy-MM"
+  label: string; // "October" — the next 12 months, so a month name alone is unambiguous
+  short: string; // "Oct" — shown in the field on phones
+}
+
+/** This month and the following ones, for the hero month picker. */
+function buildMonthOptions(count: number): MonthOption[] {
+  const now = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    return {
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-IN', { month: 'long' }),
+      short: d.toLocaleDateString('en-IN', { month: 'short' }),
+    };
+  });
+}
+
+/** "2026-10" → trips with a departure overlapping 1–31 Oct 2026. */
+function monthRange(month: string): { fromDate: string; toDate: string } {
+  const [year, mon] = month.split('-').map(Number);
+  const lastDay = new Date(year, mon, 0).getDate();
+  return { fromDate: `${month}-01`, toDate: `${month}-${String(lastDay).padStart(2, '0')}` };
+}
 
 interface Feature {
   icon: FeatureIcon;
@@ -24,7 +50,7 @@ interface Feature {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe],
+  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -32,7 +58,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly destinationService = inject(PublicDestinationService);
   private readonly contactService = inject(ContactService);
   private readonly heroPhotoService = inject(HeroService);
-  private readonly ngZone = inject(NgZone);
+  private readonly searchLog = inject(SearchLogService);
 
   readonly contact = this.contactService.get();
   readonly orgPhotoFailed = signal(false);
@@ -45,7 +71,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly destinationsState = signal<LoadState>('loading');
   readonly destinations = signal<DestinationSummary[]>([]);
 
-  // --- Desktop "Trending Odisha Destinations" row: horizontal scroll + prev/next arrows ---
+  readonly reducedMotion =
+    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  // --- "Trending Odisha Destinations" row (all screen sizes): horizontal scroll + prev/next arrows ---
   private readonly trendScroll = viewChild<ElementRef<HTMLElement>>('trendScroll');
   readonly canScrollPrev = signal(false);
   readonly canScrollNext = signal(false);
@@ -66,10 +95,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   scrollTrending(direction: 1 | -1): void {
     const el = this.trendScroll()?.nativeElement;
     if (!el) return;
-    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 200), behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 140), behavior: this.reducedMotion ? 'auto' : 'smooth' });
   }
 
-  // --- Desktop "Upcoming Trips" row: 4 cards per view (3 / 2 on narrower screens), arrows move 2 ---
+  // --- "Upcoming Trips" row: 4 cards per view (3 / 2 on narrower screens, ~1 on phones), arrows move 2 (1 on phones) ---
   private readonly tripScroll = viewChild<ElementRef<HTMLElement>>('tripScroll');
   readonly tripCanScrollPrev = signal(false);
   readonly tripCanScrollNext = signal(false);
@@ -96,7 +125,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const card = el?.querySelector<HTMLElement>('.tslot');
     if (!el || !card) return;
     const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
-    el.scrollBy({ left: direction * 2 * (card.getBoundingClientRect().width + gap), behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    const step = card.getBoundingClientRect().width + gap;
+    // Phones show about one card per view, so move one at a time there.
+    const cards = step * 2 <= el.clientWidth ? 2 : 1;
+    el.scrollBy({ left: direction * cards * step, behavior: this.reducedMotion ? 'auto' : 'smooth' });
   }
 
   @HostListener('window:resize')
@@ -105,156 +137,118 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.updateTripArrows();
   }
 
-  // --- Mobile "Trending Odisha Destinations" carousel (synced hero + 3-up centered mini-cards) ---
-  private readonly GAP_PX = 10;
-  private readonly AUTOPLAY_MS = 4000;
-  private readonly SWIPE_THRESHOLD_RATIO = 0.24;
-  private readonly FLICK_VELOCITY = 0.5; // px/ms
-  private readonly HERO_TEXT_DELAY_MS = 170;
+  // --- Hero search: month picker + place text box with suggestions ---
+  readonly monthOptions = buildMonthOptions(12);
+  // Draft values in the hero search ('' = any); they apply only when Search is pressed.
+  readonly searchMonth = signal('');
+  readonly searchPlace = signal('');
+  readonly searchMonthOption = computed(() => this.monthOptions.find((m) => m.value === this.searchMonth()) ?? null);
+  readonly monthOpen = signal(false);
+  readonly placeOpen = signal(false);
+  private readonly placeInput = viewChild<ElementRef<HTMLInputElement>>('placeInput');
 
-  private readonly carouselTrack = viewChild<ElementRef<HTMLElement>>('carouselTrack');
-  private readonly containerWidth = signal(0);
-  private resizeObserver: ResizeObserver | null = null;
+  // What is currently filtering Upcoming Trips: a month ("yyyy-MM") and/or free place text that
+  // didn't match a known place exactly ('' = none). An exact place match uses selectedLocation.
+  readonly appliedMonth = signal('');
+  readonly appliedMonthLabel = computed(() => this.monthLabel(this.appliedMonth()));
+  readonly placeQuery = signal('');
 
-  readonly activeIndex = signal(0);
-  readonly activeDestination = computed(() => {
-    const list = this.destinations();
-    return list[this.activeIndex()] ?? list[0] ?? null;
+  // Every place seen while no month filter was applied, so the suggestions don't shrink
+  // once a month search narrows the trip list.
+  private readonly knownLocations = signal<string[]>([]);
+  readonly placeOptions = computed(() => {
+    const names = new Set(this.knownLocations());
+    for (const d of this.destinations()) names.add(d.name);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
   });
 
-  // Hero text (title/price/tags/badges) lags the image by a short stagger so the crossfade reads
-  // as one deliberate transition rather than an instant text swap.
-  readonly displayedDestination = signal<DestinationSummary | null>(null);
-  readonly displayedIndex = signal(0);
-  readonly heroTextFading = signal(false);
-  private heroTextTimer: ReturnType<typeof setTimeout> | null = null;
+  // Typed text narrows the list; once it exactly matches a place, show everything again so the
+  // visitor can switch without clearing the box first.
+  readonly placeSuggestions = computed(() => {
+    const query = this.searchPlace().trim().toLowerCase();
+    const list = this.placeOptions();
+    if (!query || list.some((p) => p.toLowerCase() === query)) return list;
+    return list.filter((p) => p.toLowerCase().includes(query));
+  });
 
-  readonly dragging = signal(false);
-  private dragStartX = 0;
-  private dragMoved = false;
-  private pointerId: number | null = null;
-  private lastMoveX = 0;
-  private lastMoveTime = 0;
-  private velocity = 0;
-  private pendingDx = 0;
-  private dragCardEls: HTMLElement[] = [];
-  private dragBaseOffsets: number[] = [];
-  private dragCleanup: (() => void) | null = null;
-
-  readonly reducedMotion =
-    typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  private readonly mobileMql = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)') : null;
-  private autoplayHandle: ReturnType<typeof setInterval> | null = null;
-
-  private readonly onMqlChange = (e: MediaQueryListEvent): void => {
-    if (e.matches) this.startAutoplay();
-    else this.stopAutoplay();
-  };
-
-  private readonly onVisibilityChange = (): void => {
-    if (document.hidden) this.stopAutoplay();
-    else this.startAutoplay();
-  };
-
-  constructor() {
-    effect(() => {
-      const el = this.carouselTrack()?.nativeElement;
-      this.resizeObserver?.disconnect();
-      this.resizeObserver = null;
-      if (el) {
-        this.containerWidth.set(el.clientWidth);
-        this.resizeObserver = new ResizeObserver((entries) => {
-          this.containerWidth.set(entries[0]?.contentRect.width ?? 0);
-        });
-        this.resizeObserver.observe(el);
-      }
-    });
-
-    let initialized = false;
-    effect(() => {
-      const dest = this.activeDestination();
-      const idx = this.activeIndex();
-      if (!initialized) {
-        if (dest === null) return;
-        initialized = true;
-        this.displayedDestination.set(dest);
-        this.displayedIndex.set(idx);
-        return;
-      }
-      this.heroTextFading.set(true);
-      if (this.heroTextTimer) clearTimeout(this.heroTextTimer);
-      this.heroTextTimer = setTimeout(() => {
-        this.displayedDestination.set(dest);
-        this.displayedIndex.set(idx);
-        this.heroTextFading.set(false);
-      }, this.HERO_TEXT_DELAY_MS);
-    });
+  private monthLabel(value: string): string {
+    return this.monthOptions.find((m) => m.value === value)?.label ?? '';
   }
 
-  readonly locationSearch = signal('');
-  readonly fromDate = signal('');
-  readonly toDate = signal('');
+  toggleMonth(): void {
+    this.placeOpen.set(false);
+    this.monthOpen.update((open) => !open);
+  }
 
-  // Distinct destination names across every loaded trip — feeds both the "All" + per-location
-  // pill row under Upcoming Trips and the autocomplete dropdown on the hero search field.
+  pickMonth(value: string): void {
+    this.searchMonth.set(this.searchMonth() === value ? '' : value);
+    this.monthOpen.set(false);
+  }
+
+  /** A click anywhere in the Place section opens the text box and its suggestions. */
+  openPlace(): void {
+    this.monthOpen.set(false);
+    this.placeOpen.set(true);
+    this.placeInput()?.nativeElement.focus();
+  }
+
+  pickPlace(place: string): void {
+    this.searchPlace.set(place);
+    this.placeOpen.set(false);
+  }
+
+  clearSearchPlace(event: Event): void {
+    event.stopPropagation();
+    this.searchPlace.set('');
+    this.openPlace();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as Element | null;
+    if (!target?.closest('.hs-month')) this.monthOpen.set(false);
+    if (!target?.closest('.hs-place')) this.placeOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  closeSearchPopovers(): void {
+    this.monthOpen.set(false);
+    this.placeOpen.set(false);
+  }
+
+  readonly selectedLocation = signal<string | null>(null);
+
+  // Distinct destination names across the loaded trips — the "All" + per-location pill row under
+  // Upcoming Trips. Keeps the selected place visible even when a month search excludes it.
   readonly distinctLocations = computed(() => {
     const names = new Set<string>();
     for (const t of this.trips()) {
       for (const name of t.destinationNames) names.add(name);
     }
+    const selected = this.selectedLocation();
+    if (selected) names.add(selected);
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   });
 
-  readonly selectedLocation = signal<string | null>(null);
-
   readonly upcomingTrips = computed(() => {
     const location = this.selectedLocation();
-    return this.trips().filter((t) => this.hasUpcomingSlot(t) && (!location || t.destinationNames.includes(location)));
+    const query = this.placeQuery().trim().toLowerCase();
+    return this.trips().filter(
+      (t) =>
+        this.hasUpcomingSlot(t) &&
+        (!location || t.destinationNames.includes(location)) &&
+        (!query || t.title.toLowerCase().includes(query) || t.destinationNames.some((n) => n.toLowerCase().includes(query))),
+    );
   });
-
-  // Mobile shows this many upcoming trips, then "View more" adds the same again. Desktop scrolls the full row.
-  private static readonly TRIPS_PAGE_SIZE = 3;
-  readonly visibleTripsCount = signal(DashboardComponent.TRIPS_PAGE_SIZE);
-  readonly visibleUpcomingTrips = computed(() => this.upcomingTrips().slice(0, this.visibleTripsCount()));
-
-  showMoreTrips(): void {
-    this.visibleTripsCount.update((n) => n + DashboardComponent.TRIPS_PAGE_SIZE);
-  }
 
   selectLocation(location: string | null): void {
     this.selectedLocation.set(location);
-    this.visibleTripsCount.set(DashboardComponent.TRIPS_PAGE_SIZE);
+    this.placeQuery.set('');
+    // Keep the hero place box in step with the pill row.
+    this.searchPlace.set(location ?? '');
   }
 
-  // --- Hero search location autocomplete ---
-  readonly showLocationSuggestions = signal(false);
-  readonly locationSuggestions = computed(() => {
-    const query = this.locationSearch().trim().toLowerCase();
-    const list = this.distinctLocations();
-    return query ? list.filter((l) => l.toLowerCase().includes(query)) : list;
-  });
-
-  onLocationFieldFocus(): void {
-    this.showLocationSuggestions.set(true);
-  }
-
-  onLocationFieldBlur(): void {
-    // Delayed so a click/mousedown on a suggestion below still registers before it disappears.
-    setTimeout(() => this.showLocationSuggestions.set(false), 150);
-  }
-
-  selectLocationSuggestion(location: string): void {
-    // Deliberately does not fill locationSearch — that's the free-text/backend search box and
-    // would surface a redundant "active filter" chip duplicating the location pill this already sets.
-    this.locationSearch.set('');
-    this.showLocationSuggestions.set(false);
-    this.selectLocation(location);
-    this.jumpToUpcomingTrips();
-  }
-
-  // Briefly flashes the Upcoming Trips section so it's obvious where a hero-search jumped to,
-  // whether that came from picking a location suggestion or hitting Search directly.
+  // Briefly flashes the Upcoming Trips section so it's obvious where a hero-search jumped to.
   readonly highlightUpcoming = signal(false);
   private highlightTimer?: ReturnType<typeof setTimeout>;
 
@@ -300,18 +294,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadTrips();
     this.loadDestinations();
-    this.mobileMql?.addEventListener('change', this.onMqlChange);
-    document.addEventListener('visibilitychange', this.onVisibilityChange);
   }
 
   ngOnDestroy(): void {
-    this.stopAutoplay();
-    this.mobileMql?.removeEventListener('change', this.onMqlChange);
-    document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    this.resizeObserver?.disconnect();
-    if (this.heroTextTimer) clearTimeout(this.heroTextTimer);
     if (this.highlightTimer) clearTimeout(this.highlightTimer);
-    this.dragCleanup?.();
   }
 
   loadDestinations(): void {
@@ -320,230 +306,75 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (d) => {
         this.destinations.set(d);
         this.destinationsState.set('ready');
-        this.activeIndex.set(0);
-        this.startAutoplay();
       },
       error: () => this.destinationsState.set('error'),
     });
   }
 
-  // --- Carousel behavior (mobile only; desktop `.dscroll` grid is untouched) ---
+  // Only the newest request may update the list, so quick back-to-back searches can't land out of order.
+  private tripLoadSeq = 0;
 
-  private circularOffset(i: number): number {
-    const n = this.destinations().length;
-    if (n === 0) return 0;
-    let raw = (i - this.activeIndex()) % n;
-    if (raw > n / 2) raw -= n;
-    if (raw < -n / 2) raw += n;
-    return raw;
-  }
-
-  // Exactly 3 equal cards fit the row: width = (100% - 2*gap) / 3 (mirrors the CSS `.mcard` width).
-  private cardWidthPx(): number {
-    const w = this.containerWidth();
-    return w > 0 ? (w - 2 * this.GAP_PX) / 3 : 0;
-  }
-
-  private slotStepPx(): number {
-    const cw = this.cardWidthPx();
-    return cw > 0 ? cw + this.GAP_PX : 0;
-  }
-
-  tagsFor(d: DestinationSummary | null): string[] {
-    if (!d?.tagline) return [];
-    return d.tagline
-      .split(/[•|,]/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 3);
-  }
-
-  tagIcon(tag: string): 'mountain' | 'tree' | 'sun' | 'water' | 'landmark' | 'compass' {
-    const t = tag.toLowerCase();
-    if (t.includes('water') || t.includes('beach') || t.includes('sea') || t.includes('river') || t.includes('lake')) return 'water';
-    if (t.includes('hill') || t.includes('mountain') || t.includes('trek') || t.includes('adventure')) return 'mountain';
-    if (t.includes('forest') || t.includes('nature') || t.includes('wildlife') || t.includes('green')) return 'tree';
-    if (t.includes('temple') || t.includes('heritage') || t.includes('culture') || t.includes('history') || t.includes('fort')) return 'landmark';
-    if (t.includes('sun') || t.includes('sunrise') || t.includes('sunset')) return 'sun';
-    return 'compass';
-  }
-
-  offsetPx(i: number): number {
-    return this.circularOffset(i) * this.slotStepPx();
-  }
-
-  private next(): void {
-    const n = this.destinations().length;
-    if (n === 0) return;
-    this.activeIndex.update((i) => (i + 1) % n);
-  }
-
-  private prev(): void {
-    const n = this.destinations().length;
-    if (n === 0) return;
-    this.activeIndex.update((i) => (i - 1 + n) % n);
-  }
-
-  goTo(i: number): void {
-    const n = this.destinations().length;
-    if (n === 0) return;
-    this.activeIndex.set(((i % n) + n) % n);
-    this.resetAutoplay();
-  }
-
-  private startAutoplay(): void {
-    this.stopAutoplay();
-    if (!this.mobileMql?.matches || this.destinations().length <= 1) return;
-    this.autoplayHandle = setInterval(() => this.next(), this.AUTOPLAY_MS);
-  }
-
-  private stopAutoplay(): void {
-    if (this.autoplayHandle !== null) {
-      clearInterval(this.autoplayHandle);
-      this.autoplayHandle = null;
-    }
-  }
-
-  private resetAutoplay(): void {
-    this.startAutoplay();
-  }
-
-  // Drag tracking runs entirely outside Angular's zone and writes the `--x` custom property
-  // straight to the DOM per pointermove, so a swipe never triggers a full-page change-detection
-  // pass (that zone.js CD storm — one full template re-check per move event — is what made the
-  // drag feel rough). We only re-enter the zone once, on release, to commit the final state.
-  onPointerDown(ev: PointerEvent): void {
-    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    const trackEl = this.carouselTrack()?.nativeElement;
-    if (!trackEl) return;
-
-    this.pointerId = ev.pointerId;
-    this.dragStartX = ev.clientX;
-    this.dragMoved = false;
-    this.dragging.set(true);
-    this.lastMoveX = ev.clientX;
-    this.lastMoveTime = performance.now();
-    this.velocity = 0;
-    this.pendingDx = 0;
-    this.stopAutoplay();
-    try {
-      (ev.currentTarget as HTMLElement)?.setPointerCapture?.(ev.pointerId);
-    } catch {
-      // Some browsers/synthetic events reject capture for a pointer id that isn't "active" yet;
-      // the drag still works fine via the window-level listeners below, so this is non-fatal.
-    }
-
-    this.dragCardEls = Array.from(trackEl.querySelectorAll<HTMLElement>('.mcard'));
-    this.dragBaseOffsets = this.dragCardEls.map((_, i) => this.circularOffset(i) * this.slotStepPx());
-
-    this.dragCleanup?.();
-    this.ngZone.runOutsideAngular(() => {
-      const onMove = (e: PointerEvent) => {
-        if (e.pointerId !== this.pointerId) return;
-        const dx = e.clientX - this.dragStartX;
-        if (Math.abs(dx) > 4) this.dragMoved = true;
-        const now = performance.now();
-        const dt = now - this.lastMoveTime;
-        if (dt > 0) this.velocity = (e.clientX - this.lastMoveX) / dt;
-        this.lastMoveX = e.clientX;
-        this.lastMoveTime = now;
-        this.pendingDx = dx;
-        for (let i = 0; i < this.dragCardEls.length; i++) {
-          this.dragCardEls[i].style.setProperty('--x', `${this.dragBaseOffsets[i] + dx}px`);
-        }
-      };
-      const onUp = (e: PointerEvent) => {
-        if (e.pointerId !== this.pointerId) return;
-        cleanup();
-        this.ngZone.run(() => this.finishDrag(false));
-      };
-      const onCancel = (e: PointerEvent) => {
-        if (e.pointerId !== this.pointerId) return;
-        cleanup();
-        this.ngZone.run(() => this.finishDrag(true));
-      };
-      const cleanup = () => {
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-        window.removeEventListener('pointercancel', onCancel);
-        this.dragCleanup = null;
-      };
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-      window.addEventListener('pointercancel', onCancel);
-      this.dragCleanup = cleanup;
-    });
-  }
-
-  private finishDrag(cancelled: boolean): void {
-    this.dragging.set(false);
-    this.pointerId = null;
-    if (!cancelled) {
-      const dx = this.pendingDx;
-      const step = this.slotStepPx();
-      const threshold = step > 0 ? step * this.SWIPE_THRESHOLD_RATIO : 40;
-      if (dx <= -threshold || this.velocity <= -this.FLICK_VELOCITY) this.next();
-      else if (dx >= threshold || this.velocity >= this.FLICK_VELOCITY) this.prev();
-    }
-    this.resetAutoplay();
-  }
-
-  onActiveCardClick(ev: MouseEvent): void {
-    if (this.dragMoved) {
-      ev.preventDefault();
-      this.dragMoved = false;
-    }
-  }
-
-  onSideCardClick(i: number): void {
-    if (this.dragMoved) {
-      this.dragMoved = false;
-      return;
-    }
-    this.goTo(i);
-  }
-
-  loadTrips(): void {
+  loadTrips(onLoaded?: () => void): void {
+    const seq = ++this.tripLoadSeq;
+    const month = this.appliedMonth();
     this.state.set('loading');
     this.tripService
-      .getTrips(1, 50, {
-        search: this.locationSearch().trim() || undefined,
-        fromDate: this.fromDate() || undefined,
-        toDate: this.toDate() || undefined,
-      })
+      .getTrips(1, 50, month ? monthRange(month) : undefined)
       .subscribe({
         next: (r) => {
+          if (seq !== this.tripLoadSeq) return;
           this.trips.set(r.items);
-          this.visibleTripsCount.set(DashboardComponent.TRIPS_PAGE_SIZE);
+          if (!month) {
+            const names = new Set(this.knownLocations());
+            for (const t of r.items) for (const name of t.destinationNames) names.add(name);
+            this.knownLocations.set(Array.from(names));
+          }
           this.state.set('ready');
+          onLoaded?.();
         },
-        error: () => this.state.set('error'),
+        error: () => {
+          if (seq === this.tripLoadSeq) this.state.set('error');
+        },
       });
   }
 
+  /** Hero "Search": applies month + place to Upcoming Trips and records the search for admins. */
   applyFilters(): void {
-    this.loadTrips();
+    this.closeSearchPopovers();
+    const month = this.searchMonth();
+    const text = this.searchPlace().trim();
+    const exact = this.placeOptions().find((p) => p.toLowerCase() === text.toLowerCase()) ?? null;
+
+    this.selectLocation(exact);
+    if (!exact && text) {
+      this.placeQuery.set(text);
+      this.searchPlace.set(text);
+    }
+    this.appliedMonth.set(month);
+    this.loadTrips(() => {
+      if (month || text) {
+        this.searchLog.record({ month: month || null, place: exact ?? (text || null), resultCount: this.upcomingTrips().length });
+      }
+    });
     this.jumpToUpcomingTrips();
   }
 
-  readonly hasActiveFilters = computed(() => !!this.locationSearch().trim() || !!this.fromDate() || !!this.toDate());
+  readonly hasActiveFilters = computed(() => !!this.appliedMonth() || !!this.placeQuery());
 
-  clearLocationFilter(): void {
-    this.locationSearch.set('');
+  clearMonthFilter(): void {
+    this.appliedMonth.set('');
+    this.searchMonth.set('');
     this.loadTrips();
   }
 
-  clearDateFilter(): void {
-    this.fromDate.set('');
-    this.toDate.set('');
-    this.loadTrips();
+  clearPlaceQuery(): void {
+    this.placeQuery.set('');
+    this.searchPlace.set('');
   }
 
   clearAllFilters(): void {
-    this.locationSearch.set('');
-    this.fromDate.set('');
-    this.toDate.set('');
-    this.loadTrips();
+    this.selectLocation(null);
+    this.clearMonthFilter();
   }
 
   scrollTo(id: string): void {

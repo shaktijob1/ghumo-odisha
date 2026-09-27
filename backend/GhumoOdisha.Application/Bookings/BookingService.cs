@@ -77,6 +77,7 @@ public class BookingService(
 
         var booking = new Booking
         {
+            BookingNumber = await BookingNumbers.NextAsync(db, cancellationToken),
             CustomerId = customerId,
             TripId = trip.TripId,
             TripDateSlotId = slot.TripDateSlotId,
@@ -273,7 +274,10 @@ public class BookingService(
 
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
+            // "GO-985676" or "985676" finds the booking by its number.
+            var number = int.TryParse(filter.Search.Trim().Replace("GO-", "", StringComparison.OrdinalIgnoreCase), out var n) ? n : (int?)null;
             query = query.Where(b =>
+                b.BookingNumber == number ||
                 b.Customer.Name.Contains(filter.Search) ||
                 (b.Customer.PhoneNumber != null && b.Customer.PhoneNumber.Contains(filter.Search)) ||
                 b.Trip.Title.Contains(filter.Search));
@@ -320,6 +324,7 @@ public class BookingService(
 
         return new AdminBookingDetailDto(
             booking.BookingId,
+            booking.Reference,
             booking.CustomerId,
             booking.Customer.Name,
             booking.Customer.PhoneNumber,
@@ -447,6 +452,7 @@ public class BookingService(
         var bookingNow = DateTime.UtcNow;
         var booking = new Booking
         {
+            BookingNumber = await BookingNumbers.NextAsync(db, cancellationToken),
             CustomerId = customerId,
             TripId = trip.TripId,
             TripDateSlotId = slot.TripDateSlotId,
@@ -1077,7 +1083,7 @@ public class BookingService(
     private static string BuildWhatsAppMessage(Booking booking, Trip trip, TripDateSlot slot, Customer customer) =>
         $"Hi Ghumo Odisha, I'd like to book {booking.NumberOfSeats} seat(s) for {trip.Title} " +
         $"({slot.StartDate:dd MMM yyyy} - {slot.EndDate:dd MMM yyyy}). " +
-        $"Total: Rs {booking.TotalAmount:N0}. Booking ID: GO-{booking.BookingId}. " +
+        $"Total: Rs {booking.TotalAmount:N0}. Booking ID: {booking.Reference}. " +
         $"My name is {customer.Name}, " +
         (customer.PhoneNumber is not null ? $"phone {customer.PhoneNumber}." : $"email {customer.Email}.");
 
@@ -1131,7 +1137,7 @@ public class BookingService(
             // Dedicated template ("withme") not configured yet — fall back to the shared OTP template.
             // With the single-variable template this whole line is {{1}} in "Hello There, {{1}} See You Soon."
             var balanceNote = booking.RemainingAmount > 0 ? $", balance Rs {booking.RemainingAmount:N0} due before the trip" : ", fully paid";
-            var summary = $"Your booking GO-{booking.BookingId} is confirmed: {trip.Title}, " +
+            var summary = $"Your booking {booking.Reference} is confirmed: {trip.Title}, " +
                           $"{slot.StartDate:dd MMM}-{slot.EndDate:dd MMM}, {booking.NumberOfSeats} seat(s). " +
                           $"Paid Rs {booking.AdvanceAmount:N0}{balanceNote}.";
             await TrySendAsync(customerPhone, customer.Name, summary, "booking-confirmed/customer", cancellationToken);
@@ -1139,7 +1145,7 @@ public class BookingService(
 
         if (!string.IsNullOrWhiteSpace(_organizerContact.WhatsAppNumber))
         {
-            var adminSummary = $"GO-{booking.BookingId}: {customer.Name} ({customer.PhoneNumber ?? customer.Email}) - {trip.Title}, " +
+            var adminSummary = $"{booking.Reference}: {customer.Name} ({customer.PhoneNumber ?? customer.Email}) - {trip.Title}, " +
                                $"paid Rs {booking.AdvanceAmount:N0}, balance Rs {booking.RemainingAmount:N0}. Status: Confirmed.";
             await TrySendAsync(_organizerContact.WhatsAppNumber, "Booking Confirmed", adminSummary, "booking-confirmed/admin", cancellationToken);
         }
@@ -1175,7 +1181,7 @@ public class BookingService(
             PassengerName: name,
             Seats: booking.NumberOfSeats.ToString(CultureInfo.InvariantCulture),
             AmountPaid: booking.AdvanceAmount.ToString("#,##0.##", CultureInfo.InvariantCulture),
-            BookingReference: $"GO-{booking.BookingId}",
+            BookingReference: $"{booking.Reference}",
             PickupPoint: string.IsNullOrWhiteSpace(lastPickupPoint) ? ToBeSharedText : lastPickupPoint,
             ReportingTime: string.IsNullOrWhiteSpace(reportingTime) ? ToBeSharedText : reportingTime);
     }
@@ -1198,6 +1204,7 @@ public class BookingService(
     private static BookingResponseDto MapToResponse(Booking booking, string tripTitle, string? tripCoverImageUrl, TripDateSlot slot, PickupPoint? pickupPoint,
         bool isOwner, IReadOnlyList<BookingEventDto> timeline, IReadOnlyList<BookingPaymentDto> payments) => new(
         booking.BookingId,
+        booking.Reference,
         booking.TripId,
         tripTitle,
         tripCoverImageUrl,
@@ -1231,6 +1238,7 @@ public class BookingService(
 
     private static AdminBookingListItemDto MapToAdminListItem(Booking booking) => new(
         booking.BookingId,
+        booking.Reference,
         booking.CustomerId,
         booking.Customer.Name,
         booking.Customer.PhoneNumber,

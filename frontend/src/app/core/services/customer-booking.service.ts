@@ -30,6 +30,13 @@ export class CustomerBookingService {
     return this.http.get(`${environment.apiUrl}/customer/bookings/${id}/invoice`, { responseType: 'blob' });
   }
 
+  /** Emails the booking's invoice PDF to the given address (the API checks the booking is yours). */
+  emailInvoice(id: number, email: string): Observable<void> {
+    return this.http
+      .post<ApiResponse<unknown>>(`${environment.apiUrl}/customer/bookings/${id}/invoice/email`, { email })
+      .pipe(map(() => undefined));
+  }
+
   cancelBooking(id: number): Observable<BookingResponse> {
     return this.http
       .post<ApiResponse<BookingResponse>>(`${environment.apiUrl}/customer/bookings/${id}/cancel`, {})

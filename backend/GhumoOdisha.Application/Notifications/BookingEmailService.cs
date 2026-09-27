@@ -1,7 +1,10 @@
 using System.Globalization;
 using GhumoOdisha.Application.Auth;
+using GhumoOdisha.Application.Common;
+using GhumoOdisha.Application.Exceptions;
 using GhumoOdisha.Application.Invoices;
 using GhumoOdisha.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,15 +15,54 @@ public interface IBookingEmailService
     /// <summary>Best-effort: never throws — a failed email must not fail a booking confirmation.</summary>
     Task SendBookingConfirmedAsync(Booking booking, Trip trip, TripDateSlot slot, Customer customer,
         BookingConfirmedWhatsAppMessage details, CancellationToken cancellationToken = default);
+
+    /// <summary>Emails the invoice PDF of the customer's own booking to the address they typed.
+    /// Throws (NotFound / EmailDelivery) so the caller can show what went wrong.</summary>
+    Task SendInvoiceAsync(int customerId, int bookingId, string toEmail, CancellationToken cancellationToken = default);
 }
 
 public class BookingEmailService(
     IEmailSender emailSender,
     IInvoiceService invoiceService,
+    IGhumoOdishaDbContext db,
     IOptions<EmailOptions> emailOptions,
     ILogger<BookingEmailService> logger) : IBookingEmailService
 {
     private readonly EmailOptions _options = emailOptions.Value;
+
+    public async Task SendInvoiceAsync(int customerId, int bookingId, string toEmail, CancellationToken cancellationToken = default)
+    {
+        if (!emailSender.IsConfigured)
+        {
+            throw new EmailDeliveryException("Email isn't available right now. Please download the invoice instead.");
+        }
+
+        // Same ownership rules as the invoice download — throws NotFound for anyone else's booking.
+        var pdf = await invoiceService.GenerateInvoicePdfAsync(customerId, bookingId, cancellationToken);
+
+        var booking = await db.Bookings.AsNoTracking()
+            .Include(b => b.Customer)
+            .Include(b => b.Trip)
+            .Include(b => b.TripDateSlot)
+            .FirstAsync(b => b.BookingId == bookingId, cancellationToken);
+
+        var (html, text) = EmailTemplates.Invoice(new EmailTemplates.InvoiceModel(
+            string.IsNullOrWhiteSpace(booking.Customer.Name) ? "there" : booking.Customer.Name.Trim(),
+            booking.Reference,
+            booking.Trip.Title,
+            $"{booking.TripDateSlot.StartDate.ToString("dd MMM", CultureInfo.InvariantCulture)} – {booking.TripDateSlot.EndDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)}",
+            $"{_options.SiteUrl.TrimEnd('/')}/my-bookings"));
+
+        await emailSender.SendAsync(new EmailMessage(
+            toEmail,
+            booking.Customer.Name,
+            $"Your invoice · {booking.Reference} · {booking.Trip.Title}",
+            html,
+            text,
+            [new EmailAttachment($"Invoice-{booking.Reference}.pdf", "application/pdf", pdf)]), cancellationToken);
+
+        logger.LogInformation("Invoice for booking {BookingId} emailed at the customer's request.", bookingId);
+    }
 
     public async Task SendBookingConfirmedAsync(Booking booking, Trip trip, TripDateSlot slot, Customer customer,
         BookingConfirmedWhatsAppMessage details, CancellationToken cancellationToken = default)
@@ -37,7 +79,7 @@ public class BookingEmailService(
             try
             {
                 var pdf = await invoiceService.GenerateAdminInvoicePdfAsync(booking.BookingId, cancellationToken);
-                attachments.Add(new EmailAttachment($"Invoice-GO-{booking.BookingId}.pdf", "application/pdf", pdf));
+                attachments.Add(new EmailAttachment($"Invoice-{booking.Reference}.pdf", "application/pdf", pdf));
             }
             catch (Exception ex)
             {

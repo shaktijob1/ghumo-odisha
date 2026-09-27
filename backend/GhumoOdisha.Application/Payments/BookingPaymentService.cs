@@ -93,7 +93,7 @@ public class BookingPaymentService(
 
             var order = _razorpayOptions.DevBypassEnabled
                 ? new RazorpayOrder($"{DevOrderPrefix}{Guid.NewGuid():N}", amountPaise, "INR")
-                : await razorpay.CreateOrderAsync(amountPaise, $"GO-{booking.BookingId}-{(int)plan}", cancellationToken);
+                : await razorpay.CreateOrderAsync(amountPaise, $"{booking.Reference}-{(int)plan}", cancellationToken);
 
             booking.RazorpayOrderId = order.Id;
             booking.PendingAdvanceAmount = advanceAmount;

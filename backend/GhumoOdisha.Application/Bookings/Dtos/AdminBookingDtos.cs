@@ -4,6 +4,7 @@ namespace GhumoOdisha.Application.Bookings.Dtos;
 
 public record AdminBookingListItemDto(
     int BookingId,
+    string BookingReference,
     int CustomerId,
     string CustomerName,
     string? CustomerPhone,
@@ -22,6 +23,7 @@ public record AdminBookingListItemDto(
 
 public record AdminBookingDetailDto(
     int BookingId,
+    string BookingReference,
     int CustomerId,
     string CustomerName,
     string? CustomerPhone,

@@ -15,6 +15,7 @@ public record CustomerRefundDto(
 public record AdminRefundDto(
     int RefundId,
     int BookingId,
+    string BookingReference,
     decimal AmountPaid,
     decimal Amount,
     /// <summary>How much of what was paid went through Razorpay — the most a Razorpay refund can return.</summary>
