@@ -5,5 +5,5 @@ public record CustomerAuthResponse(
     string RefreshToken,
     int CustomerId,
     string Name,
-    string PhoneNumber,
+    string? PhoneNumber,
     string? Email);

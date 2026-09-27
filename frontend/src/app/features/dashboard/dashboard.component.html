@@ -43,6 +43,8 @@
 
 <section id="trending-destinations" class="sect tight">
   <div class="container">
+   <!-- Desktop: white panel with a horizontal card row + arrows. Mobile (≤640px): panel is transparent, unchanged layout. -->
+   <div class="trend-panel">
     <div class="sechead">
       <div class="sechead-text">
         <span class="eyebrow">Trending Now</span>
@@ -54,6 +56,14 @@
         View All
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
       </button>
+      <div class="trend-arrows">
+        <button type="button" aria-label="Previous destinations" [disabled]="!canScrollPrev()" (click)="scrollTrending(-1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        </button>
+        <button type="button" aria-label="Next destinations" [disabled]="!canScrollNext()" (click)="scrollTrending(1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        </button>
+      </div>
     </div>
 
     @switch (destinationsState()) {
@@ -84,7 +94,7 @@
             <p class="mut">No destinations are available right now.</p>
           </div>
         } @else {
-          <div class="dscroll">
+          <div class="dscroll" #trendScroll (scroll)="updateTrendArrows()">
             @for (d of destinations(); track $index) {
               <app-destination-card [destination]="d"></app-destination-card>
             }
@@ -196,16 +206,27 @@
         }
       }
     }
+   </div>
   </div>
 </section>
 
 <section id="upcoming-trips" class="sect">
   <div class="container" [class.section-flash]="highlightUpcoming()">
+   <!-- Desktop: white panel, one row of 3 cards with arrows. Mobile (≤640px): transparent, first 3 trips + View more. -->
+   <div class="trend-panel">
     <div class="sechead">
       <div>
         <span class="eyebrow">Upcoming Departures</span>
         <h2>Upcoming Trips</h2>
         <p class="sub">Fixed departures across Odisha, with seats you can check in real time before you request a booking.</p>
+      </div>
+      <div class="trend-arrows">
+        <button type="button" aria-label="Previous trips" [disabled]="!tripCanScrollPrev()" (click)="scrollTrips(-1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        </button>
+        <button type="button" aria-label="Next trips" [disabled]="!tripCanScrollNext()" (click)="scrollTrips(1)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+        </button>
       </div>
     </div>
 
@@ -272,28 +293,33 @@
       @case ('ready') {
         @if (upcomingTrips().length === 0) {
           <div class="state-panel">
-            <p class="mut" style="margin-bottom:14px">No upcoming trips are available right now.</p>
-            <a class="btn sm" routerLink="/trips">Explore Ghumo Odisha</a>
+            <p class="mut">No upcoming trips are available right now. Please check back soon.</p>
           </div>
         } @else {
-          <div class="tgrid">
-            @for (t of visibleUpcomingTrips(); track $index) {
-              <app-trip-card [trip]="t"></app-trip-card>
+          <!-- One list for both layouts: desktop scrolls the whole row; mobile hides trips past visibleTripsCount. -->
+          <div class="tgrid trow" #tripScroll (scroll)="updateTripArrows()">
+            @for (t of upcomingTrips(); track $index; let i = $index) {
+              <div class="tslot" [class.beyond]="i >= visibleTripsCount()">
+                <app-trip-card [trip]="t" [showNextDeparture]="true"></app-trip-card>
+              </div>
             }
           </div>
           @if (visibleTripsCount() < upcomingTrips().length) {
-            <div style="text-align:center;margin-top:22px">
+            <div class="tmore">
               <button type="button" class="btn sm ghost" (click)="showMoreTrips()">View more</button>
             </div>
           }
         }
       }
     }
+   </div>
   </div>
 </section>
 
 <section id="why-ghumo" class="sect alt">
   <div class="container">
+   <!-- Same treatment as the other home sections: white panel on desktop, unchanged pattern on mobile. -->
+   <div class="trend-panel">
     <div class="sechead">
       <div>
         <span class="eyebrow">Why Ghumo Odisha</span>
@@ -307,6 +333,7 @@
         <app-feature-card [icon]="f.icon" [title]="f.title" [description]="f.description"></app-feature-card>
       }
     </div>
+   </div>
   </div>
 </section>
 

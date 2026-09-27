@@ -1,7 +1,7 @@
 export interface AdminCustomerListItem {
   customerId: number;
   name: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   email: string | null;
   tripCount: number;
   confirmedBookingCount: number;
@@ -13,7 +13,7 @@ export interface AdminCustomerListItem {
 export interface AdminCustomerDetail {
   customerId: number;
   name: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   email: string | null;
   isVerified: boolean;
   createdAt: string;

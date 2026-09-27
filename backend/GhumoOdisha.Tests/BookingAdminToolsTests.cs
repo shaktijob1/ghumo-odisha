@@ -165,7 +165,6 @@ public class BookingAdminToolsTests
         // A silent, unverified account was created for the new phone — no PIN, no OTP.
         var friend = await db.Customers.AsNoTracking().SingleAsync(c => c.PhoneNumber == newPhone);
         Assert.False(friend.IsVerified);
-        Assert.Null(friend.PinHash);
         Assert.Equal("Friend Person", friend.Name);
 
         var friendView = await service.GetCustomerBookingsAsync(friend.CustomerId, 1, 20);

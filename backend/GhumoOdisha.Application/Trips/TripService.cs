@@ -34,7 +34,16 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
                 (!toDate.HasValue || s.StartDate <= toDate.Value)));
         }
 
-        query = query.OrderBy(t => t.Title);
+        // Soonest departure first (the same "next departure" the cards show — see MapToSummary);
+        // trips with no upcoming date go last. Title only breaks ties. Ordering alphabetically hid
+        // near-term trips behind others once there were more trips than fit on one page.
+        var today = TripCalendar.Today();
+        query = query
+            .OrderBy(t => t.TripDateSlots
+                .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
+                .Min(s => (DateOnly?)s.StartDate) ?? DateOnly.MaxValue)
+            .ThenBy(t => t.Title)
+            .ThenBy(t => t.TripId);
 
         var totalCount = await query.CountAsync(cancellationToken);
 

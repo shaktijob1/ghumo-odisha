@@ -46,7 +46,7 @@ export interface AdminCouponBooking {
   bookingId: number;
   customerId: number;
   customerName: string;
-  customerPhone: string;
+  customerPhone: string | null;
   isNewCustomer: boolean;
   tripTitle: string;
   startDate: string;

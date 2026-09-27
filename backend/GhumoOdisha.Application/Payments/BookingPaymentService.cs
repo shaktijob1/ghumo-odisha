@@ -220,7 +220,7 @@ public class BookingPaymentService(
 
         try
         {
-            var refundId = await razorpay.RefundAsync(razorpayPaymentId, cancellationToken);
+            var refundId = await razorpay.RefundAsync(razorpayPaymentId, cancellationToken: cancellationToken);
             logger.LogWarning("Booking {BookingId} could not be confirmed after payment {PaymentId} — refunded as {RefundId}.",
                 bookingId, razorpayPaymentId, refundId);
         }

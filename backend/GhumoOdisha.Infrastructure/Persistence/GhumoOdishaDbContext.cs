@@ -1,6 +1,7 @@
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace GhumoOdisha.Infrastructure.Persistence;
 
@@ -30,6 +31,7 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<CustomerOtp> CustomerOtps => Set<CustomerOtp>();
+    public DbSet<BookingRefund> BookingRefunds => Set<BookingRefund>();
     public DbSet<CustomerRefreshToken> CustomerRefreshTokens => Set<CustomerRefreshToken>();
     public DbSet<CouponCode> CouponCodes => Set<CouponCode>();
     public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
@@ -41,6 +43,24 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(GhumoOdishaDbContext).Assembly);
+
+        // Every timestamp is stored in UTC, but MySQL's datetime has no zone, so values come back as
+        // DateTimeKind.Unspecified and get serialized without a "Z" — browsers then read them as local
+        // time (5½ h off in India). Mark them UTC on the way out so the API always sends "...Z".
+        var utc = new ValueConverter<DateTime, DateTime>(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        var utcNullable = new ValueConverter<DateTime?, DateTime?>(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+        foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetProperties()))
+        {
+            if (property.ClrType == typeof(DateTime))
+            {
+                property.SetValueConverter(utc);
+            }
+            else if (property.ClrType == typeof(DateTime?))
+            {
+                property.SetValueConverter(utcNullable);
+            }
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 }

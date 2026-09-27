@@ -106,7 +106,7 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
             Encoding.UTF8.GetBytes(signature.Trim().ToLowerInvariant()));
     }
 
-    public async Task<string> RefundAsync(string paymentId, CancellationToken cancellationToken = default)
+    public async Task<string> RefundAsync(string paymentId, long? amountPaise = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.KeyId) || string.IsNullOrWhiteSpace(_options.KeySecret))
         {
@@ -114,10 +114,12 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
             throw new PaymentGatewayException();
         }
 
-        // No "amount" field = refund the full amount originally captured for this payment.
+        // No "amount" field = refund the full amount originally captured; with one = partial refund (paise).
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://api.razorpay.com/v1/payments/{Uri.EscapeDataString(paymentId)}/refund")
         {
-            Content = JsonContent.Create(new { }, options: JsonOptions)
+            Content = amountPaise is { } paise
+                ? JsonContent.Create(new { amount = paise }, options: JsonOptions)
+                : JsonContent.Create(new { }, options: JsonOptions)
         };
         request.Headers.Authorization = BasicAuthHeader();
 

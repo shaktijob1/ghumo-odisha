@@ -1,10 +1,11 @@
+import { AdminRefund, CustomerRefund } from './refund.model';
 import { BookingEventType, BookingSource, BookingStatus, Gender, PaymentMethod, PaymentStatus } from './enums.model';
 
 export interface AdminBookingListItem {
   bookingId: number;
   customerId: number;
   customerName: string;
-  customerPhone: string;
+  customerPhone: string | null;
   tripId: number;
   tripTitle: string;
   tripDateSlotId: number;
@@ -23,7 +24,7 @@ export interface AdminBookingDetail {
   bookingId: number;
   customerId: number;
   customerName: string;
-  customerPhone: string;
+  customerPhone: string | null;
   customerEmail: string | null;
   customerBookingCount: number;
   tripId: number;
@@ -55,6 +56,8 @@ export interface AdminBookingDetail {
   refundWaived: boolean;
   travellers: AdminTraveller[];
   timeline: BookingEvent[];
+  /** Present when the booking was cancelled with money paid (not waived). */
+  refund: AdminRefund | null;
 }
 
 export interface AdminTraveller {
@@ -196,4 +199,6 @@ export interface BookingResponse {
   timeline: BookingEvent[];
   /** Empty for a linked traveller — only the booker sees payment details. */
   payments: BookingPayment[];
+  /** Cancelled with money paid: the refund's progress (booker only). */
+  refund: CustomerRefund | null;
 }

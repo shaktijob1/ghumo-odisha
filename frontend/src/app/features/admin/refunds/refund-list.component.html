@@ -1,0 +1,165 @@
+<div class="ahead">
+  <div>
+    <h2>Refunds</h2>
+    <div class="sub">Cancelled bookings with money to return. Issue the refund, then mark it settled once the customer has received it.</div>
+  </div>
+</div>
+
+<div class="daytabs" style="max-width:520px">
+  <button class="daytab" [class.on]="tab() === RefundStatus.Pending" (click)="selectTab(RefundStatus.Pending)">
+    Pending @if (counts(); as c) { · {{ c.pending }} }
+  </button>
+  <button class="daytab" [class.on]="tab() === RefundStatus.Processing" (click)="selectTab(RefundStatus.Processing)">
+    Processing @if (counts(); as c) { · {{ c.processing }} }
+  </button>
+  <button class="daytab" [class.on]="tab() === RefundStatus.Settled" (click)="selectTab(RefundStatus.Settled)">
+    Settled @if (counts(); as c) { · {{ c.settled }} }
+  </button>
+</div>
+
+<div class="filters">
+  <input class="sel srch" placeholder="Search booking ID, customer, phone, email or trip…" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load refunds."></app-state-panel>
+  }
+  @case ('ready') {
+    @let res = result()!;
+    @if (res.items.length === 0) {
+      <app-state-panel kind="empty"
+        [message]="tab() === RefundStatus.Pending ? 'No refunds waiting. Cancelled paid bookings will appear here.' : tab() === RefundStatus.Processing ? 'No refunds in progress.' : 'No settled refunds yet.'">
+      </app-state-panel>
+    } @else {
+      @for (r of res.items; track r.refundId) {
+        <div class="panel" style="margin-bottom:12px">
+          <div class="row sp" style="align-items:flex-start;gap:16px;flex-wrap:wrap">
+            <div style="min-width:220px;flex:1">
+              <div class="row" style="gap:8px;margin-bottom:4px">
+                <a [routerLink]="['/admin/bookings', r.bookingId]"><b>#GO-{{ r.bookingId }}</b></a>
+                @switch (r.status) {
+                  @case (RefundStatus.Pending) { <span class="badge wait">Pending</span> }
+                  @case (RefundStatus.Processing) { <span class="badge info">Processing</span> }
+                  @case (RefundStatus.Settled) { <span class="badge ok">Settled</span> }
+                }
+              </div>
+              <div style="font-size:13px;font-weight:600">{{ r.customerName || 'Customer' }}</div>
+              <div class="note">{{ r.customerPhone ? '+91 ' + r.customerPhone : '' }}{{ r.customerPhone && r.customerEmail ? ' · ' : '' }}{{ r.customerEmail }}</div>
+              <div class="note" style="margin-top:6px">{{ r.tripTitle }} · {{ r.startDate | date:'d MMM y' }} · {{ r.numberOfSeats }} seat(s)</div>
+              <div class="note">
+                Cancelled by {{ r.requestedBy === 'Customer' ? 'customer' : 'admin' }} on {{ r.requestedAt | date:'d MMM y, h:mm a' }}
+                @if (r.cancellationReason) { · “{{ r.cancellationReason }}” }
+              </div>
+            </div>
+
+            <div style="text-align:right;min-width:170px">
+              <div class="note">Paid</div>
+              <div style="font-size:13px;font-weight:600">₹{{ r.amountPaid | number:'1.0-2' }}</div>
+              @if (r.onlinePaidAmount > 0) {
+                <div class="note">₹{{ r.onlinePaidAmount | number:'1.0-2' }} online</div>
+              }
+              @if (r.status !== RefundStatus.Pending) {
+                <div class="note" style="margin-top:6px">Refund</div>
+                <div style="font-size:15px;font-weight:600;color:var(--accent)">₹{{ r.amount | number:'1.0-2' }}</div>
+              }
+            </div>
+          </div>
+
+          @if (r.status !== RefundStatus.Pending) {
+            <div class="note" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+              {{ r.method !== null ? PaymentMethodLabels[r.method] : '' }}
+              @if (r.reference) { · Ref <b style="color:var(--ink)">{{ r.reference }}</b> }
+              @if (r.initiatedAt) { · issued {{ r.initiatedAt | date:'d MMM y, h:mm a' }} }
+              @if (r.settledAt) { · settled {{ r.settledAt | date:'d MMM y, h:mm a' }} }
+              @if (r.notes) { <div>Note: {{ r.notes }}</div> }
+              @if (gatewayStatus()[r.refundId]; as gs) {
+                <div>Razorpay status: <b style="color:var(--ink)">{{ gs | titlecase }}</b></div>
+              }
+            </div>
+          }
+
+          <!-- Actions -->
+          @if (r.status === RefundStatus.Pending && !isOpen(r, 'razorpay') && !isOpen(r, 'manual')) {
+            <div class="row" style="gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap">
+              @if (maxOnline(r) > 0) {
+                <button class="btn sm" (click)="open(r, 'razorpay')">Refund via Razorpay</button>
+              }
+              <button class="btn sm ghost" (click)="open(r, 'manual')">Record manual refund</button>
+            </div>
+          }
+          @if (r.status === RefundStatus.Processing && !isOpen(r, 'settle')) {
+            <div class="row" style="gap:8px;margin-top:12px;justify-content:flex-end;flex-wrap:wrap">
+              @if (r.method === PaymentMethod.Razorpay) {
+                <button class="btn sm ghost" (click)="checkGateway(r)">Check Razorpay status</button>
+              }
+              <button class="btn sm" (click)="open(r, 'settle')">Mark settled</button>
+            </div>
+          }
+
+          @if (isOpen(r, 'razorpay')) {
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+              <p class="note" style="margin-bottom:10px">Razorpay returns the money to the customer's original payment method (usually 5–7 working days). Up to ₹{{ maxOnline(r) | number:'1.0-2' }}.</p>
+              <div class="f2">
+                <div class="fld"><span class="lbl">Refund amount (₹)</span><input class="inp" type="number" min="1" [max]="maxOnline(r)" [(ngModel)]="amount" /></div>
+                <div class="fld"><span class="lbl">Note (internal, optional)</span><input class="inp" [(ngModel)]="notes" placeholder="e.g. ₹300 cancellation fee kept" /></div>
+              </div>
+              @if (actionError()) { <div class="errorbox">{{ actionError() }}</div> }
+              <div class="row" style="gap:8px;justify-content:flex-end">
+                <button class="btn sm ghost" (click)="close()">Cancel</button>
+                <button class="btn sm" [disabled]="busy()" (click)="issueRazorpay(r)">@if (busy()) { <span class="spin"></span> } @else { Issue ₹{{ amount | number:'1.0-2' }} refund }</button>
+              </div>
+            </div>
+          }
+
+          @if (isOpen(r, 'manual')) {
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+              <p class="note" style="margin-bottom:10px">Send the money yourself (UPI, bank transfer or cash), then record it here with the transaction reference.</p>
+              <div class="f2">
+                <div class="fld"><span class="lbl">Refund amount (₹)</span><input class="inp" type="number" min="1" [max]="r.amountPaid" [(ngModel)]="amount" /></div>
+                <div class="fld">
+                  <span class="lbl">Method</span>
+                  <select class="inp" [(ngModel)]="method">
+                    @for (m of manualMethods; track m) { <option [ngValue]="m">{{ PaymentMethodLabels[m] }}</option> }
+                  </select>
+                </div>
+                <div class="fld"><span class="lbl">Reference (UTR / receipt)</span><input class="inp" [(ngModel)]="reference" placeholder="e.g. UTR 4102…" /></div>
+                <div class="fld"><span class="lbl">Note (internal, optional)</span><input class="inp" [(ngModel)]="notes" /></div>
+              </div>
+              @if (actionError()) { <div class="errorbox">{{ actionError() }}</div> }
+              <div class="row" style="gap:8px;justify-content:flex-end">
+                <button class="btn sm ghost" (click)="close()">Cancel</button>
+                <button class="btn sm" [disabled]="busy()" (click)="recordManual(r)">@if (busy()) { <span class="spin"></span> } @else { Record refund }</button>
+              </div>
+            </div>
+          }
+
+          @if (isOpen(r, 'settle')) {
+            <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+              <p class="note" style="margin-bottom:10px">Only mark settled once the ₹{{ r.amount | number:'1.0-2' }} has actually reached the customer. They'll then see it as refunded{{ r.customerEmail ? ' and get a confirmation email' : '' }}.</p>
+              <div class="fld"><span class="lbl">Note (internal, optional)</span><input class="inp" [(ngModel)]="notes" placeholder="e.g. Customer confirmed receipt" /></div>
+              @if (actionError()) { <div class="errorbox">{{ actionError() }}</div> }
+              <div class="row" style="gap:8px;justify-content:flex-end">
+                <button class="btn sm ghost" (click)="close()">Cancel</button>
+                <button class="btn sm" [disabled]="busy()" (click)="settle(r)">@if (busy()) { <span class="spin"></span> } @else { Confirm settled }</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (totalPages > 1) {
+        <div class="pager">
+          <span>Page {{ page() }} of {{ totalPages }}</span>
+          <div class="pg">
+            <button (click)="goToPage(page() - 1)" [disabled]="page() <= 1">‹</button>
+            <button (click)="goToPage(page() + 1)" [disabled]="page() >= totalPages">›</button>
+          </div>
+        </div>
+      }
+    }
+  }
+}

@@ -20,7 +20,7 @@
     @case ('ready') {
       @if (filtered().length === 0) {
         <div class="card pad" style="text-align:center;margin-top:16px;background:var(--canvas)">
-          <p class="note">Nothing here yet? <a routerLink="/trips" style="color:var(--accent);font-weight:600">Browse upcoming trips</a></p>
+          <p class="note">Nothing here yet? <a routerLink="/" fragment="upcoming-trips" style="color:var(--accent);font-weight:600">Browse upcoming trips</a></p>
         </div>
       } @else {
         @for (b of filtered(); track b.bookingId) {
@@ -83,20 +83,15 @@
         <span class="k">Remaining</span><b [style.color]="b.remainingAmount > 0 ? 'var(--wait)' : null">₹{{ b.remainingAmount | number:'1.0-0' }}</b>
         <span class="k">Status</span><span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
         <span class="k">Payment</span>
-        @if (b.bookingStatus === BookingStatus.Cancelled && b.paymentStatus === PaymentStatus.Refunded) {
-          <b>
-            Refunded
-            @if (refundStatusLoading()) {
-              <span class="mut" style="font-weight:400"> · checking…</span>
-            } @else if (refundStatus()) {
-              <span class="mut" style="font-weight:400"> · {{ refundStatus() | titlecase }}</span>
-            }
-          </b>
-        } @else {
-          <b>{{ PaymentStatusLabels[b.paymentStatus] }}</b>
-        }
+        <b>{{ PaymentStatusLabels[b.paymentStatus] }}</b>
         <span class="k">Requested</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
       </div>
+      @if (refundInfo(b); as rf) {
+        <div class="refundbox" [attr.data-tone]="rf.tone">
+          <b>{{ rf.title }}</b>
+          <p class="note">{{ rf.detail }}</p>
+        </div>
+      }
       @if (!b.isOwner) {
         <p class="note" style="margin-top:10px">Ghumo Odisha added you as a traveller on this booking. The person who booked it manages payments and changes.</p>
       }
@@ -132,7 +127,7 @@
         <div class="hr"></div>
         @if (confirmingCancelId() === b.bookingId) {
           @if (b.bookingStatus === BookingStatus.Confirmed) {
-            <p class="note" style="margin-bottom:10px">Cancel this booking? Cancellations are only allowed up to 72 hours before the trip starts, and any online payment is refunded in full.</p>
+            <p class="note" style="margin-bottom:10px">Cancel this booking? Cancellations are only allowed up to 72 hours before the trip starts. Your refund will be processed by our team and you can track it here.</p>
           } @else {
             <p class="note" style="margin-bottom:10px">Cancel this trip? Nothing has been charged, so there's nothing to refund.</p>
           }

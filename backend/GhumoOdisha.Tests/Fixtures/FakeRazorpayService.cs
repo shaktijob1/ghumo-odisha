@@ -19,7 +19,9 @@ public class FakeRazorpayService : IRazorpayService
 
     public bool VerifySignature(string orderId, string paymentId, string signature) => true;
 
-    public Task<string> RefundAsync(string paymentId, CancellationToken cancellationToken = default)
+    public long? LastRefundAmountPaise { get; private set; }
+
+    public Task<string> RefundAsync(string paymentId, long? amountPaise = null, CancellationToken cancellationToken = default)
     {
         if (ShouldFailRefund)
         {
@@ -28,6 +30,7 @@ public class FakeRazorpayService : IRazorpayService
 
         RefundCallCount++;
         LastRefundedPaymentId = paymentId;
+        LastRefundAmountPaise = amountPaise;
         LastRefundId = $"rfnd_fake_{Guid.NewGuid():N}";
         return Task.FromResult(LastRefundId);
     }

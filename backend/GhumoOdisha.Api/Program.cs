@@ -18,10 +18,13 @@ using GhumoOdisha.Application.Destinations;
 using GhumoOdisha.Application.Homepage;
 using GhumoOdisha.Application.Invoices;
 using GhumoOdisha.Application.Logs;
+using GhumoOdisha.Application.Notifications;
 using GhumoOdisha.Application.Payments;
+using GhumoOdisha.Application.Refunds;
 using GhumoOdisha.Application.Trips;
 using GhumoOdisha.Infrastructure.Auth;
 using GhumoOdisha.Infrastructure.Invoices;
+using GhumoOdisha.Infrastructure.Notifications;
 using GhumoOdisha.Infrastructure.Payments;
 using GhumoOdisha.Infrastructure.Persistence;
 using GhumoOdisha.Infrastructure.Persistence.Seed;
@@ -95,6 +98,13 @@ builder.Services.AddHttpClient<IWhatsAppService, MetaWhatsAppService>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection(GoogleAuthOptions.SectionName));
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<IBookingEmailService, BookingEmailService>();
+
 builder.Services.AddScoped<IPinHasher, PinHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<ICustomerAuthService, CustomerAuthService>();
@@ -104,6 +114,7 @@ builder.Services.AddScoped<IDestinationService, DestinationService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IBookingTravellerService, BookingTravellerService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IRefundService, RefundService>();
 
 builder.Services.Configure<RazorpayOptions>(builder.Configuration.GetSection(RazorpayOptions.SectionName));
 builder.Services.AddHttpClient<IRazorpayService, RazorpayService>(client =>

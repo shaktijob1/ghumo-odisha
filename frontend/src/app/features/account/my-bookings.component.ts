@@ -1,10 +1,9 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, formatDate } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CustomerBookingService } from '../../core/services/customer-booking.service';
-import { PaymentService } from '../../core/services/payment.service';
 import { BookingResponse } from '../../core/models/booking.model';
-import { BookingStatus, BookingStatusLabels, PaymentMethodLabels, PaymentStatus, PaymentStatusLabels, bookingStatusBadgeClass } from '../../core/models/enums.model';
+import { BookingStatus, BookingStatusLabels, PaymentMethod, PaymentMethodLabels, PaymentStatus, PaymentStatusLabels, RefundStatus, bookingStatusBadgeClass } from '../../core/models/enums.model';
 import { BookingTimelineComponent } from '../../shared/components/booking-timeline.component';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
@@ -21,7 +20,6 @@ type LoadState = 'loading' | 'ready' | 'error';
 })
 export class MyBookingsComponent implements OnInit {
   private readonly bookingService = inject(CustomerBookingService);
-  private readonly paymentService = inject(PaymentService);
 
   readonly state = signal<LoadState>('loading');
   readonly bookings = signal<BookingResponse[]>([]);
@@ -31,11 +29,6 @@ export class MyBookingsComponent implements OnInit {
   readonly confirmingCancelId = signal<number | null>(null);
   readonly cancellingId = signal<number | null>(null);
   readonly cancelError = signal<string | null>(null);
-
-  // Live Razorpay refund status for whichever booking is currently open in the details modal —
-  // fetched fresh each time, never assumed from our own locally-stored "Refunded" flag.
-  readonly refundStatus = signal<string | null>(null);
-  readonly refundStatusLoading = signal(false);
 
   readonly BookingStatus = BookingStatus;
   readonly PaymentStatus = PaymentStatus;
@@ -114,22 +107,42 @@ export class MyBookingsComponent implements OnInit {
 
   openDetails(booking: BookingResponse): void {
     this.selected.set(booking);
-    this.loadRefundStatus(booking);
   }
 
-  private loadRefundStatus(booking: BookingResponse): void {
-    this.refundStatus.set(null);
-    if (!booking.isOwner || booking.bookingStatus !== BookingStatus.Cancelled || booking.paymentStatus !== PaymentStatus.Refunded) {
-      return;
+  /**
+   * Customer-facing refund wording. Refunds are issued by our team (never instantly on cancel),
+   * so this reads as a calm progress update rather than a raw status.
+   */
+  refundInfo(booking: BookingResponse): { title: string; detail: string; tone: 'wait' | 'info' | 'ok' } | null {
+    const r = booking.refund;
+    if (!r) return null;
+    const amount = `₹${r.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+    const date = (iso: string) => formatDate(iso, 'd MMM y', 'en-US');
+    const via = r.method === null ? '' : r.method === PaymentMethod.Razorpay ? 'to your original payment method' : `by ${PaymentMethodLabels[r.method]}`;
+    const ref = r.reference ? ` · Ref ${r.reference}` : '';
+
+    switch (r.status) {
+      case RefundStatus.Pending:
+        return {
+          title: `Refund of ${amount} requested`,
+          detail: 'Your refund is being processed by our team. We\'ll let you know as soon as it\'s on its way.',
+          tone: 'wait',
+        };
+      case RefundStatus.Processing:
+        return {
+          title: `Refund of ${amount} initiated`,
+          detail: r.method === PaymentMethod.Razorpay
+            ? `Sent ${via} on ${date(r.initiatedAt!)}. It usually reaches your account within 5–7 working days${ref}.`
+            : `Being transferred ${via} (initiated ${date(r.initiatedAt!)})${ref}.`,
+          tone: 'info',
+        };
+      case RefundStatus.Settled:
+        return {
+          title: `${amount} refunded`,
+          detail: `Completed on ${date(r.settledAt!)}${via ? ' ' + via : ''}${ref}.`,
+          tone: 'ok',
+        };
     }
-    this.refundStatusLoading.set(true);
-    this.paymentService.getRefundStatus(booking.bookingId).subscribe({
-      next: (status) => {
-        this.refundStatusLoading.set(false);
-        this.refundStatus.set(status);
-      },
-      error: () => this.refundStatusLoading.set(false), // falls back to the plain "Refunded" label
-    });
   }
 
   onPaymentConfirmed(booking: BookingResponse): void {
@@ -165,7 +178,6 @@ export class MyBookingsComponent implements OnInit {
         this.bookings.update((list) => list.map((b) => (b.bookingId === updated.bookingId ? updated : b)));
         if (this.selected()?.bookingId === updated.bookingId) {
           this.selected.set(updated);
-          this.loadRefundStatus(updated);
         }
       },
       error: (err) => {

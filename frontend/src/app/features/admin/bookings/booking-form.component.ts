@@ -66,7 +66,7 @@ export class BookingFormComponent implements OnInit {
   pickCustomer(customer: AdminCustomerListItem): void {
     this.selectedCustomer = customer;
     this.customerResults.set([]);
-    this.customerSearch = `${customer.name} — ${customer.phoneNumber}`;
+    this.customerSearch = `${customer.name} — ${customer.phoneNumber ?? customer.email ?? ""}`;
   }
 
   onTripChange(): void {

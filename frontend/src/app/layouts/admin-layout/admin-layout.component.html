@@ -5,6 +5,10 @@
     <a routerLink="/admin/trips" routerLinkActive="on">Trips</a>
     <a routerLink="/admin/destinations" routerLinkActive="on">Destinations</a>
     <a routerLink="/admin/bookings" routerLinkActive="on">Bookings</a>
+    <a routerLink="/admin/refunds" routerLinkActive="on">
+      Refunds
+      @if (refunds.pendingCount() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px">{{ refunds.pendingCount() }}</span> }
+    </a>
     <a routerLink="/admin/customers" routerLinkActive="on">Customers</a>
     <a routerLink="/admin/coupons" routerLinkActive="on">Coupons</a>
     <a routerLink="/admin/logs" routerLinkActive="on">Logs</a>

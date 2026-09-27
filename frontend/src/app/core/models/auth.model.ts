@@ -10,7 +10,8 @@ export interface CustomerAuthResponse {
   refreshToken: string;
   customerId: number;
   name: string;
-  phoneNumber: string;
+  /** Null for Google sign-ups that haven't added a WhatsApp number yet. */
+  phoneNumber: string | null;
   email: string | null;
 }
 
@@ -31,11 +32,14 @@ export interface VerifyOtpRequest {
 export interface CustomerProfile {
   customerId: number;
   name: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   email: string | null;
   isVerified: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+  /** Email comes from the linked Google account — not editable. */
+  emailVerified: boolean;
+  googleLinked: boolean;
 }
 
 export interface UpdateProfileRequest {

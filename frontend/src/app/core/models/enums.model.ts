@@ -22,7 +22,20 @@ export enum PaymentStatus {
   AdvancePaid = 1,
   Paid = 2,
   Refunded = 3,
+  RefundPending = 4,
 }
+
+export enum RefundStatus {
+  Pending = 0,
+  Processing = 1,
+  Settled = 2,
+}
+
+export const RefundStatusLabels: Record<RefundStatus, string> = {
+  [RefundStatus.Pending]: 'Pending',
+  [RefundStatus.Processing]: 'Processing',
+  [RefundStatus.Settled]: 'Settled',
+};
 
 export enum BookingSource {
   Website = 0,
@@ -55,6 +68,8 @@ export enum BookingEventType {
   TravellersUpdated = 8,
   GenderCountsUpdated = 9,
   Created = 10,
+  RefundInitiated = 11,
+  RefundSettled = 12,
 }
 
 /** Colour of the timeline dot for each kind of step. */
@@ -63,9 +78,11 @@ export function bookingEventTone(type: BookingEventType): 'ok' | 'wait' | 'bad' 
     case BookingEventType.Confirmed:
     case BookingEventType.PaymentReceived:
     case BookingEventType.Completed:
+    case BookingEventType.RefundSettled:
       return 'ok';
     case BookingEventType.Requested:
     case BookingEventType.Created:
+    case BookingEventType.RefundInitiated:
       return 'wait';
     case BookingEventType.Cancelled:
     case BookingEventType.Rejected:
@@ -115,6 +132,7 @@ export const PaymentStatusLabels: Record<PaymentStatus, string> = {
   [PaymentStatus.AdvancePaid]: 'Advance paid',
   [PaymentStatus.Paid]: 'Paid',
   [PaymentStatus.Refunded]: 'Refunded',
+  [PaymentStatus.RefundPending]: 'Refund processing',
 };
 
 export const BookingSourceLabels: Record<BookingSource, string> = {

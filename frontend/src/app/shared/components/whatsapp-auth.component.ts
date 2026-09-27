@@ -13,21 +13,29 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Observable } from 'rxjs';
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
 import { ApiResponse } from '../../core/models/api-response.model';
 import { CustomerAuthResponse } from '../../core/models/auth.model';
 
+import { GoogleSignInButtonComponent } from './google-sign-in-button.component';
+
+/** details = WhatsApp number + Google, otp = enter the WhatsApp code. */
 type Step = 'details' | 'otp';
 
 @Component({
   selector: 'app-whatsapp-auth',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GoogleSignInButtonComponent],
   templateUrl: './whatsapp-auth.component.html',
 })
 export class WhatsappAuthComponent implements OnDestroy {
   @Input() mode: 'book' | 'login' = 'book';
   @Input() title = 'Welcome Back';
+  /** 'popup' = the navbar sign-in popup's layout (WhatsApp first, Google second); 'card' = the original. */
+  @Input() variant: 'card' | 'popup' = 'card';
+  /** The popup supplies its own close button. */
+  @Input() showClose = true;
   @Output() authenticated = new EventEmitter<CustomerAuthResponse>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -45,6 +53,26 @@ export class WhatsappAuthComponent implements OnDestroy {
   whatsAppNumber = '';
 
   private countdownTimer?: ReturnType<typeof setInterval>;
+
+  onGoogleCredential(credential: string): void {
+    this.errorMessage.set(null);
+    this.submitting.set(true);
+    this.finish(this.auth.googleSignIn(credential), 'Google sign-in failed. Please try again.');
+  }
+
+  private finish(request: Observable<ApiResponse<CustomerAuthResponse>>, fallbackError: string): void {
+    request.subscribe({
+      next: (r) => {
+        this.submitting.set(false);
+        if (r.data) this.authenticated.emit(r.data);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
+        const body = err.error as ApiResponse<unknown> | undefined;
+        this.errorMessage.set(body?.message ?? body?.errors?.join(' ') ?? fallbackError);
+      },
+    });
+  }
 
   ngOnDestroy(): void {
     if (this.countdownTimer) clearInterval(this.countdownTimer);

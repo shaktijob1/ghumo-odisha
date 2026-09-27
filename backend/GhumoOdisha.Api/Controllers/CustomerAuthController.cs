@@ -25,6 +25,13 @@ public class CustomerAuthController(ICustomerAuthService customerAuthService) : 
         return Ok(ApiResponse<CustomerAuthResponse>.Ok(result, "WhatsApp number verified successfully."));
     }
 
+    [HttpPost("google")]
+    public async Task<ActionResult<ApiResponse<CustomerAuthResponse>>> Google(GoogleSignInRequest request, CancellationToken cancellationToken)
+    {
+        var result = await customerAuthService.GoogleSignInAsync(request, cancellationToken);
+        return Ok(ApiResponse<CustomerAuthResponse>.Ok(result, "Signed in with Google."));
+    }
+
     [HttpPost("refresh")]
     public async Task<ActionResult<ApiResponse<CustomerAuthResponse>>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
     {

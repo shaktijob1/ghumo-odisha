@@ -278,7 +278,7 @@
                 <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#{{ b.bookingId }}</b></a></td>
                 <td>
                   <a [routerLink]="['/admin/customers', b.customerId]">{{ b.customerName }}</a>
-                  <div class="note">{{ b.customerPhone }}</div>
+                  <div class="note">{{ b.customerPhone || "—" }}</div>
                 </td>
                 <td>
                   <span class="badge" [class]="b.isNewCustomer ? 'ok' : 'info'">{{ b.isNewCustomer ? 'New customer' : 'Existing customer' }}</span>

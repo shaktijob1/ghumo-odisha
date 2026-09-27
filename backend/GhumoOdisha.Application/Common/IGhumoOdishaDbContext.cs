@@ -27,6 +27,7 @@ public interface IGhumoOdishaDbContext
     DbSet<Customer> Customers { get; }
     DbSet<AdminUser> AdminUsers { get; }
     DbSet<CustomerOtp> CustomerOtps { get; }
+    DbSet<BookingRefund> BookingRefunds { get; }
     DbSet<CustomerRefreshToken> CustomerRefreshTokens { get; }
     DbSet<CouponCode> CouponCodes { get; }
     DbSet<CouponRedemption> CouponRedemptions { get; }

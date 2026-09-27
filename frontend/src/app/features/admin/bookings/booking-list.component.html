@@ -22,6 +22,7 @@
     <option [ngValue]="PaymentStatus.Unpaid">Unpaid</option>
     <option [ngValue]="PaymentStatus.AdvancePaid">Advance paid</option>
     <option [ngValue]="PaymentStatus.Paid">Paid</option>
+    <option [ngValue]="PaymentStatus.RefundPending">Refund processing</option>
     <option [ngValue]="PaymentStatus.Refunded">Refunded</option>
   </select>
 </div>
@@ -45,7 +46,7 @@
             @for (b of r.items; track b.bookingId) {
               <tr>
                 <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>#GO-{{ b.bookingId }}</b></a></td>
-                <td>{{ b.customerName }}<div class="note">{{ b.customerPhone }}</div></td>
+                <td>{{ b.customerName }}<div class="note">{{ b.customerPhone || "—" }}</div></td>
                 <td>{{ b.tripTitle }}</td>
                 <td>{{ b.startDate | date:'d MMM y' }}</td>
                 <td>{{ b.numberOfSeats }}</td>

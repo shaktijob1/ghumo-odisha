@@ -1,6 +1,11 @@
 <div class="card pad bookpanel">
-  <h2 style="font-size:17px;margin-bottom:4px">Secure your seats</h2>
-  <p class="note" style="margin-bottom:4px">Your booking is requested. Pay now to lock it in instantly.</p>
+  @if (heading) {
+    <h2 style="font-size:17px;margin-bottom:4px">{{ heading }}</h2>
+  }
+  @if (subheading) {
+    <p class="note" style="margin-bottom:4px">{{ subheading }}</p>
+  }
+  <ng-content select="[panelIntro]"></ng-content>
 
   <app-booking-price-summary
     [startDate]="booking.startDate"

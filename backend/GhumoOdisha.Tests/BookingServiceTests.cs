@@ -263,7 +263,7 @@ public class BookingServiceTests
     }
 
     [Fact]
-    public async Task AdminCancelBooking_ForOnlinePaidBooking_RefundsViaRazorpay_AndRestoresSeats()
+    public async Task AdminCancelBooking_ForOnlinePaidBooking_QueuesRefund_NoImmediateRazorpayCall_AndRestoresSeats()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 5);
@@ -277,38 +277,38 @@ public class BookingServiceTests
         await service.CancelBookingAsync(requested.Booking.BookingId, new CancelBookingRequest(null));
         db.ChangeTracker.Clear();
 
-        Assert.Equal(1, razorpay.RefundCallCount);
-        Assert.Equal("pay_test_123", razorpay.LastRefundedPaymentId);
+        Assert.Equal(0, razorpay.RefundCallCount);
 
         var booking = await db.Bookings.SingleAsync(b => b.BookingId == requested.Booking.BookingId);
         Assert.Equal(BookingStatus.Cancelled, booking.BookingStatus);
-        Assert.Equal(PaymentStatus.Refunded, booking.PaymentStatus);
-        Assert.Contains("Refunded in full via Razorpay", booking.AdminNotes);
+        Assert.Equal(PaymentStatus.RefundPending, booking.PaymentStatus);
+
+        var refund = await db.BookingRefunds.SingleAsync(r => r.BookingId == booking.BookingId);
+        Assert.Equal(RefundStatus.Pending, refund.Status);
+        Assert.Equal(2000m, refund.AmountPaid);
+        Assert.Equal(2000m, refund.Amount);
+        Assert.Equal("Admin", refund.RequestedBy);
 
         var slotAfter = await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId);
         Assert.Equal(5, slotAfter.AvailableSeats);
     }
 
     [Fact]
-    public async Task AdminCancelBooking_WhenRazorpayRefundFails_BlocksCancellation_AndLeavesBookingConfirmed()
+    public async Task CancelUnpaidBooking_QueuesNoRefund()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 5);
-        var razorpay = new FakeRazorpayService { ShouldFailRefund = true };
-        var service = CreateService(db, razorpay);
+        var service = CreateService(db);
 
-        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true));
-        await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(2000m, 0, "pay_test_456"));
+        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 1, null, AgreedToTerms: true));
+        await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(0m));
         db.ChangeTracker.Clear();
 
-        await Assert.ThrowsAsync<ConflictException>(
-            () => service.CancelBookingAsync(requested.Booking.BookingId, new CancelBookingRequest(null)));
+        await service.CancelBookingAsync(requested.Booking.BookingId, new CancelBookingRequest(null));
 
-        var booking = await db.Bookings.SingleAsync(b => b.BookingId == requested.Booking.BookingId);
-        Assert.Equal(BookingStatus.Confirmed, booking.BookingStatus);
-
-        var slotAfter = await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId);
-        Assert.Equal(3, slotAfter.AvailableSeats);
+        Assert.False(await db.BookingRefunds.AnyAsync(r => r.BookingId == requested.Booking.BookingId));
+        var booking = await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == requested.Booking.BookingId);
+        Assert.Equal(PaymentStatus.Unpaid, booking.PaymentStatus);
     }
 
     [Fact]
@@ -331,7 +331,7 @@ public class BookingServiceTests
 
         var booking = await db.Bookings.SingleAsync(b => b.BookingId == requested.Booking.BookingId);
         Assert.Equal(BookingStatus.Cancelled, booking.BookingStatus);
-        Assert.Equal(PaymentStatus.Refunded, booking.PaymentStatus);
+        Assert.Equal(PaymentStatus.RefundPending, booking.PaymentStatus);
         Assert.Equal("Trip called off due to weather.", booking.AdminNotes);
     }
 
@@ -382,5 +382,83 @@ public class BookingServiceTests
 
         Assert.Equal(0, whatsApp.BookingConfirmedCallCount);
         Assert.Equal(2, whatsApp.TemplateCallCount); // customer fallback + organizer copy
+    }
+
+    [Fact]
+    public async Task ConfirmBooking_CustomerWithoutPhone_SkipsCustomerWhatsApp_OnlyOrganizerCopy()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        // A Google sign-up that never added a mobile number.
+        customer.PhoneNumber = null;
+        customer.Email = $"test-{Guid.NewGuid():N}@gmail.com";
+        await db.SaveChangesAsync();
+
+        var whatsApp = new FakeWhatsAppService { BookingConfirmedTemplateConfigured = true };
+        var service = CreateService(db, whatsApp);
+        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 1, null, AgreedToTerms: true));
+
+        await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(0m));
+
+        Assert.Equal(0, whatsApp.BookingConfirmedCallCount);
+        Assert.Equal(1, whatsApp.TemplateCallCount); // organizer copy only
+        Assert.Equal("919000000000", whatsApp.LastPhoneNumber);
+        Assert.Contains(customer.Email, whatsApp.LastTemplateVariable2);
+    }
+
+    private sealed class FakeInvoiceService : GhumoOdisha.Application.Invoices.IInvoiceService
+    {
+        public Task<byte[]> GenerateInvoicePdfAsync(int customerId, int bookingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new byte[] { 1, 2, 3 });
+        public Task<byte[]> GenerateAdminInvoicePdfAsync(int bookingId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new byte[] { 1, 2, 3 });
+    }
+
+    private static (BookingService Service, FakeEmailSender Email) CreateServiceWithEmail(GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db)
+    {
+        var email = new FakeEmailSender();
+        var bookingEmails = new GhumoOdisha.Application.Notifications.BookingEmailService(
+            email, new FakeInvoiceService(),
+            Options.Create(new GhumoOdisha.Application.Notifications.EmailOptions { SiteUrl = "https://www.ghumoodisha.com" }),
+            NullLogger<GhumoOdisha.Application.Notifications.BookingEmailService>.Instance);
+        var service = new BookingService(db, new FakeRazorpayService(), new FakeWhatsAppService(),
+            Options.Create(new OrganizerContactOptions { WhatsAppNumber = "919000000000" }),
+            NullLogger<BookingService>.Instance, bookingEmails);
+        return (service, email);
+    }
+
+    [Fact]
+    public async Task ConfirmBooking_CustomerWithEmail_SendsConfirmationEmailWithInvoice()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        customer.Email = $"test-{Guid.NewGuid():N}@example.com";
+        await db.SaveChangesAsync();
+        var (service, email) = CreateServiceWithEmail(db);
+
+        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true));
+        Assert.Empty(email.Sent); // a request alone sends nothing
+
+        await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(1500m));
+
+        var sent = Assert.Single(email.Sent);
+        Assert.Equal(customer.Email, sent.ToEmail);
+        Assert.Contains($"GO-{requested.Booking.BookingId}", sent.Subject);
+        Assert.Contains("https://www.ghumoodisha.com/my-bookings", sent.HtmlBody);
+        var invoice = Assert.Single(sent.Attachments!);
+        Assert.Equal("application/pdf", invoice.ContentType);
+    }
+
+    [Fact]
+    public async Task ConfirmBooking_CustomerWithoutEmail_SendsNoEmail()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        var (service, email) = CreateServiceWithEmail(db);
+        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 1, null, AgreedToTerms: true));
+
+        await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(0m));
+
+        Assert.Empty(email.Sent);
     }
 }

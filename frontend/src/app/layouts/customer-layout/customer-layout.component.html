@@ -1,19 +1,37 @@
 <div class="cnav">
   <a routerLink="/" class="logo">Ghumo <em>Odisha</em></a>
-  <nav>
-    <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Home</a>
-    <a routerLink="/trips" routerLinkActive="on">Trips</a>
-    @if (auth.isAuthenticated()) {
-      <a routerLink="/my-bookings" routerLinkActive="on">My Bookings</a>
-      <a routerLink="/profile" routerLinkActive="on">Profile</a>
-    }
-  </nav>
   <div class="row" style="gap:8px">
     <div class="burger" (click)="toggleMenu()">☰</div>
     @if (auth.isAuthenticated()) {
-      <a routerLink="/profile" class="note" style="font-weight:600;color:var(--ink)">Hi, {{ auth.currentCustomer()?.name?.split(' ')?.[0] }}</a>
+      <!-- Phones: plain link (the ☰ menu has the account links). -->
+      <a routerLink="/profile" class="note hi-mobile" style="font-weight:600;color:var(--ink)">Hi, {{ firstName() }}</a>
+      <!-- Desktop: account menu under "Hi, name". -->
+      <div class="acct">
+        <button type="button" class="acct-btn" aria-haspopup="menu" [attr.aria-expanded]="accountOpen()" (click)="toggleAccount()">
+          <span class="acct-av" aria-hidden="true">{{ firstName().charAt(0).toUpperCase() }}</span>
+          <span>Hi, {{ firstName() }}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        @if (accountOpen()) {
+          <div class="acct-menu" role="menu">
+            <a role="menuitem" routerLink="/my-bookings" routerLinkActive="on" (click)="closeAccount()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+              My Bookings
+            </a>
+            <a role="menuitem" routerLink="/profile" routerLinkActive="on" (click)="closeAccount()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"></path></svg>
+              My Profile
+            </a>
+            <div class="acct-sep"></div>
+            <button type="button" role="menuitem" class="acct-out" (click)="signOut()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg>
+              Sign out
+            </button>
+          </div>
+        }
+      </div>
     } @else {
-      <a class="btn sm ghost" routerLink="/login">Sign in</a>
+      <button type="button" class="btn sm ghost" aria-haspopup="dialog" (click)="loginModal.open()">Sign in</button>
     }
   </div>
 </div>
@@ -21,7 +39,6 @@
 @if (menuOpen()) {
   <div class="card" style="margin:0 16px;border-top:none;border-radius:0 0 14px 14px">
     <a routerLink="/" (click)="toggleMenu()" style="display:block;padding:12px 16px">Home</a>
-    <a routerLink="/trips" (click)="toggleMenu()" style="display:block;padding:12px 16px">Trips</a>
     @if (auth.isAuthenticated()) {
       <a routerLink="/my-bookings" (click)="toggleMenu()" style="display:block;padding:12px 16px">My Bookings</a>
       <a routerLink="/profile" (click)="toggleMenu()" style="display:block;padding:12px 16px">Profile</a>
@@ -35,5 +52,9 @@
   
   <div class="footbar">&copy; {{ year }} Ghumo Odisha. All rights reserved. · <a routerLink="/terms" style="color:inherit;text-decoration:underline">Terms &amp; Conditions</a></div>
 </footer>
+
+@if (loginModal.isOpen()) {
+  <app-login-modal></app-login-modal>
+}
 
 <app-toast-host></app-toast-host>

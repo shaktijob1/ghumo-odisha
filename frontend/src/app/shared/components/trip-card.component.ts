@@ -9,7 +9,7 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
   standalone: true,
   imports: [CommonModule, RouterLink, ImageUrlPipe],
   template: `
-    <a class="tcard" [routerLink]="['/trips', trip.tripId]">
+    <a class="tcard" [class.dash]="showNextDeparture" [routerLink]="['/trips', trip.tripId]">
       <div class="shot" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
         @if (photoUrls.length > 0 && !imgFailed()) {
           <img [src]="photoUrls[activeIndex()] | imageUrl" alt="{{ trip.title }}" (error)="imgFailed.set(true)" />
@@ -99,7 +99,34 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
           </div>
         }
 
-        @if (features.length > 0) {
+        @if (showNextDeparture) {
+          @if (trip.nextSlotStartDate) {
+            <div class="nextdep">
+              <div class="nd-cal" aria-hidden="true">
+                <span class="nd-mon">{{ trip.nextSlotStartDate | date:'MMM' | uppercase }}</span>
+                <span class="nd-day">{{ trip.nextSlotStartDate | date:'d' }}</span>
+              </div>
+              <div class="nd-info">
+                <span class="nd-lbl">Next departure</span>
+                <b class="nd-range">
+                  {{ trip.nextSlotStartDate | date:'EEE, d MMM' }}
+                  @if (trip.nextSlotEndDate) { – {{ trip.nextSlotEndDate | date:'EEE, d MMM' }} }
+                </b>
+                <span class="nd-meta">
+                  @if (departsIn) { <span>{{ departsIn }}</span> }
+                  @if (seatsLabel) { <span class="nd-seats" [class.low]="seatState === 'low'" [class.soldout]="seatState === 'soldout'">{{ seatsLabel }}</span> }
+                </span>
+              </div>
+            </div>
+          } @else {
+            <div class="nextdep empty">
+              <div class="nd-info">
+                <span class="nd-lbl">Next departure</span>
+                <b class="nd-range">Dates coming soon</b>
+              </div>
+            </div>
+          }
+        } @else if (features.length > 0) {
           <div class="hr"></div>
           <div class="featrow">
             @for (f of features; track f.key) {
@@ -148,6 +175,8 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
 })
 export class TripCardComponent implements OnInit, OnDestroy {
   @Input({ required: true }) trip!: TripSummary;
+  // Dashboard and destination pages: shows the next departure date in place of the inclusions row.
+  @Input() showNextDeparture = false;
 
   readonly activeIndex = signal(0);
   readonly imgFailed = signal(false);
@@ -219,6 +248,20 @@ export class TripCardComponent implements OnInit, OnDestroy {
     const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
     const nights = days - 1;
     return `${days}D/${nights}N`;
+  }
+
+  // Calendar days from today (local time) to the next departure.
+  get departsIn(): string {
+    if (!this.trip.nextSlotStartDate) return '';
+    const start = new Date(this.trip.nextSlotStartDate);
+    const today = new Date();
+    const startDay = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+    const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const days = Math.round((startDay - todayDay) / 86400000);
+    if (days < 0) return '';
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Tomorrow';
+    return `In ${days} days`;
   }
 
   get placesLine(): string {

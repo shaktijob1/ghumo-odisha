@@ -34,6 +34,7 @@ export class StatusBadgeComponent {
     }
 
     if (this.kind === 'payment') {
+      if (this.value === PaymentStatus.RefundPending) return 'wait';
       return this.value === PaymentStatus.Paid || this.value === PaymentStatus.AdvancePaid ? 'ok' : this.value === PaymentStatus.Refunded ? 'bad' : '';
     }
 

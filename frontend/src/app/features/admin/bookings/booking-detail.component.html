@@ -65,6 +65,19 @@
               {{ b.cancellationReason }}
             </b>
           }
+          @if (b.refund; as rf) {
+            <span class="k">Refund</span>
+            <b>
+              ₹{{ rf.amount | number:'1.0-2' }} ·
+              @switch (rf.status) {
+                @case (RefundStatus.Pending) { <span class="badge wait">Pending</span> }
+                @case (RefundStatus.Processing) { <span class="badge info">Processing</span> }
+                @case (RefundStatus.Settled) { <span class="badge ok">Settled</span> }
+              }
+              @if (rf.reference) { <span class="mut" style="font-weight:400"> · {{ rf.reference }}</span> }
+              <a routerLink="/admin/refunds" style="font-weight:600;margin-left:6px">Manage in Refunds →</a>
+            </b>
+          }
         </div>
         <div class="hr"></div>
         <div class="lbl">Customer notes</div>
@@ -78,7 +91,7 @@
         <div class="sub">{{ b.customerBookingCount }} booking(s) on record</div>
         <div class="kv">
           <span class="k">Name</span><a [routerLink]="['/admin/customers', b.customerId]"><b>{{ b.customerName }}</b></a>
-          <span class="k">Phone</span><b>{{ b.customerPhone }}</b>
+          <span class="k">Phone</span><b>{{ b.customerPhone || "—" }}</b>
           <span class="k">Email</span><b>{{ b.customerEmail || '—' }}</b>
         </div>
         <div class="hr"></div>
@@ -305,7 +318,7 @@
         <input type="radio" name="cancelmode" [value]="false" [(ngModel)]="cancelWaiveRefund" style="margin-top:3px" />
         <div style="flex:1">
           <b style="font-size:14px">Cancel and refund</b>
-          <p class="note" style="margin-top:2px">An online payment is refunded in full via Razorpay first; offline payments are marked refunded.</p>
+          <p class="note" style="margin-top:2px">Seats are released now. What was paid goes to <b>Refunds</b> as a pending request — issue it there (Razorpay or manual) and mark it settled once paid.</p>
         </div>
       </label>
       <label class="paycard" [class.on]="cancelWaiveRefund" style="cursor:pointer">

@@ -28,6 +28,8 @@ declare const Razorpay: any;
 export class PaymentPanelComponent implements OnInit {
   @Input({ required: true }) booking!: BookingResponse;
   @Input() showSkip = true;
+  @Input() heading = 'Secure your seats';
+  @Input() subheading = 'Your booking is requested. Pay now to lock it in instantly.';
   /** Coupon picked earlier (e.g. in the trip page sidebar, possibly before sign-in) — re-checked on open. */
   @Input() coupon: CouponSelection | null = null;
   @Output() couponChange = new EventEmitter<CouponSelection | null>();

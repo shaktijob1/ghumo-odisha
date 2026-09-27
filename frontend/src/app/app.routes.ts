@@ -99,6 +99,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/bookings/booking-detail.component').then((m) => m.BookingDetailComponent),
       },
       {
+        path: 'refunds',
+        loadComponent: () => import('./features/admin/refunds/refund-list.component').then((m) => m.RefundListComponent),
+      },
+      {
         path: 'customers',
         loadComponent: () => import('./features/admin/customers/customer-list.component').then((m) => m.CustomerListComponent),
       },

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, NgZone, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { PublicTripService } from '../../core/services/public-trip.service';
@@ -44,6 +44,66 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly destinationsState = signal<LoadState>('loading');
   readonly destinations = signal<DestinationSummary[]>([]);
+
+  // --- Desktop "Trending Odisha Destinations" row: horizontal scroll + prev/next arrows ---
+  private readonly trendScroll = viewChild<ElementRef<HTMLElement>>('trendScroll');
+  readonly canScrollPrev = signal(false);
+  readonly canScrollNext = signal(false);
+  private readonly trendArrowSync = effect(() => {
+    // Re-check once the card row renders (or the destinations change).
+    this.destinations();
+    if (this.trendScroll()) setTimeout(() => this.updateTrendArrows());
+  });
+
+  updateTrendArrows(): void {
+    const el = this.trendScroll()?.nativeElement;
+    if (!el) return;
+    this.canScrollPrev.set(el.scrollLeft > 2);
+    this.canScrollNext.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }
+
+  /** Moves the row by roughly one visible "page" of cards. */
+  scrollTrending(direction: 1 | -1): void {
+    const el = this.trendScroll()?.nativeElement;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 200), behavior: this.reducedMotion ? 'auto' : 'smooth' });
+  }
+
+  // --- Desktop "Upcoming Trips" row: 4 cards per view (3 / 2 on narrower screens), arrows move 2 ---
+  private readonly tripScroll = viewChild<ElementRef<HTMLElement>>('tripScroll');
+  readonly tripCanScrollPrev = signal(false);
+  readonly tripCanScrollNext = signal(false);
+  private readonly tripArrowSync = effect(() => {
+    // A new trip list (load or location filter) starts the row from the beginning.
+    this.upcomingTrips();
+    const el = this.tripScroll()?.nativeElement;
+    if (el) setTimeout(() => { el.scrollLeft = 0; this.updateTripArrows(); });
+  });
+
+  updateTripArrows(): void {
+    const el = this.tripScroll()?.nativeElement;
+    if (!el) return;
+    this.tripCanScrollPrev.set(el.scrollLeft > 2);
+    this.tripCanScrollNext.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }
+
+  /**
+   * Moves the row by 2 cards. The browser stops at the end of the row, so with only one card
+   * left off-screen (e.g. 5 trips, 4 visible) a click moves just that one.
+   */
+  scrollTrips(direction: 1 | -1): void {
+    const el = this.tripScroll()?.nativeElement;
+    const card = el?.querySelector<HTMLElement>('.tslot');
+    if (!el || !card) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    el.scrollBy({ left: direction * 2 * (card.getBoundingClientRect().width + gap), behavior: this.reducedMotion ? 'auto' : 'smooth' });
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateTrendArrows();
+    this.updateTripArrows();
+  }
 
   // --- Mobile "Trending Odisha Destinations" carousel (synced hero + 3-up centered mini-cards) ---
   private readonly GAP_PX = 10;
@@ -153,7 +213,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.trips().filter((t) => this.hasUpcomingSlot(t) && (!location || t.destinationNames.includes(location)));
   });
 
-  private static readonly TRIPS_PAGE_SIZE = 5;
+  // Mobile shows this many upcoming trips, then "View more" adds the same again. Desktop scrolls the full row.
+  private static readonly TRIPS_PAGE_SIZE = 3;
   readonly visibleTripsCount = signal(DashboardComponent.TRIPS_PAGE_SIZE);
   readonly visibleUpcomingTrips = computed(() => this.upcomingTrips().slice(0, this.visibleTripsCount()));
 

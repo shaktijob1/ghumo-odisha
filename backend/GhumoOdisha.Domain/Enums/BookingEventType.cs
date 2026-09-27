@@ -12,5 +12,7 @@ public enum BookingEventType
     SeatsChanged = 7,
     TravellersUpdated = 8,
     GenderCountsUpdated = 9,
-    Created = 10
+    Created = 10,
+    RefundInitiated = 11,
+    RefundSettled = 12
 }

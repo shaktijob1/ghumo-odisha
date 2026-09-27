@@ -41,6 +41,15 @@ export class CustomerAuthService {
       .pipe(tap((r) => r.data && this.setSession(r.data)));
   }
 
+  /** Signs in (or signs up) with the ID token Google Identity Services returned. */
+  googleSignIn(credential: string): Observable<ApiResponse<CustomerAuthResponse>> {
+    return this.startSession(`${environment.apiUrl}/auth/customer/google`, { credential });
+  }
+
+  private startSession(url: string, body: object): Observable<ApiResponse<CustomerAuthResponse>> {
+    return this.http.post<ApiResponse<CustomerAuthResponse>>(url, body).pipe(tap((r) => r.data && this.setSession(r.data)));
+  }
+
   /** Attempts to refresh the access token using the stored refresh token. Shares one in-flight call. */
   refresh(): Observable<CustomerAuthResponse | null> {
     const current = this.session();

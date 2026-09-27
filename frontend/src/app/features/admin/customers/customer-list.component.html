@@ -28,7 +28,7 @@
             @for (c of r.items; track c.customerId) {
               <tr>
                 <td><a [routerLink]="['/admin/customers', c.customerId]"><b>{{ c.name }}</b></a></td>
-                <td>{{ c.phoneNumber }}</td>
+                <td>{{ c.phoneNumber || "—" }}</td>
                 <td class="note">{{ c.email || '—' }}</td>
                 <td>{{ c.tripCount }}</td>
                 <td>{{ c.confirmedBookingCount }}</td>

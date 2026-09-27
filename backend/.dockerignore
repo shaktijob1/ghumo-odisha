@@ -10,3 +10,7 @@ GhumoOdisha.Api/wwwroot/uploads/
 
 logs/
 *.log
+
+# Development-only settings (local admin seed password, dev CORS, storage path) must never ship
+# in an image. Real environments supply settings via environment variables / secrets.
+GhumoOdisha.Api/appsettings.Development.json

@@ -6,7 +6,7 @@ public record AdminBookingListItemDto(
     int BookingId,
     int CustomerId,
     string CustomerName,
-    string CustomerPhone,
+    string? CustomerPhone,
     int TripId,
     string TripTitle,
     int TripDateSlotId,
@@ -24,7 +24,7 @@ public record AdminBookingDetailDto(
     int BookingId,
     int CustomerId,
     string CustomerName,
-    string CustomerPhone,
+    string? CustomerPhone,
     string? CustomerEmail,
     int CustomerBookingCount,
     int TripId,
@@ -55,7 +55,8 @@ public record AdminBookingDetailDto(
     string? CancellationReason,
     bool RefundWaived,
     IReadOnlyList<AdminTravellerDto> Travellers,
-    IReadOnlyList<BookingEventDto> Timeline);
+    IReadOnlyList<BookingEventDto> Timeline,
+    Refunds.Dtos.AdminRefundDto? Refund = null);
 
 public record AdminTravellerDto(
     int BookingTravellerId,

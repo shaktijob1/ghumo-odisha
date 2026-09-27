@@ -27,9 +27,10 @@ public class WhatsAppOptions
     public string OtpTemplateLanguage { get; set; } = "en";
 
     /// <summary>
-    /// Utility: body "Hello {{1}}, ... {{2}} ..." (name, code). Authentication: Meta's fixed
-    /// "{{1}} is your verification code" body plus a copy-code button — it can't carry booking
-    /// notices, so those are skipped when this is Authentication.
+    /// Utility: body "Hello {{1}}, ... {{2}} ..." (name, code). SingleVariable: one free-text
+    /// variable, e.g. "Hello There, {{1}} See You Soon." — the whole message (the OTP sentence, or a
+    /// booking notice) goes in {{1}}. Authentication: Meta's fixed "{{1}} is your verification code"
+    /// body plus a copy-code button — it can't carry booking notices, so those are skipped.
     /// </summary>
     public WhatsAppOtpTemplateCategory OtpTemplateCategory { get; set; } = WhatsAppOtpTemplateCategory.Utility;
 
@@ -44,5 +45,6 @@ public class WhatsAppOptions
 public enum WhatsAppOtpTemplateCategory
 {
     Utility,
-    Authentication
+    Authentication,
+    SingleVariable
 }

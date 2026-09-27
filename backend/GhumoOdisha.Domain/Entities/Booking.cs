@@ -58,4 +58,5 @@ public class Booking
     public ICollection<BookingPayment> Payments { get; set; } = new List<BookingPayment>();
     public ICollection<BookingTraveller> Travellers { get; set; } = new List<BookingTraveller>();
     public ICollection<BookingEvent> Events { get; set; } = new List<BookingEvent>();
+    public BookingRefund? Refund { get; set; }
 }

@@ -21,7 +21,8 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
       <div class="info">
         <b>{{ destination.name }}</b>
         @if (destination.startingPrice !== null) {
-          <span>Starting at &#8377;{{ destination.startingPrice | number: '1.0-0' }}*</span>
+          <span class="price">Starting at &#8377;{{ destination.startingPrice | number: '1.0-0' }}</span>
+          <span class="pp">Per person</span>
         }
       </div>
     </a>

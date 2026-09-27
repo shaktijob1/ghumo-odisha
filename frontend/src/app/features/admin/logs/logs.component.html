@@ -38,7 +38,7 @@
                   <tr class="clickrow" (click)="showFailuresFor(f.path)">
                     <td><code class="mono">{{ f.method }} {{ f.path }}</code></td>
                     <td class="num"><b style="color:var(--danger)">{{ f.count }}</b></td>
-                    <td class="note">{{ f.lastAtUtc + 'Z' | date: 'd MMM, h:mm a' }}</td>
+                    <td class="note">{{ f.lastAtUtc | date: 'd MMM, h:mm a' }}</td>
                   </tr>
                 }
               </table>
@@ -58,7 +58,7 @@
                   <span class="lv bad"></span>
                   <div>
                     <b>{{ e.message }}</b>
-                    <small>{{ e.timestampUtc + 'Z' | date: 'd MMM, h:mm:ss a' }} · {{ e.userLabel || 'Visitor' }} · ref <code class="mono">{{ e.requestId }}</code></small>
+                    <small>{{ e.timestampUtc | date: 'd MMM, h:mm:ss a' }} · {{ e.userLabel || 'Visitor' }} · ref <code class="mono">{{ e.requestId }}</code></small>
                   </div>
                 </li>
               }
@@ -119,7 +119,7 @@
               <tr><th>Time</th><th>Level</th><th>Who</th><th>What happened</th><th>Request</th><th>Ref</th></tr>
               @for (l of logs(); track l.appLogId) {
                 <tr class="clickrow" (click)="openLog(l)">
-                  <td class="note nowrap">{{ l.timestampUtc + 'Z' | date: 'd MMM, h:mm:ss a' }}</td>
+                  <td class="note nowrap">{{ l.timestampUtc | date: 'd MMM, h:mm:ss a' }}</td>
                   <td><span class="badge" [class]="levelClass(l.level)">{{ levelLabel(l.level) }}</span></td>
                   <td class="nowrap">{{ l.userLabel || '—' }}</td>
                   <td class="msg">
@@ -175,7 +175,7 @@
               <tr><th>Time</th><th>Admin</th><th>Action</th><th>On</th><th>Result</th><th>Ref</th></tr>
               @for (a of activity(); track a.adminActivityId) {
                 <tr>
-                  <td class="note nowrap">{{ a.createdAtUtc + 'Z' | date: 'd MMM y, h:mm a' }}</td>
+                  <td class="note nowrap">{{ a.createdAtUtc | date: 'd MMM y, h:mm a' }}</td>
                   <td>{{ a.adminName }}</td>
                   <td><b>{{ a.action }}</b></td>
                   <td>
@@ -215,7 +215,7 @@
         <div class="row sp" style="align-items:flex-start;gap:12px">
           <div>
             <span class="badge" [class]="levelClass(d.log.level)">{{ levelLabel(d.log.level) }}</span>
-            <span class="note" style="margin-left:6px">{{ d.log.timestampUtc + 'Z' | date: 'd MMM y, h:mm:ss.SSS a' }}</span>
+            <span class="note" style="margin-left:6px">{{ d.log.timestampUtc | date: 'd MMM y, h:mm:ss.SSS a' }}</span>
           </div>
           <button type="button" class="linkbtn" (click)="closeDetail()">Close</button>
         </div>

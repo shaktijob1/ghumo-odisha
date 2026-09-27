@@ -191,8 +191,8 @@ public partial class BookingTravellerService(IGhumoOdishaDbContext db) : IBookin
     {
         var wanted = phones.OfType<string>().Distinct().ToList();
         var existing = await db.Customers
-            .Where(c => wanted.Contains(c.PhoneNumber))
-            .ToDictionaryAsync(c => c.PhoneNumber, cancellationToken);
+            .Where(c => c.PhoneNumber != null && wanted.Contains(c.PhoneNumber))
+            .ToDictionaryAsync(c => c.PhoneNumber!, cancellationToken);
 
         var now = DateTime.UtcNow;
         foreach (var phone in wanted.Where(p => !existing.ContainsKey(p)))

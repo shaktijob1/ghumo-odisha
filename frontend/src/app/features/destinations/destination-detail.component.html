@@ -96,9 +96,9 @@
                 <p class="mut">No trips match your filters in {{ d.name }} right now.</p>
               </div>
             } @else {
-              <div class="tgrid">
+              <div class="tgrid" id="destination-trips">
                 @for (t of trips(); track $index) {
-                  <app-trip-card [trip]="t"></app-trip-card>
+                  <app-trip-card [trip]="t" [showNextDeparture]="true"></app-trip-card>
                 }
               </div>
             }

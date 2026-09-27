@@ -21,22 +21,94 @@
 
         @if (!editing()) {
           <div class="f2">
-            <div class="fld"><span class="lbl">Full name</span><input class="inp" [value]="p.name" readonly /></div>
-            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber" readonly /></div>
+            <div class="fld"><span class="lbl">Full name</span><input class="inp" [value]="p.name || '—'" readonly /></div>
+            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber ? '+91 ' + p.phoneNumber : 'Not added'" readonly /></div>
             <div class="fld"><span class="lbl">Email</span><input class="inp" [value]="p.email || '—'" readonly /></div>
             <div class="fld"><span class="lbl">Member since</span><input class="inp" [value]="p.createdAt | date:'d MMM y'" readonly /></div>
           </div>
         } @else {
           <div class="f2">
             <div class="fld"><span class="lbl">Full name</span><input class="inp" [(ngModel)]="editName" /></div>
-            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber" readonly /></div>
-            <div class="fld"><span class="lbl">Email</span><input class="inp" [(ngModel)]="editEmail" /></div>
+            <div class="fld"><span class="lbl">WhatsApp Number</span><input class="inp" [value]="p.phoneNumber ? '+91 ' + p.phoneNumber : 'Not added'" readonly /></div>
+            <div class="fld">
+              <span class="lbl">Email</span>
+              @if (p.emailVerified) {
+                <input class="inp" [value]="p.email" readonly title="Comes from your linked Google account" />
+              } @else {
+                <input class="inp" [(ngModel)]="editEmail" />
+              }
+            </div>
           </div>
           <div class="row" style="gap:8px">
             <button class="btn sm ghost" (click)="editing.set(false)">Cancel</button>
             <button class="btn sm" [disabled]="savingProfile()" (click)="saveProfile()">Save</button>
           </div>
         }
+      </div>
+
+      <div class="card pad" style="margin-bottom:14px">
+        <h4 style="font-size:15px;margin-bottom:4px">Sign-in methods</h4>
+        <p class="note" style="margin-bottom:14px">Choose how you sign in. Booking updates go to your WhatsApp number when one is added.</p>
+
+        <!-- Google -->
+        <div class="row sp" style="padding:12px 0;border-top:1px solid var(--line)">
+          <div>
+            <b style="font-size:13px">Google</b>
+            <div class="note">{{ p.googleLinked ? p.email : 'Sign in with your Google account' }}</div>
+          </div>
+          @if (p.googleLinked) {
+            <span class="badge ok">Linked</span>
+          } @else if (editor() !== 'google') {
+            <button class="btn sm ghost" (click)="open('google')">Link</button>
+          }
+        </div>
+        @if (editor() === 'google') {
+          <div style="padding-bottom:12px">
+            <app-google-sign-in-button (credential)="linkGoogle($event)"></app-google-sign-in-button>
+            @if (editorError()) { <div class="errorbox" style="margin-top:10px">{{ editorError() }}</div> }
+            <div class="row" style="justify-content:center;margin-top:8px"><button class="linkbtn" (click)="close()">Cancel</button></div>
+          </div>
+        }
+
+        <!-- WhatsApp number -->
+        <div class="row sp" style="padding:12px 0;border-top:1px solid var(--line)">
+          <div>
+            <b style="font-size:13px">WhatsApp number</b>
+            <div class="note">{{ p.phoneNumber ? '+91 ' + p.phoneNumber + ' · sign in with an OTP' : 'Add one to get booking updates and sign in with an OTP' }}</div>
+          </div>
+          @if (editor() !== 'phone') {
+            <button class="btn sm ghost" (click)="open('phone')">{{ p.phoneNumber ? 'Change' : 'Add' }}</button>
+          }
+        </div>
+        @if (editor() === 'phone') {
+          <div style="padding-bottom:12px">
+            @if (!phoneOtpSent()) {
+              <div class="fld">
+                <span class="lbl">WhatsApp Number</span>
+                <div class="inp numprefix wa-phone">
+                  <span class="numprefix-code">+91</span>
+                  <input [(ngModel)]="newPhone" placeholder="9876543210" maxlength="10" inputmode="numeric" (keyup.enter)="sendPhoneOtp()" />
+                </div>
+              </div>
+            } @else {
+              <p class="note" style="margin-bottom:10px">We sent a code to <b>+91 {{ newPhone }}</b> on WhatsApp.</p>
+              <div class="fld">
+                <span class="lbl">OTP</span>
+                <input class="inp" [(ngModel)]="phoneOtp" maxlength="8" inputmode="numeric" autocomplete="one-time-code" (keyup.enter)="verifyPhone()" />
+              </div>
+            }
+            @if (editorError()) { <div class="errorbox">{{ editorError() }}</div> }
+            <div class="row" style="gap:8px">
+              <button class="btn sm ghost" (click)="close()">Cancel</button>
+              @if (!phoneOtpSent()) {
+                <button class="btn sm" [disabled]="busy()" (click)="sendPhoneOtp()">@if (busy()) { <span class="spin"></span> } @else { Send OTP }</button>
+              } @else {
+                <button class="btn sm" [disabled]="busy()" (click)="verifyPhone()">@if (busy()) { <span class="spin"></span> } @else { Verify }</button>
+              }
+            </div>
+          </div>
+        }
+
       </div>
 
       <div class="card pad">

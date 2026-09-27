@@ -148,7 +148,7 @@ public partial class LogQueryService(IGhumoOdishaDbContext db) : ILogQueryServic
                 // A phone number (or its last digits): logs of the matching customers.
                 var phoneTail = digits.Length > 10 ? digits[^10..] : digits;
                 var customerIds = await db.Customers.AsNoTracking()
-                    .Where(c => c.PhoneNumber.EndsWith(phoneTail))
+                    .Where(c => c.PhoneNumber != null && c.PhoneNumber.EndsWith(phoneTail))
                     .Select(c => c.CustomerId)
                     .Take(50)
                     .ToListAsync(cancellationToken);
@@ -230,7 +230,7 @@ public partial class LogQueryService(IGhumoOdishaDbContext db) : ILogQueryServic
         var customers = customerIds.Count == 0 ? new Dictionary<int, string>() : await db.Customers.AsNoTracking()
             .Where(c => customerIds.Contains(c.CustomerId))
             .ToDictionaryAsync(c => c.CustomerId,
-                c => $"{(string.IsNullOrWhiteSpace(c.Name) ? "Customer" : c.Name)} · …{(c.PhoneNumber.Length >= 4 ? c.PhoneNumber[^4..] : c.PhoneNumber)}",
+                c => $"{(string.IsNullOrWhiteSpace(c.Name) ? "Customer" : c.Name)} · {(c.PhoneNumber == null ? (c.Email ?? "no phone") : "…" + (c.PhoneNumber.Length >= 4 ? c.PhoneNumber.Substring(c.PhoneNumber.Length - 4) : c.PhoneNumber))}",
                 cancellationToken);
         var admins = adminIds.Count == 0 ? new Dictionary<int, string>() : await db.AdminUsers.AsNoTracking()
             .Where(a => adminIds.Contains(a.AdminUserId))

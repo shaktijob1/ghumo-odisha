@@ -60,7 +60,7 @@
               @for (b of bookingsForSlot(s.tripDateSlotId); track b.bookingId) {
                 <tr>
                   <td><a [routerLink]="['/admin/bookings', b.bookingId]"><b>{{ b.customerName }}</b></a></td>
-                  <td>{{ b.customerPhone }}</td>
+                  <td>{{ b.customerPhone || "—" }}</td>
                   <td>{{ b.numberOfSeats }}</td>
                   <td>₹{{ b.totalAmount | number:'1.0-0' }}</td>
                   <td>₹{{ b.advanceAmount | number:'1.0-0' }}</td>

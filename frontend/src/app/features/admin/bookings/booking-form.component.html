@@ -23,7 +23,7 @@
         <div class="card" style="position:absolute;z-index:5;width:100%;margin-top:4px;max-height:220px;overflow-y:auto">
           @for (c of customerResults(); track c.customerId) {
             <div class="row sp" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)" (click)="pickCustomer(c)">
-              <span>{{ c.name }}</span><span class="note">{{ c.phoneNumber }}</span>
+              <span>{{ c.name }}</span><span class="note">{{ c.phoneNumber || c.email }}</span>
             </div>
           }
         </div>

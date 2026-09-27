@@ -173,7 +173,7 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
             {
                 SectionLabel(c.Item(), "Billed to");
                 c.Item().Text(b.Customer.Name).FontSize(12).Bold();
-                c.Item().Text($"+91 {b.Customer.PhoneNumber}").FontColor(Muted);
+                if (!string.IsNullOrWhiteSpace(b.Customer.PhoneNumber)) c.Item().Text($"+91 {b.Customer.PhoneNumber}").FontColor(Muted);
                 if (!string.IsNullOrWhiteSpace(b.Customer.Email)) c.Item().Text(b.Customer.Email).FontColor(Muted);
             });
 
@@ -442,6 +442,7 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
             PaymentStatus.Paid => ("PAID IN FULL", Accent, AccentSoft),
             PaymentStatus.AdvancePaid => ("PARTIALLY PAID", Wait, "#FBF4E6"),
             PaymentStatus.Refunded => ("REFUNDED", Danger, "#F9E9E6"),
+            PaymentStatus.RefundPending => ("REFUND PROCESSING", Wait, "#FBF4E6"),
             _ => (remaining > 0 ? "UNPAID" : "PAID IN FULL", remaining > 0 ? Danger : Accent, remaining > 0 ? "#F9E9E6" : AccentSoft)
         };
 

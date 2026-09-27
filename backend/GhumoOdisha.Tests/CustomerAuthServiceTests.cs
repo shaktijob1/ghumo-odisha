@@ -53,7 +53,6 @@ public class CustomerAuthServiceTests
         var customer = await db.Customers.SingleAsync(c => c.PhoneNumber == phone);
         Assert.Equal("Rahul Das", customer.Name);
         Assert.True(customer.IsVerified);
-        Assert.Null(customer.PinHash);
     }
 
     [Fact]

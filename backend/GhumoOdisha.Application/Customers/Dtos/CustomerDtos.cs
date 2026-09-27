@@ -3,18 +3,20 @@ namespace GhumoOdisha.Application.Customers.Dtos;
 public record CustomerProfileDto(
     int CustomerId,
     string Name,
-    string PhoneNumber,
+    string? PhoneNumber,
     string? Email,
     bool IsVerified,
     DateTime CreatedAt,
-    DateTime? LastLoginAt);
+    DateTime? LastLoginAt,
+    bool EmailVerified,
+    bool GoogleLinked);
 
 public record UpdateProfileRequest(string Name, string? Email);
 
 public record AdminCustomerListItemDto(
     int CustomerId,
     string Name,
-    string PhoneNumber,
+    string? PhoneNumber,
     string? Email,
     int TripCount,
     int ConfirmedBookingCount,
@@ -25,7 +27,7 @@ public record AdminCustomerListItemDto(
 public record AdminCustomerDetailDto(
     int CustomerId,
     string Name,
-    string PhoneNumber,
+    string? PhoneNumber,
     string? Email,
     bool IsVerified,
     DateTime CreatedAt,

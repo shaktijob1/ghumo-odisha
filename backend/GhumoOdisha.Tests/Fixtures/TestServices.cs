@@ -30,13 +30,15 @@ public static class TestServices
     public static CustomerAuthService CreateCustomerAuthService(
         GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db,
         FakeWhatsAppService fakeWhatsApp,
-        OtpSettings? otpSettings = null)
+        OtpSettings? otpSettings = null,
+        FakeGoogleTokenValidator? fakeGoogle = null)
     {
         return new CustomerAuthService(
             db,
             new PinHasher(),
             new JwtTokenService(Options.Create(JwtSettings)),
             fakeWhatsApp,
+            fakeGoogle ?? new FakeGoogleTokenValidator(),
             Options.Create(otpSettings ?? OtpSettings),
             Options.Create(JwtSettings),
             new MemoryCache(new MemoryCacheOptions()),

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, computed, inject, signal, viewChild, viewChildren } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicTripService } from '../../core/services/public-trip.service';
@@ -18,8 +18,15 @@ import { PaymentPanelComponent } from '../../shared/components/payment-panel.com
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 import { downloadFile } from '../../shared/utils/download-file';
 import { toLocalDateKey } from '../../shared/utils/date-key';
-import { BookingPriceSummaryComponent, payNowFor } from '../../shared/components/booking-price-summary.component';
-import { CouponFieldComponent, CouponSelection } from '../../shared/components/coupon-field.component';
+import { payNowFor } from '../../shared/components/booking-price-summary.component';
+import { CouponSelection } from '../../shared/components/coupon-field.component';
+import { roomsForSeats } from '../../shared/utils/rooms';
+
+type PhotoRow = 'hl' | 'stay' | 'travel';
+
+// Booking popup: confirm date → confirm seats (rooms shown) → then the 'flow' chain of
+// pickup point / sign-in / name / create request → trip summary with coupon + Pay Now.
+type BookingStep = 'date' | 'seats' | 'flow';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -29,7 +36,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 @Component({
   selector: 'app-trip-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe, BookingPriceSummaryComponent, CouponFieldComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe],
   templateUrl: './trip-detail.component.html',
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
@@ -108,19 +115,16 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   private heroTimer?: ReturnType<typeof setInterval>;
 
-  // Day tabs auto-advance on small screens only, where the connector arrows are hidden and the
-  // tab strip behaves like a carousel instead — desktop keeps the arrows and manual clicking.
+  // Day tabs only change when the customer picks one — no auto-advance.
   private readonly dayTabEls = viewChildren<ElementRef<HTMLButtonElement>>('dayTab');
   private readonly dayTabsEl = viewChild<ElementRef<HTMLDivElement>>('dayTabsEl');
-  private readonly mobileMql = typeof window !== 'undefined' ? window.matchMedia('(max-width: 640px)') : null;
-  private dayTimer?: ReturnType<typeof setInterval>;
-  private readonly onMobileMqlChange = (e: MediaQueryListEvent): void => {
-    if (e.matches) this.startDayAutoplay();
-    else this.stopDayAutoplay();
-  };
 
   tripId!: number;
   private clientRequestId: string | null = null;
+  // The date/seats/pickup the current booking request was created with.
+  private lastRequest: { slotId: number; seats: number; pickupId: number | null } | null = null;
+  // An unpaid request set aside when the popup was closed or "Edit details" was used.
+  private draft: { result: CreateBookingResult; slotId: number; seats: number; pickupId: number | null } | null = null;
   private justAuthenticated = false;
 
   readonly selectedSlot = computed<DateSlot | null>(() => {
@@ -147,9 +151,61 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   // charged; that's recomputed server-side from scratch.
   readonly bookingAdvance = computed(() => payNowFor(this.trip()?.amountPerPerson ?? 0, this.seats(), this.couponDiscount()));
 
+  private static readonly MAX_SEATS_SHOWN = 10;
+
+  /** Seats offered on this page: the real availability, but never more than 10 per booking. */
+  seatsShown(available: number): number {
+    return Math.min(available, TripDetailComponent.MAX_SEATS_SHOWN);
+  }
+
+  /** Booking advance for one seat — what the "PAY ₹99 & CONFIRM BOOKING" button shows before seats are chosen. */
+  get perSeatAdvance(): number {
+    return payNowFor(this.trip()?.amountPerPerson ?? 0, 1, 0);
+  }
+
   readonly requiresPickupPoint = computed(() => (this.trip()?.pickupPoints.length ?? 0) > 0);
 
   readonly showBookingModal = signal(false);
+  readonly bookingStep = signal<BookingStep>('date');
+  // Captured when the popup opens so the step bar keeps its "Sign in" step after sign-in succeeds.
+  private readonly signInStepShown = signal(false);
+
+  readonly roomsAllotted = computed(() => roomsForSeats(this.seats()));
+
+  /** Travellers per room, spread as evenly as possible (5 seats → 2 rooms of 3 + 2). */
+  readonly roomPlan = computed(() => {
+    const seats = this.seats();
+    const rooms = this.roomsAllotted();
+    if (rooms === 0) return [];
+    const base = Math.floor(seats / rooms);
+    const extra = seats % rooms;
+    return Array.from({ length: rooms }, (_, i) => {
+      const guests = base + (i < extra ? 1 : 0);
+      return { guests, icons: Array.from({ length: guests }, (_, g) => g) };
+    });
+  });
+
+  readonly bookingSteps = computed(() => {
+    const steps: { key: 'date' | 'seats' | 'pickup' | 'signin' | 'summary'; label: string }[] = [
+      { key: 'date', label: 'Date' },
+      { key: 'seats', label: 'Seats' },
+    ];
+    if (this.requiresPickupPoint()) steps.push({ key: 'pickup', label: 'Pickup' });
+    if (this.signInStepShown()) steps.push({ key: 'signin', label: 'Sign in' });
+    steps.push({ key: 'summary', label: 'Summary' });
+    return steps;
+  });
+
+  readonly activeStepIndex = computed(() => {
+    const step = this.bookingStep();
+    let key: string;
+    if (step !== 'flow') key = step;
+    else if (this.needsPickupSelection()) key = 'pickup';
+    else if (this.showAuthModal() || this.showNamePrompt()) key = 'signin';
+    else key = 'summary';
+    return Math.max(0, this.bookingSteps().findIndex((s) => s.key === key));
+  });
+
   readonly needsPickupSelection = computed(
     () => this.requiresPickupPoint() && !this.selectedPickupPointId() && !this.bookingResult(),
   );
@@ -157,13 +213,10 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.tripId = Number(this.route.snapshot.paramMap.get('id'));
     this.load();
-    this.mobileMql?.addEventListener('change', this.onMobileMqlChange);
   }
 
   ngOnDestroy(): void {
     this.stopHeroAutoplay();
-    this.stopDayAutoplay();
-    this.mobileMql?.removeEventListener('change', this.onMobileMqlChange);
   }
 
   load(): void {
@@ -183,7 +236,6 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         this.showAllSlots.set(false);
         this.state.set('ready');
         this.startHeroAutoplay();
-        this.startDayAutoplay();
       },
       error: () => this.state.set('error'),
     });
@@ -203,42 +255,40 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  private startDayAutoplay(): void {
-    this.stopDayAutoplay();
-    if (!this.mobileMql?.matches || (this.trip()?.itineraryDays.length ?? 0) <= 1) {
-      return;
-    }
-    this.dayTimer = setInterval(() => this.advanceDay(), 10000);
+
+
+
+  // ---------- Itinerary agenda helpers ----------
+
+  /** "8:00 AM" → { main: "8:00", suffix: "AM" }. Free text that doesn't look like a time is shown as-is. */
+  splitTime(time: string): { main: string; suffix: string } {
+    const m = /^\s*(\d{1,2}(?::\d{2})?)\s*([ap]\.?m\.?)?\s*$/i.exec(time ?? '');
+    return m ? { main: m[1], suffix: (m[2] ?? '').replace(/\./g, '').toUpperCase() } : { main: time, suffix: '' };
   }
 
-  private stopDayAutoplay(): void {
-    if (this.dayTimer) {
-      clearInterval(this.dayTimer);
-      this.dayTimer = undefined;
-    }
+  /** Picks an icon for an itinerary activity from keywords in its text (order matters: first match wins). */
+  activityKind(text: string): 'travel' | 'fun' | 'food' | 'temple' | 'water' | 'stay' | 'spot' {
+    const t = (text ?? '').toLowerCase();
+    if (/pick ?up|drop|depart|bus|drive|transfer|return|arriv|reach|travel/.test(t)) return 'travel';
+    if (/bonfire|danc|music|party|fun|game|celebrat/.test(t)) return 'fun';
+    if (/breakfast|lunch|dinner|tea|snack|meal|food|cook/.test(t)) return 'food';
+    if (/temple|jagannath|shrine|church|monaster|heritage|museum|fort/.test(t)) return 'temple';
+    if (/boat|beach|dolphin|lake|river|waterfall|swim|sea|island/.test(t)) return 'water';
+    if (/check ?-?in|check ?-?out|stay|hotel|resort|camp|night|sleep|rest/.test(t)) return 'stay';
+    return 'spot';
   }
 
-  private advanceDay(): void {
-    const total = this.trip()?.itineraryDays.length ?? 0;
-    if (total === 0) return;
-    this.selectDay((this.selectedDayIndex() + 1) % total);
-  }
-
-  // Used by both the manual tap and the mobile autoplay tick — a manual tap also scrolls the tab
-  // into view and restarts the timer so it doesn't immediately override what the customer picked.
+  /** Shows the chosen day and scrolls its tab into view within the tab strip. */
   selectDay(index: number): void {
     this.selectedDayIndex.set(index);
 
-    // Scrolls only the tab strip itself (never scrollIntoView, which also drags the whole page's
-    // vertical scroll toward this section — jarring when this fires on its own every 10s).
+    // Scrolls only the tab strip itself — never scrollIntoView, which would also move the page.
     const container = this.dayTabsEl()?.nativeElement;
     const btn = this.dayTabEls()[index]?.nativeElement;
     if (container && btn) {
       const target = btn.offsetLeft - (container.clientWidth - btn.clientWidth) / 2;
       container.scrollTo({ left: target, behavior: 'smooth' });
     }
-
-    this.startDayAutoplay();
   }
 
   selectPickupPoint(id: number): void {
@@ -272,26 +322,189 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.selectedHighlight.set(h);
   }
 
+  // ---------- "About this trip" key facts (all from the trip's own data) ----------
+
+  readonly tripFacts = computed(() => {
+    const t = this.trip();
+    if (!t) return [];
+    const facts: { icon: 'clock' | 'calendar' | 'pin' | 'tag'; label: string; value: string }[] = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const next = [...t.dateSlots]
+      .filter((s) => !s.isSoldOut && s.startDate >= today)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))[0] ?? t.dateSlots[0];
+    if (next) {
+      const days = Math.round((Date.parse(next.endDate) - Date.parse(next.startDate)) / 86_400_000) + 1;
+      const nights = Math.max(0, days - 1);
+      facts.push({ icon: 'clock', label: 'Duration', value: `${days} Day${days === 1 ? '' : 's'}${nights ? ` · ${nights} Night${nights === 1 ? '' : 's'}` : ''}` });
+      const d = new Date(next.startDate + 'T00:00:00');
+      facts.push({ icon: 'calendar', label: 'Next departure', value: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' }).replace('Sept', 'Sep') });
+    }
+    if (t.pickupPoints.length > 0) {
+      const extra = t.pickupPoints.length - 1;
+      facts.push({ icon: 'pin', label: 'Pickup from', value: t.pickupPoints[0].location + (extra > 0 ? ` +${extra} more` : '') });
+    }
+    facts.push({ icon: 'tag', label: 'Starting from', value: `₹${t.amountPerPerson.toLocaleString('en-IN')} / person` });
+    return facts;
+  });
+
+  // ---------- Photo rows ("What you'll see", "Where you'll stay", "How you'll travel") ----------
+  // Arrows on desktop (same behaviour as the home page rows); swipe on mobile.
+
+  private readonly hlScroll = viewChild<ElementRef<HTMLElement>>('hlScroll');
+  private readonly stayScroll = viewChild<ElementRef<HTMLElement>>('stayScroll');
+  private readonly travelScroll = viewChild<ElementRef<HTMLElement>>('travelScroll');
+  readonly rowNav = signal<Record<PhotoRow, { prev: boolean; next: boolean }>>({
+    hl: { prev: false, next: false },
+    stay: { prev: false, next: false },
+    travel: { prev: false, next: false },
+  });
+  private readonly rowNavSync = effect(() => {
+    // Re-check whenever any row renders.
+    this.hlScroll();
+    this.stayScroll();
+    this.travelScroll();
+    setTimeout(() => this.updateAllRows());
+  });
+
+  private rowEl(row: PhotoRow): HTMLElement | undefined {
+    const ref = row === 'hl' ? this.hlScroll() : row === 'stay' ? this.stayScroll() : this.travelScroll();
+    return ref?.nativeElement;
+  }
+
+  updateRow(row: PhotoRow): void {
+    const el = this.rowEl(row);
+    if (!el) return;
+    const state = { prev: el.scrollLeft > 2, next: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 };
+    const current = this.rowNav()[row];
+    if (current.prev !== state.prev || current.next !== state.next) {
+      this.rowNav.set({ ...this.rowNav(), [row]: state });
+    }
+  }
+
+  private updateAllRows(): void {
+    (['hl', 'stay', 'travel'] as const).forEach((r) => this.updateRow(r));
+  }
+
+  /** Moves a row by one card. */
+  scrollRow(row: PhotoRow, direction: 1 | -1): void {
+    const el = this.rowEl(row);
+    const card = el?.querySelector<HTMLElement>('.hlcard');
+    if (!el || !card) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    el.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
+  }
+
+  // ---------- Photo viewer for "Where you'll stay" / "How you'll travel" ----------
+
+  readonly photoViewer = signal<{ title: string; urls: string[]; index: number } | null>(null);
+
+  openPhotos(title: string, urls: string[], index: number): void {
+    this.photoViewer.set({ title, urls, index });
+  }
+
+  closePhotos(): void {
+    this.photoViewer.set(null);
+  }
+
+  stepPhoto(direction: 1 | -1): void {
+    const v = this.photoViewer();
+    if (!v) return;
+    this.photoViewer.set({ ...v, index: (v.index + direction + v.urls.length) % v.urls.length });
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onViewerKeydown(event: KeyboardEvent): void {
+    if (this.photoViewer()) {
+      if (event.key === 'Escape') this.closePhotos();
+      else if (event.key === 'ArrowRight') this.stepPhoto(1);
+      else if (event.key === 'ArrowLeft') this.stepPhoto(-1);
+    } else if (this.selectedHighlight() && event.key === 'Escape') {
+      this.closeHighlight();
+    }
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.updateAllRows();
+  }
+
+  roomUrls(t: TripDetail): string[] {
+    return t.roomPhotos.map((p) => p.imageUrl);
+  }
+
+  vehicleUrls(t: TripDetail): string[] {
+    return t.vehiclePhotos.map((p) => p.imageUrl);
+  }
+
   closeHighlight(): void {
     this.selectedHighlight.set(null);
   }
 
-  // Opens the booking popup — pickup point, sign-in and payment all happen as steps inside it.
+  // Opens the booking popup on "Confirm your date". Once a booking request exists the popup goes
+  // straight back to its trip summary / payment step instead.
   openBookingModal(): void {
-    if (!this.selectedSlot()) {
-      this.submitError.set('Choose a date first.');
+    this.submitError.set(null);
+    this.showBookingModal.set(true);
+
+    if (this.bookingResult()) {
+      this.bookingStep.set('flow');
       return;
     }
 
-    this.submitError.set(null);
-    this.showBookingModal.set(true);
+    this.signInStepShown.set(!this.auth.isAuthenticated());
+    // Open the date step on the month of the currently selected departure.
+    const slot = this.selectedSlot();
+    if (slot) this.selectedMonth.set(slot.startDate.slice(0, 7));
+    this.bookingStep.set('date');
+  }
+
+  confirmDate(): void {
+    if (!this.selectedSlot()) return;
+    this.bookingStep.set('seats');
+  }
+
+  confirmSeats(): void {
+    this.bookingStep.set('flow');
     this.tryProceed();
   }
 
+  // "Edit details" on the trip summary: set the unpaid request aside and walk the popup again from
+  // the date step. It is reused if nothing changes, or withdrawn when a new request is made.
+  editBooking(): void {
+    const booking = this.bookingResult()?.booking;
+    if (!booking) return;
+    this.setAsideBooking();
+    this.selectedPickupPointId.set(null);
+    this.submitError.set(null);
+    this.selectedMonth.set(booking.startDate.slice(0, 7));
+    this.bookingStep.set('date');
+  }
+
+  backToDate(): void {
+    this.bookingStep.set('date');
+  }
+
+  backToSeats(): void {
+    this.selectedPickupPointId.set(null);
+    this.bookingStep.set('seats');
+  }
+
+  // Closing resets the trip page (sidebar back to the date picker + Continue). A paid or "pay
+  // later" booking is kept as is; an unpaid one in progress is set aside as a draft.
   closeBookingModal(): void {
     this.showBookingModal.set(false);
     this.showAuthModal.set(false);
     this.showNamePrompt.set(false);
+    this.setAsideBooking();
+    if (!this.bookingResult()) this.selectedPickupPointId.set(null);
+    this.bookingStep.set('date');
+  }
+
+  private setAsideBooking(): void {
+    const result = this.bookingResult();
+    if (!result || this.paymentConfirmed() || this.skippedPayment()) return;
+    this.draft = { result, ...this.lastRequest! };
+    this.bookingResult.set(null);
   }
 
   // Walks the popup forward one step at a time: pickup point (if this trip needs one) → sign in
@@ -324,28 +537,62 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   }
 
   private proceedToBooking(): void {
-    // One id per booking attempt — reused on any retry (network error, double-click) so the
-    // backend can safely no-op a duplicate instead of creating a second booking.
-    this.clientRequestId ??= crypto.randomUUID();
+    const params = {
+      slotId: this.selectedSlot()!.tripDateSlotId,
+      seats: this.seats(),
+      pickupId: this.selectedPickupPointId(),
+    };
+
+    // Same date, seats and pickup as the request set aside earlier → reuse it as is.
+    const draft = this.draft;
+    if (draft && draft.slotId === params.slotId && draft.seats === params.seats && draft.pickupId === params.pickupId) {
+      this.draft = null;
+      this.lastRequest = params;
+      this.bookingResult.set(draft.result);
+      return;
+    }
 
     this.submitting.set(true);
     this.submitError.set(null);
 
+    // Details changed → withdraw the old unpaid request first (a status flip: nothing charged, no
+    // seats held), so the customer never ends up with two open requests for this trip.
+    if (draft) {
+      this.draft = null;
+      this.bookingService.cancelBooking(draft.result.booking.bookingId).subscribe({
+        next: () => this.createRequest(params),
+        error: () => this.createRequest(params),
+      });
+      return;
+    }
+
+    this.createRequest(params);
+  }
+
+  private createRequest(params: { slotId: number; seats: number; pickupId: number | null }): void {
+    // One id per booking attempt — reused on any retry (network error, double-click) so the
+    // backend can safely no-op a duplicate instead of creating a second booking.
+    this.clientRequestId ??= crypto.randomUUID();
+
     this.bookingService
       .requestBooking({
         tripId: this.tripId,
-        tripDateSlotId: this.selectedSlot()!.tripDateSlotId,
-        numberOfSeats: this.seats(),
+        tripDateSlotId: params.slotId,
+        numberOfSeats: params.seats,
         customerNotes: null,
         clientRequestId: this.clientRequestId,
-        pickupPointId: this.selectedPickupPointId(),
+        pickupPointId: params.pickupId,
         agreedToTerms: this.termsAccepted(),
       })
       .subscribe({
         next: (result) => {
           this.submitting.set(false);
           this.justAuthenticated = false;
+          this.clientRequestId = null;
+          this.lastRequest = params;
           this.bookingResult.set(result);
+          // Closed while the request was being created → keep it as the draft, page stays reset.
+          if (!this.showBookingModal()) this.setAsideBooking();
         },
         error: () => {
           this.submitting.set(false);

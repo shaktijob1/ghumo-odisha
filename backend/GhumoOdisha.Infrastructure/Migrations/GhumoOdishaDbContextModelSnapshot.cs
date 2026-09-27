@@ -433,6 +433,70 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BookingRefund", b =>
+                {
+                    b.Property<int>("BookingRefundId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("BookingRefundId"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("InitiatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime?>("SettledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("BookingRefundId");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "RequestedAt");
+
+                    b.ToTable("BookingRefunds", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BookingRefunds_Amount", "Amount > 0 AND Amount <= AmountPaid");
+                        });
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.BookingTraveller", b =>
                 {
                     b.Property<int>("BookingTravellerId")
@@ -645,8 +709,15 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("varchar(200)");
 
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("int");
+
+                    b.Property<string>("GoogleSubject")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<bool>("IsVerified")
                         .HasColumnType("tinyint(1)");
@@ -663,13 +734,8 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .HasColumnType("varchar(150)");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("varchar(15)");
-
-                    b.Property<string>("PinHash")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
@@ -677,6 +743,9 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.HasKey("CustomerId");
 
                     b.HasIndex("Email");
+
+                    b.HasIndex("GoogleSubject")
+                        .IsUnique();
 
                     b.HasIndex("PhoneNumber")
                         .IsUnique();
@@ -1319,6 +1388,17 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Navigation("Booking");
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BookingRefund", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Booking", "Booking")
+                        .WithOne("Refund")
+                        .HasForeignKey("GhumoOdisha.Domain.Entities.BookingRefund", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.BookingTraveller", b =>
                 {
                     b.HasOne("GhumoOdisha.Domain.Entities.Booking", "Booking")
@@ -1498,6 +1578,8 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("Refund");
 
                     b.Navigation("Travellers");
                 });

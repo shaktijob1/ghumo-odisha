@@ -17,14 +17,13 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasMaxLength(150);
 
         builder.Property(c => c.PhoneNumber)
-            .IsRequired()
             .HasMaxLength(15);
 
         builder.Property(c => c.Email)
             .HasMaxLength(200);
 
-        builder.Property(c => c.PinHash)
-            .HasMaxLength(500);
+        builder.Property(c => c.GoogleSubject)
+            .HasMaxLength(64);
 
         builder.Property(c => c.CreatedAt).HasColumnType("datetime(6)");
         builder.Property(c => c.UpdatedAt).HasColumnType("datetime(6)");
@@ -33,6 +32,8 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasIndex(c => c.PhoneNumber).IsUnique();
         builder.HasIndex(c => c.Email);
+        // MySQL unique indexes allow many NULLs, so customers without a phone / Google link coexist.
+        builder.HasIndex(c => c.GoogleSubject).IsUnique();
 
         builder.HasMany(c => c.Bookings)
             .WithOne(b => b.Customer)

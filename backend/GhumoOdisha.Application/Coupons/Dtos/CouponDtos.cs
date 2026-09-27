@@ -66,7 +66,7 @@ public record AdminCouponBookingDto(
     int BookingId,
     int CustomerId,
     string CustomerName,
-    string CustomerPhone,
+    string? CustomerPhone,
     bool IsNewCustomer,
     string TripTitle,
     DateOnly StartDate,

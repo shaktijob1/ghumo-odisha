@@ -32,6 +32,8 @@ public record BookingResponseDto(
     int RoomsAllotted,
     IReadOnlyList<BookingEventDto> Timeline,
     // Only for the booking's owner — a linked traveller doesn't see the booker's payment details.
-    IReadOnlyList<BookingPaymentDto> Payments);
+    IReadOnlyList<BookingPaymentDto> Payments,
+    // Cancelled bookings with money paid: the refund's progress (owner only).
+    Refunds.Dtos.CustomerRefundDto? Refund = null);
 
 public record CreateBookingResult(BookingResponseDto Booking, string WhatsAppMessage);

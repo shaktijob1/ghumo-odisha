@@ -12,6 +12,7 @@ import {
   OfflinePaymentMethods,
   PaymentMethod,
   PaymentMethodLabels,
+  RefundStatus,
 } from '../../../core/models/enums.model';
 import { roomsForSeats } from '../../../shared/utils/rooms';
 import { BookingTimelineComponent } from '../../../shared/components/booking-timeline.component';
@@ -47,6 +48,7 @@ export class BookingDetailComponent implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly BookingStatus = BookingStatus;
+  readonly RefundStatus = RefundStatus;
   readonly state = signal<LoadState>('loading');
   readonly booking = signal<AdminBookingDetail | null>(null);
 

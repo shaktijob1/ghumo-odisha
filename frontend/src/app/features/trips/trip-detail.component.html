@@ -14,7 +14,6 @@
           <img [src]="t.photos[heroIndex()].imageUrl | imageUrl" alt="{{ t.title }}" />
         }
         <div class="dhero-inner">
-          <span class="eyebrow">TRIP DETAILS</span>
           <h1>{{ t.title }}</h1>
           <p>From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</p>
         </div>
@@ -24,59 +23,83 @@
     <div class="container">
       <div class="tlayout">
         <div>
-          <section style="margin-bottom:30px">
-            <h2 style="font-size:19px;margin-bottom:8px">About this trip</h2>
-            <p class="aboutborder" style="font-size:13.5px;line-height:1.65">{{ t.description }}</p>
+          <!-- Left-column sections: white panels on desktop (same pattern as the home page), lighter on mobile. -->
+          <section class="tdsec">
+            <div class="tdsec-head"><h2>About this trip</h2></div>
+            <p class="tdabout">{{ t.description }}</p>
+            @if (tripFacts().length > 0) {
+              <div class="tdfacts">
+                @for (f of tripFacts(); track f.label) {
+                  <div class="tdfact" [attr.data-tone]="$index % 4">
+                    <span class="tdfact-ic" aria-hidden="true">
+                      @switch (f.icon) {
+                        @case ('clock') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg> }
+                        @case ('calendar') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg> }
+                        @case ('pin') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
+                        @case ('tag') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg> }
+                      }
+                    </span>
+                    <div><span class="tdfact-l">{{ f.label }}</span><b>{{ f.value }}</b></div>
+                  </div>
+                }
+              </div>
+            }
           </section>
 
           @if (includedItems().length > 0) {
-            <section style="margin-bottom:30px">
-              <h2 style="font-size:19px;margin-bottom:14px">What's included</h2>
-              <div class="inclicons">
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2>What's included</h2><p>Covered in the trip price — nothing extra to pay for these.</p></div></div>
+              <div class="tdincl">
                 @for (item of includedItems(); track item.key) {
-                  <div class="inclitem" [attr.title]="item.label">
-                  <div class="inclic">
-                    @switch (item.key) {
-                      @case ('breakfast') {
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                          <line x1="6" y1="1" x2="6" y2="4"></line>
-                          <line x1="10" y1="1" x2="10" y2="4"></line>
-                          <line x1="14" y1="1" x2="14" y2="4"></line>
-                        </svg>
+                  <div class="tdincl-item" [attr.title]="item.label">
+                    <span class="tdincl-ic" aria-hidden="true">
+                      @switch (item.key) {
+                        @case ('breakfast') {
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                            <line x1="6" y1="1" x2="6" y2="4"></line>
+                            <line x1="10" y1="1" x2="10" y2="4"></line>
+                            <line x1="14" y1="1" x2="14" y2="4"></line>
+                          </svg>
+                        }
+                        @case ('lunch') {
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
+                            <path d="M7 2v20"></path>
+                            <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>
+                          </svg>
+                        }
+                        @case ('dinner') {
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 17h20"></path>
+                            <path d="M4 17v-1a8 8 0 0 1 16 0v1"></path>
+                            <path d="M12 3V1"></path>
+                          </svg>
+                        }
+                        @case ('stay') {
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7"></path>
+                            <path d="M3 18h18M3 14h18"></path>
+                            <path d="M6 11V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        }
+                        @case ('coordinator') {
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <polyline points="17 11 19 13 23 9"></polyline>
+                          </svg>
+                        }
                       }
-                      @case ('lunch') {
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
-                          <path d="M7 2v20"></path>
-                          <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>
-                        </svg>
-                      }
-                      @case ('dinner') {
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M2 17h20"></path>
-                          <path d="M4 17v-1a8 8 0 0 1 16 0v1"></path>
-                          <path d="M12 3V1"></path>
-                        </svg>
-                      }
-                      @case ('stay') {
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7"></path>
-                          <path d="M3 18h18M3 14h18"></path>
-                          <path d="M6 11V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
-                        </svg>
-                      }
-                      @case ('coordinator') {
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                          <circle cx="9" cy="7" r="4"></circle>
-                          <polyline points="17 11 19 13 23 9"></polyline>
-                        </svg>
-                      }
-                    }
-                  </div>
-                  <span class="inccaption">{{ item.caption }}</span>
+                    </span>
+                    <div>
+                      <b>{{ item.caption }}</b>
+                      <span class="tdincl-ok">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+                        Included
+                      </span>
+                    </div>
                   </div>
                 }
               </div>
@@ -84,11 +107,17 @@
           }
 
           @if (t.highlights.length > 0) {
-            <section style="margin-bottom:30px">
-              <h2 style="font-size:19px;margin-bottom:14px">What you'll see</h2>
-              <div class="hlscroll">
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>What you'll see</h2><p>Tap a place to read more about it.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous places" [disabled]="!rowNav().hl.prev" (click)="scrollRow('hl', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next places" [disabled]="!rowNav().hl.next" (click)="scrollRow('hl', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
+              </div>
+              <div class="hlscroll" #hlScroll (scroll)="updateRow('hl')">
                 @for (h of t.highlights; track h.tripHighlightId) {
-                  <div class="hlcard" (click)="openHighlight(h)">
+                  <button type="button" class="hlcard" (click)="openHighlight(h)" [attr.aria-label]="'Read about ' + h.placeName">
                     <div class="shot">
                       <img [src]="h.photoUrl | imageUrl" alt="{{ h.placeName }}" />
                       <b class="place">{{ h.placeName }}</b>
@@ -97,59 +126,97 @@
                       <p>{{ h.description }}</p>
                       <span class="more">Read more</span>
                     </div>
-                  </div>
+                  </button>
                 }
               </div>
             </section>
           }
 
           @if (t.itineraryDays.length > 0) {
-            <section style="margin-bottom:30px">
-              <h2 style="font-size:19px;margin-bottom:14px">Day-wise itinerary</h2>
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2>Day-wise itinerary</h2><p>{{ t.itineraryDays.length }} day{{ t.itineraryDays.length === 1 ? '' : 's' }} · timings may shift slightly with weather and traffic.</p></div></div>
               <div class="daytabs" #dayTabsEl>
-                @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index; let last = $last) {
+                @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index) {
                   <button #dayTab class="daytab" [class.on]="i === selectedDayIndex()" (click)="selectDay(i)">Day {{ d.dayNumber }}</button>
-                  @if (!last) {
-                    <span class="dayarrow" aria-hidden="true">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"></path></svg>
-                    </span>
-                  }
                 }
               </div>
 
               @if (t.itineraryDays[selectedDayIndex()]; as day) {
-                <div class="day">
-                  <div class="dh"><span class="dn">Day {{ day.dayNumber }}</span><b>{{ day.title }}</b></div>
-                  @if (day.description) {
-                    <p class="mut" style="font-size:12.5px;line-height:1.6;margin-bottom:14px">{{ day.description }}</p>
-                  }
-                  <div class="tl">
-                    @for (p of day.points; track p.itineraryPointId) {
-                      <div class="it"><b>{{ p.time }}</b><span>{{ p.description }}</span></div>
-                    }
+                <div class="tdday">
+                  <div class="tdday-head">
+                    <span class="tdday-n">Day {{ day.dayNumber }}</span>
+                    <b>{{ day.title }}</b>
                   </div>
+                  @if (day.description) {
+                    <p class="tdday-desc">{{ day.description }}</p>
+                  }
+                  @if (day.points.length > 0) {
+                    <ol class="tdtl" aria-label="Day {{ day.dayNumber }} schedule">
+                      @for (p of day.points; track p.itineraryPointId) {
+                        @let tm = splitTime(p.time);
+                        @let kind = activityKind(p.description);
+                        <li>
+                          <time class="tdtl-time"><b>{{ tm.main }}</b>@if (tm.suffix) {<small>{{ tm.suffix }}</small>}</time>
+                          <div class="tdtl-card">
+                            <span class="tdtl-ic" [attr.data-kind]="kind" aria-hidden="true">
+                              @switch (kind) {
+                              @case ('travel') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M3 11h18M7 17v2M17 17v2"></path><circle cx="7.5" cy="14" r=".6"></circle><circle cx="16.5" cy="14" r=".6"></circle></svg> }
+                              @case ('fun') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M4.2 6.2l2.1 2.1M17.7 15.7l2.1 2.1M3 12h3M18 12h3M4.2 17.8l2.1-2.1M17.7 8.3l2.1-2.1"></path><circle cx="12" cy="12" r="3"></circle></svg> }
+                              @case ('food') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"></path></svg> }
+                              @case ('temple') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21V10l7-6 7 6v11M9 21v-5h6v5M12 4V2"></path></svg> }
+                              @case ('water') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M12 3l5 9H7l5-9z"></path></svg> }
+                              @case ('stay') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V8M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"></path><circle cx="7" cy="11" r="2"></circle></svg> }
+                              @case ('spot') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
+                              }
+                            </span>
+                            <span class="tdtl-text">{{ p.description }}</span>
+                          </div>
+                        </li>
+                      }
+                    </ol>
+                  }
                 </div>
               }
             </section>
           }
 
           @if (t.roomPhotos.length > 0) {
-            <section style="margin-bottom:30px">
-              <h2 style="font-size:19px;margin-bottom:14px">Where you'll stay</h2>
-              <div class="galscroll">
-                @for (p of t.roomPhotos; track p.roomPhotoId) {
-                  <div class="gitem"><img [src]="p.imageUrl | imageUrl" alt="" /></div>
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>Where you'll stay</h2><p>Tap a photo to view it larger.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous stay photos" [disabled]="!rowNav().stay.prev" (click)="scrollRow('stay', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next stay photos" [disabled]="!rowNav().stay.next" (click)="scrollRow('stay', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
+              </div>
+              <div class="hlscroll" #stayScroll (scroll)="updateRow('stay')">
+                @for (p of t.roomPhotos; track p.roomPhotoId; let i = $index) {
+                  <button type="button" class="hlcard galcard" (click)="openPhotos('Where you\'ll stay', roomUrls(t), i)" [attr.aria-label]="'View stay photo ' + (i + 1)">
+                    <div class="shot">
+                      <img [src]="p.imageUrl | imageUrl" alt="" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
+                    </div>
+                  </button>
                 }
               </div>
             </section>
           }
 
           @if (t.vehiclePhotos.length > 0) {
-            <section style="margin-bottom:30px">
-              <h2 style="font-size:19px;margin-bottom:14px">How you'll travel</h2>
-              <div class="galscroll">
-                @for (p of t.vehiclePhotos; track p.vehiclePhotoId) {
-                  <div class="gitem"><img [src]="p.imageUrl | imageUrl" alt="" /></div>
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>How you'll travel</h2><p>Tap a photo to view it larger.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous vehicle photos" [disabled]="!rowNav().travel.prev" (click)="scrollRow('travel', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next vehicle photos" [disabled]="!rowNav().travel.next" (click)="scrollRow('travel', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
+              </div>
+              <div class="hlscroll" #travelScroll (scroll)="updateRow('travel')">
+                @for (p of t.vehiclePhotos; track p.vehiclePhotoId; let i = $index) {
+                  <button type="button" class="hlcard galcard" (click)="openPhotos('How you\'ll travel', vehicleUrls(t), i)" [attr.aria-label]="'View vehicle photo ' + (i + 1)">
+                    <div class="shot">
+                      <img [src]="p.imageUrl | imageUrl" alt="" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
+                    </div>
+                  </button>
                 }
               </div>
             </section>
@@ -157,7 +224,7 @@
         </div>
 
         <aside class="aside">
-          @if (bookingResult()) {
+          @if (bookingResult() && (paymentConfirmed() || skippedPayment())) {
             <ng-container [ngTemplateOutlet]="afterBookingSteps"></ng-container>
           } @else {
             <div class="card pad bookpanel">
@@ -182,63 +249,16 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
                 <h3>Upcoming Departures</h3>
               </div>
-              @if (upcomingSlots().length === 0) {
-                <p class="note">No upcoming dates yet — check back soon.</p>
-              } @else {
-                <div class="montabs" role="tablist">
-                  @for (m of slotMonths(); track m.key) {
-                    <button type="button" role="tab" class="montab" [class.on]="m.key === selectedMonth()" [attr.aria-selected]="m.key === selectedMonth()" (click)="selectMonth(m.key)">{{ m.label }}</button>
-                  }
-                </div>
+              <ng-container [ngTemplateOutlet]="departureList"></ng-container>
 
-                @for (s of visibleSlots(); track s.tripDateSlotId) {
-                  <button type="button" class="depcard" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut" [disabled]="s.isSoldOut" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
-                    <span class="depseats" [class.bad]="s.isSoldOut">
-                      @if (s.isSoldOut) {
-                        Sold out
-                      } @else {
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M1 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1z"></path><circle cx="17" cy="8" r="3"></circle><path d="M19 13.2A6 6 0 0 1 23 19v2h-4.5v-1a8.5 8.5 0 0 0-2.3-5.8 6 6 0 0 1 2.8-1z"></path></svg>
-                        {{ s.availableSeats }} {{ s.availableSeats === 1 ? 'Seat' : 'Seats' }} Available
-                      }
-                    </span>
-                    <span class="depradio" aria-hidden="true"></span>
-                    <span class="depdate">
-                      <small>{{ s.startDate | date:'EEEE' }}</small>
-                      <b>{{ s.startDate | date:'d MMM y' }}</b>
-                    </span>
-                    <span class="deparrow" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-                    </span>
-                    <span class="depdate">
-                      <small>{{ s.endDate | date:'EEEE' }}</small>
-                      <b>{{ s.endDate | date:'d MMM y' }}</b>
-                    </span>
-                  </button>
-                }
-                @if (!showAllSlots() && monthSlots().length > visibleSlots().length) {
-                  <button type="button" class="btn sm soft block" (click)="showAllSlots.set(true)">
-                    Show all {{ monthSlots().length }} departures
-                  </button>
-                }
-              }
-
-              @if (selectedSlot(); as slot) {
+              @if (selectedSlot()) {
                 <div class="hr"></div>
-                <div class="lbl">Number of seats</div>
-                <app-seat-selector [(value)]="seats" [max]="slot.availableSeats"></app-seat-selector>
-                <p class="note" style="margin-top:8px">Maximum {{ slot.availableSeats }} on this date</p>
-
-                <app-booking-price-summary [startDate]="slot.startDate" [endDate]="slot.endDate" [pricePerPerson]="t.amountPerPerson" [seats]="seats()" [couponDiscount]="couponDiscount()">
-                  <app-coupon-field couponSlot [signedIn]="auth.isAuthenticated()" [selection]="coupon()" (selectionChange)="onCouponChange($event)"></app-coupon-field>
-                </app-booking-price-summary>
-
                 <div class="bp-info">
                   <span class="bp-check" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </span>
-                  <div class="bp-rowtext"><b>Pay only ₹{{ bookingAdvance() | number:'1.0-0' }} today</b><small>Your seat will be confirmed instantly.</small></div>
+                  <div class="bp-rowtext"><b>Pay only ₹{{ perSeatAdvance }} per seat today</b><small>Your seat will be confirmed instantly.</small></div>
                 </div>
-
 
                 @if (submitError()) {
                   <div class="errorbox">{{ submitError() }}</div>
@@ -250,15 +270,10 @@
                 </label>
 
                 <button class="btn block bp-cta" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">
-                  @if (submitting()) {
-                    <span class="spin"></span>
-                  } @else {
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
-                    <span>PAY ₹{{ bookingAdvance() | number:'1.0-0' }} &amp; CONFIRM BOOKING</span>
-                    <svg class="bp-cta-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-                  }
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
+                  <span>CONTINUE</span>
+                  <svg class="bp-cta-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
                 </button>
-
                 <div class="bp-benefits">
                   <span>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -300,10 +315,10 @@
       </div>
     </div>
 
-    @if (!bookingResult() && selectedSlot(); as slot) {
+    @if (!paymentConfirmed() && !skippedPayment() && selectedSlot(); as slot) {
       <div class="stickycta">
-        <div class="price"><b>₹{{ bookingAdvance() | number:'1.0-0' }}</b><small>{{ seats() }} seat(s) · {{ slot.startDate | date:'d MMM' }}</small></div>
-        <button class="btn" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">PAY ₹{{ bookingAdvance() | number:'1.0-0' }} &amp; CONFIRM BOOKING</button>
+        <div class="price"><b>₹{{ perSeatAdvance }}</b><small>per seat · {{ slot.startDate | date:'d MMM' }}</small></div>
+        <button class="btn" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">CONTINUE</button>
       </div>
     }
 
@@ -321,6 +336,65 @@
         </div>
       </div>
     }
+
+    @if (photoViewer(); as v) {
+      <div class="modal-backdrop" (click)="closePhotos()">
+        <div class="modal pvmodal" role="dialog" aria-modal="true" [attr.aria-label]="v.title" (click)="$event.stopPropagation()">
+          <div class="pvmodal-shot">
+            <img [src]="v.urls[v.index] | imageUrl" [alt]="v.title + ' photo ' + (v.index + 1)" />
+            <button class="modalclose" (click)="closePhotos()" aria-label="Close">×</button>
+            @if (v.urls.length > 1) {
+              <button type="button" class="pvnav prev" aria-label="Previous photo" (click)="stepPhoto(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+              <button type="button" class="pvnav next" aria-label="Next photo" (click)="stepPhoto(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+            }
+          </div>
+          <div class="pvmodal-bar"><b>{{ v.title }}</b><span>{{ v.index + 1 }} / {{ v.urls.length }}</span></div>
+        </div>
+      </div>
+    }
+
+    <!-- Departure picker: shown in the sidebar and again in the booking popup ("Confirm your date"). -->
+    <ng-template #departureList>
+              @if (upcomingSlots().length === 0) {
+                <p class="note">No upcoming dates yet — check back soon.</p>
+              } @else {
+                <div class="montabs" role="tablist">
+                  @for (m of slotMonths(); track m.key) {
+                    <button type="button" role="tab" class="montab" [class.on]="m.key === selectedMonth()" [attr.aria-selected]="m.key === selectedMonth()" (click)="selectMonth(m.key)">{{ m.label }}</button>
+                  }
+                </div>
+
+                @for (s of visibleSlots(); track s.tripDateSlotId) {
+                  <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut" [disabled]="s.isSoldOut" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
+                    <span class="depseats" [class.bad]="s.isSoldOut">
+                      @if (s.isSoldOut) {
+                        Sold out
+                      } @else {
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M1 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1z"></path><circle cx="17" cy="8" r="3"></circle><path d="M19 13.2A6 6 0 0 1 23 19v2h-4.5v-1a8.5 8.5 0 0 0-2.3-5.8 6 6 0 0 1 2.8-1z"></path></svg>
+                        {{ seatsShown(s.availableSeats) }} {{ seatsShown(s.availableSeats) === 1 ? 'Seat' : 'Seats' }} Available
+                      }
+                    </span>
+                    <span class="depradio" aria-hidden="true"></span>
+                    <span class="depdate">
+                      <small>{{ s.startDate | date:'EEEE' }}</small>
+                      <b>{{ s.startDate | date:'d MMM y' }}</b>
+                    </span>
+                    <span class="deparrow" aria-hidden="true">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                    </span>
+                    <span class="depdate">
+                      <small>{{ s.endDate | date:'EEEE' }}</small>
+                      <b>{{ s.endDate | date:'d MMM y' }}</b>
+                    </span>
+                  </button>
+                }
+                @if (!showAllSlots() && monthSlots().length > visibleSlots().length) {
+                  <button type="button" class="btn sm soft block" (click)="showAllSlots.set(true)">
+                    Show all {{ monthSlots().length }} departures
+                  </button>
+                }
+              }
+    </ng-template>
 
     <!-- Shared by the sidebar (once a booking exists, even if the popup below gets closed) and by
          the last step of the booking popup — kept in one place so the markup isn't duplicated. -->
@@ -352,13 +426,37 @@
           </div>
         </div>
       } @else if (bookingResult() && !skippedPayment()) {
+        @let b = bookingResult()!.booking;
         <app-payment-panel
+          heading=""
+          subheading=""
           [coupon]="coupon()"
           (couponChange)="coupon.set($event)"
-          [booking]="bookingResult()!.booking"
+          [booking]="b"
           (confirmed)="onPaymentConfirmed()"
           (skip)="skippedPayment.set(true)"
-        ></app-payment-panel>
+        >
+          <div panelIntro class="bksum">
+            <div class="bksum-top">
+              <b class="bksum-trip">{{ b.tripTitle }}</b>
+              @if (showBookingModal()) {
+                <button type="button" class="bklink" (click)="editBooking()">Edit details</button>
+              }
+            </div>
+            <div class="bksum-facts">
+              <span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+                {{ b.numberOfSeats }} {{ b.numberOfSeats === 1 ? 'traveller' : 'travellers' }}
+              </span>
+              @if (b.pickupPointLocation) {
+                <span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                  {{ b.pickupPointLocation }}@if (b.pickupPointTime) { · {{ b.pickupPointTime }} }
+                </span>
+              }
+            </div>
+          </div>
+        </app-payment-panel>
       } @else if (bookingResult(); as result) {
         <div class="successcard">
           <div class="tick">✓</div>
@@ -383,16 +481,97 @@
 
     @if (showBookingModal()) {
       <div class="modal-backdrop" (click)="closeBookingModal()">
-        <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal bkmodal" role="dialog" aria-modal="true" aria-label="Book this trip" (click)="$event.stopPropagation()">
           @if (!paymentConfirmed()) {
             <button type="button" class="wa-close" (click)="closeBookingModal()" aria-label="Close">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
             </button>
+
+            <ol class="bksteps" aria-label="Booking progress">
+              @for (s of bookingSteps(); track s.key) {
+                <li [class.done]="$index < activeStepIndex()" [class.on]="$index === activeStepIndex()" [attr.aria-current]="$index === activeStepIndex() ? 'step' : null">
+                  <span class="bkdot">
+                    @if ($index < activeStepIndex()) {
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    } @else {
+                      {{ $index + 1 }}
+                    }
+                  </span>
+                  <span class="bklbl">{{ s.label }}</span>
+                </li>
+              }
+            </ol>
           }
 
-          @if (needsPickupSelection()) {
-            <h4 style="margin-bottom:4px">Choose your pickup point</h4>
-            <p class="note" style="margin-bottom:16px">Where should we pick you up for this trip?</p>
+          @if (bookingStep() === 'date') {
+            <h4 class="bktitle">Confirm your travel date</h4>
+            <p class="note bksub">Keep the departure you picked, or choose another date below.</p>
+            <div class="bkdeps">
+              <ng-container [ngTemplateOutlet]="departureList"></ng-container>
+            </div>
+            <div class="bkactions">
+              <button type="button" class="btn block" [disabled]="!selectedSlot()" (click)="confirmDate()">
+                Continue
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+              </button>
+            </div>
+          } @else if (bookingStep() === 'seats' && selectedSlot(); as slot) {
+            <h4 class="bktitle">Confirm your seats</h4>
+            <p class="note bksub">How many travellers are joining this departure?</p>
+
+            <div class="bkdate">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+              <div><small>Travel date</small><b>{{ slot.startDate | date:'EEE, d MMM' }} – {{ slot.endDate | date:'EEE, d MMM y' }}</b></div>
+              <button type="button" class="bklink" (click)="backToDate()">Change</button>
+            </div>
+
+            <div class="bkseats">
+              <div><b>Travellers</b><small>{{ seatsShown(slot.availableSeats) }} {{ seatsShown(slot.availableSeats) === 1 ? 'seat' : 'seats' }} available on this date</small></div>
+              <app-seat-selector [(value)]="seats" [max]="seatsShown(slot.availableSeats)"></app-seat-selector>
+            </div>
+
+            @if (t.inclusions.stay) {
+              <div class="bkrooms">
+                <div class="bkrooms-head">
+                  <span class="bkrooms-ic" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"></path><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"></path><path d="M12 4v6"></path><path d="M2 18h20"></path></svg>
+                  </span>
+                  <div><small>Rooms allotted</small><b>{{ roomsAllotted() }} {{ roomsAllotted() === 1 ? 'Room' : 'Rooms' }}</b></div>
+                  <span class="bkrooms-tag">For {{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</span>
+                </div>
+                <div class="bkrooms-grid">
+                  @for (room of roomPlan(); track $index) {
+                    @let guests = room.guests;
+                    <div class="bkroom">
+                      <span class="bkroom-no">Room {{ $index + 1 }}</span>
+                      <span class="bkroom-guests" aria-hidden="true">
+                        @for (g of room.icons; track g) {
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1z"></path></svg>
+                        }
+                      </span>
+                      <small>{{ guests }} {{ guests === 1 ? 'guest' : 'guests' }}</small>
+                    </div>
+                  }
+                </div>
+                <p class="bkrooms-note">Rooms are shared — one room for every two travellers, with an odd traveller joining a shared room.</p>
+              </div>
+            }
+
+            <div class="bkprice">
+              <div><span>₹{{ t.amountPerPerson | number:'1.0-0' }} × {{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</span><b>₹{{ totalAmount() | number:'1.0-0' }}</b></div>
+              <div class="bkprice-now"><span>Pay now to confirm</span><b>₹{{ bookingAdvance() | number:'1.0-0' }}</b></div>
+            </div>
+
+            <div class="bkactions two">
+              <button type="button" class="btn ghost" (click)="backToDate()">Back</button>
+              <button type="button" class="btn" (click)="confirmSeats()">
+                Continue
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+              </button>
+            </div>
+          } @else if (needsPickupSelection()) {
+            <h4 class="bktitle">Choose your pickup point</h4>
+            <p class="note bksub">Where should we pick you up for this trip?</p>
             @for (p of t.pickupPoints; track p.pickupPointId) {
               <button class="slot" [class.on]="p.pickupPointId === selectedPickupPointId()" (click)="selectPickupPoint(p.pickupPointId)">
                 <div><b>{{ p.location }}</b><small>{{ p.time }}</small></div>
@@ -401,6 +580,9 @@
                 }
               </button>
             }
+            <div class="bkactions">
+              <button type="button" class="btn ghost block" (click)="backToSeats()">Back</button>
+            </div>
           } @else if (showAuthModal()) {
             <app-whatsapp-auth mode="book" title="Welcome Back" (authenticated)="onAuthenticated($event)" (cancelled)="onAuthCancelled()"></app-whatsapp-auth>
           } @else if (showNamePrompt()) {
@@ -420,7 +602,14 @@
               </button>
             </div>
           } @else if (submitting() && !bookingResult()) {
-            <div class="state-panel"><span class="spin"></span><p style="margin-top:10px">Creating your booking request…</p></div>
+            <div class="state-panel"><span class="spin"></span><p style="margin-top:10px">Preparing your trip summary…</p></div>
+          } @else if (!bookingResult()) {
+            <h4 class="bktitle">We couldn't prepare your booking</h4>
+            <div class="errorbox" style="margin-top:12px">{{ submitError() || 'Something went wrong. Please try again.' }}</div>
+            <div class="bkactions two">
+              <button type="button" class="btn ghost" (click)="backToSeats()">Back</button>
+              <button type="button" class="btn" (click)="confirmSeats()">Try again</button>
+            </div>
           } @else {
             <ng-container [ngTemplateOutlet]="afterBookingSteps"></ng-container>
           }

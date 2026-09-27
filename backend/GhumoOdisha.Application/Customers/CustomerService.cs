@@ -18,7 +18,8 @@ public class CustomerService(IGhumoOdishaDbContext db) : ICustomerService
 
         return new CustomerProfileDto(
             customer.CustomerId, customer.Name, customer.PhoneNumber, customer.Email,
-            customer.IsVerified, customer.CreatedAt, customer.LastLoginAt);
+            customer.IsVerified, customer.CreatedAt, customer.LastLoginAt,
+            customer.EmailVerified, customer.GoogleSubject is not null);
     }
 
     public async Task UpdateProfileAsync(int customerId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
@@ -26,8 +27,16 @@ public class CustomerService(IGhumoOdishaDbContext db) : ICustomerService
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken)
             ?? throw new NotFoundException("Customer not found.");
 
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim().ToLowerInvariant();
+
+        // A Google-verified email is what Google sign-in matches on — it never changes by typing.
+        if (customer.EmailVerified && email != customer.Email)
+        {
+            throw new ConflictException("Your email comes from your linked Google account and can't be edited here.");
+        }
+
         customer.Name = request.Name;
-        customer.Email = request.Email;
+        customer.Email = email;
         customer.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -41,7 +50,7 @@ public class CustomerService(IGhumoOdishaDbContext db) : ICustomerService
         {
             query = query.Where(c =>
                 c.Name.Contains(search) ||
-                c.PhoneNumber.Contains(search) ||
+                (c.PhoneNumber != null && c.PhoneNumber.Contains(search)) ||
                 (c.Email != null && c.Email.Contains(search)));
         }
 

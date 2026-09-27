@@ -10,3 +10,6 @@ GhumoOdishaData/
 .vs/
 backend/api.log
 frontend/api-pid.txt
+
+# Local run/test output (can contain phone numbers, OTPs, emails)
+*.log

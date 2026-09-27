@@ -22,7 +22,7 @@
         <div class="sub">Account information</div>
         <div class="kv">
           <span class="k">Name</span><b>{{ c.name }}</b>
-          <span class="k">Phone</span><b>{{ c.phoneNumber }}</b>
+          <span class="k">Phone</span><b>{{ c.phoneNumber || "—" }}</b>
           <span class="k">Email</span><b>{{ c.email || '—' }}</b>
           <span class="k">Created</span><b>{{ c.createdAt | date:'d MMM y' }}</b>
           <span class="k">Last login</span><b>{{ c.lastLoginAt ? (c.lastLoginAt | date:'d MMM y, h:mm a') : '—' }}</b>

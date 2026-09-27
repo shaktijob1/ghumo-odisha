@@ -23,10 +23,13 @@ public class MetaWhatsAppService(HttpClient httpClient, IOptions<WhatsAppOptions
     public Task SendOtpAsync(string phoneNumber, string customerName, string otp, CancellationToken cancellationToken = default)
     {
         // Authentication templates take the code as the only body variable, and again as the
-        // copy-code button's parameter.
-        var components = _options.OtpTemplateCategory == WhatsAppOtpTemplateCategory.Authentication
-            ? new object[] { Body([otp]), CopyCodeButton(otp) }
-            : [Body([customerName, otp])];
+        // copy-code button's parameter. Single-variable templates get the whole OTP sentence in {{1}}.
+        var components = _options.OtpTemplateCategory switch
+        {
+            WhatsAppOtpTemplateCategory.Authentication => new object[] { Body([otp]), CopyCodeButton(otp) },
+            WhatsAppOtpTemplateCategory.SingleVariable => [Body([OtpSentence(otp)])],
+            _ => [Body([customerName, otp])],
+        };
 
         return SendAsync(phoneNumber, _options.OtpTemplateName, _options.OtpTemplateLanguage, components, "OTP", cancellationToken);
     }
@@ -40,9 +43,19 @@ public class MetaWhatsAppService(HttpClient httpClient, IOptions<WhatsAppOptions
             throw new WhatsAppDeliveryException();
         }
 
+        // Single-variable template: variable2 is the message itself (variable1 is only the greeting
+        // name / label used by the two-variable template).
+        var body = _options.OtpTemplateCategory == WhatsAppOtpTemplateCategory.SingleVariable
+            ? Body([variable2])
+            : Body([variable1, variable2]);
+
         return SendAsync(phoneNumber, _options.OtpTemplateName, _options.OtpTemplateLanguage,
-            [Body([variable1, variable2])], "template message", cancellationToken);
+            [body], "template message", cancellationToken);
     }
+
+    /// <summary>The OTP line placed in a single-variable template ("Hello There, {{1}} See You Soon.").</summary>
+    internal static string OtpSentence(string otp) =>
+        $"Your Ghumo Odisha verification code is {otp}. Please do not share it with anyone.";
 
     public async Task<bool> SendBookingConfirmedAsync(string phoneNumber, BookingConfirmedWhatsAppMessage message, CancellationToken cancellationToken = default)
     {
