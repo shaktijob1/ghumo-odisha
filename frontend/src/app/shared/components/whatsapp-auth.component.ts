@@ -15,6 +15,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
+import { TermsDialogService } from '../../core/services/terms-dialog.service';
 import { ApiResponse } from '../../core/models/api-response.model';
 import { CustomerAuthResponse } from '../../core/models/auth.model';
 
@@ -32,7 +33,7 @@ type Step = 'details' | 'otp';
 export class WhatsappAuthComponent implements OnDestroy {
   @Input() mode: 'book' | 'login' = 'book';
   @Input() title = 'Welcome Back';
-  /** 'popup' = the navbar sign-in popup's layout (WhatsApp first, Google second); 'card' = the original. */
+  /** 'popup' = the navbar sign-in popup's layout; 'card' = the booking popup's layout. Both put WhatsApp first, Google second. */
   @Input() variant: 'card' | 'popup' = 'card';
   /** The popup supplies its own close button. */
   @Input() showClose = true;
@@ -42,6 +43,7 @@ export class WhatsappAuthComponent implements OnDestroy {
   @ViewChildren('otpBox') otpBoxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   private readonly auth = inject(CustomerAuthService);
+  readonly termsDialog = inject(TermsDialogService);
 
   readonly step = signal<Step>('details');
   readonly otpLength = signal(6);

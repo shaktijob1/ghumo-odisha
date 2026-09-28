@@ -68,7 +68,6 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   // Chosen in the sidebar; carried into the payment step, where it is (re)validated for this customer.
   readonly coupon = signal<CouponSelection | null>(null);
   readonly couponDiscount = computed(() => (this.coupon()?.validated ? this.coupon()!.discountAmount : 0));
-  readonly termsAccepted = signal(false);
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly bookingResult = signal<CreateBookingResult | null>(null);
@@ -636,7 +635,8 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         customerNotes: null,
         clientRequestId: this.clientRequestId,
         pickupPointId: params.pickupId,
-        agreedToTerms: this.termsAccepted(),
+        // Accepted by continuing past the Seats step, which shows the "By continuing, you agree…" line.
+        agreedToTerms: true,
       })
       .subscribe({
         next: (result) => {

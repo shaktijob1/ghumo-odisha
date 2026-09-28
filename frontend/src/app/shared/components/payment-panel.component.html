@@ -41,14 +41,17 @@
     <div class="errorbox">{{ paymentError() }}</div>
   }
 
-  <button class="btn block bp-cta" [disabled]="payingNow() || revalidatingCoupon()" (click)="payNow()">
-    @if (payingNow() || revalidatingCoupon()) {
-      <span class="spin"></span>
-    } @else {
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
-      <span>PAY ₹{{ payNowAmount() | number:'1.0-0' }} SECURELY</span>
-    }
-  </button>
+  <!-- Wrapper lets the booking popup pin the Pay button to its bottom edge while the summary scrolls. -->
+  <div class="bp-cta-bar">
+    <button class="btn block bp-cta" [disabled]="payingNow() || revalidatingCoupon()" (click)="payNow()">
+      @if (payingNow() || revalidatingCoupon()) {
+        <span class="spin"></span>
+      } @else {
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
+        <span>PAY ₹{{ payNowAmount() | number:'1.0-0' }} SECURELY</span>
+      }
+    </button>
+  </div>
 
   @if (showSkip) {
     <div class="ordivider"><span>or</span></div>

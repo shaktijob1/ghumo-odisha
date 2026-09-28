@@ -46,12 +46,8 @@
       </div>
       <span class="eyebrow">Quick &amp; secure</span>
       <h4>{{ title }}</h4>
-      <p class="note">Continue with Google, or get a verification code on WhatsApp.</p>
+      <p class="note">Get a verification code on WhatsApp, or continue with Google.</p>
     </div>
-
-    <app-google-sign-in-button (credential)="onGoogleCredential($event)"></app-google-sign-in-button>
-
-    <div class="wa-or">or</div>
 
     <div class="fld">
       <span class="lbl">Mobile Number</span>
@@ -77,6 +73,15 @@
     <p class="wa-trust">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       We'll never share your number. Used only for booking updates.
+    </p>
+
+    <div class="wa-or">or</div>
+
+    <app-google-sign-in-button (credential)="onGoogleCredential($event)"></app-google-sign-in-button>
+
+    <!-- Same line as the navbar login popup; opens the terms popup so the booking in progress isn't lost. -->
+    <p class="lm-terms">
+      By continuing, you agree to Ghumo Odisha's <a href="/terms" (click)="$event.preventDefault(); termsDialog.open()">Terms &amp; Conditions</a>.
     </p>
     }
   }

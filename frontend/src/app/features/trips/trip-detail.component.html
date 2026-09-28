@@ -331,12 +331,7 @@
                   <div class="errorbox">{{ submitError() }}</div>
                 }
 
-                <label class="bp-terms">
-                  <input type="checkbox" [ngModel]="termsAccepted()" (ngModelChange)="termsAccepted.set($event)" />
-                  <span>I have read and accept the <a href="/terms" (click)="$event.preventDefault(); termsDialog.open()">Terms &amp; Conditions</a>.</span>
-                </label>
-
-                <button class="btn block bp-cta" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">
+                <button class="btn block bp-cta" [disabled]="submitting()" (click)="openBookingModal()">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10V7A5 5 0 0 0 7 7v3H5v12h14V10zm-8 0V7a3 3 0 0 1 6 0v3zm3 4a2 2 0 0 1 1 3.7V19h-2v-1.3A2 2 0 0 1 12 14z"></path></svg>
                   <span>CONTINUE</span>
                   <svg class="bp-cta-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
@@ -385,7 +380,7 @@
     @if (!paymentConfirmed() && !skippedPayment() && selectedSlot(); as slot) {
       <div class="stickycta">
         <div class="price"><b>₹{{ perSeatAdvance }}</b><small>per seat · {{ slot.startDate | date:'d MMM' }}</small></div>
-        <button class="btn" [disabled]="submitting() || !termsAccepted()" (click)="openBookingModal()">CONTINUE</button>
+        <button class="btn" [disabled]="submitting()" (click)="openBookingModal()">CONTINUE</button>
       </div>
     }
 
@@ -579,6 +574,8 @@
       <div class="modal-backdrop" (click)="closeBookingModal()">
         <div class="modal bkmodal" role="dialog" aria-modal="true" aria-label="Book this trip" (click)="$event.stopPropagation()">
           @if (!paymentConfirmed()) {
+            <!-- Pinned to the top of the popup while the step's content scrolls underneath. -->
+            <div class="bkhead">
             <button type="button" class="wa-close" (click)="closeBookingModal()" aria-label="Close">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
             </button>
@@ -597,6 +594,7 @@
                 </li>
               }
             </ol>
+            </div>
           }
 
           @if (bookingStep() === 'date') {
@@ -658,6 +656,11 @@
               <div class="bkprice-now"><span>Pay now to confirm</span><b>₹{{ bookingAdvance() | number:'1.0-0' }}</b></div>
             </div>
 
+            <!-- Every booking passes this step before it's created, so this is where the terms are accepted. -->
+            <p class="lm-terms bkterms">
+              By continuing, you agree to Ghumo Odisha's <a href="/terms" (click)="$event.preventDefault(); termsDialog.open()">Terms &amp; Conditions</a>.
+            </p>
+
             <div class="bkactions two">
               <button type="button" class="btn ghost" (click)="backToDate()">Back</button>
               <button type="button" class="btn" (click)="confirmSeats()">
@@ -695,9 +698,9 @@
             @if (namePromptError()) {
               <div class="errorbox">{{ namePromptError() }}</div>
             }
-            <div class="row" style="gap:10px;margin-top:6px">
-              <button class="btn ghost" style="flex:1" (click)="cancelNamePrompt()">Cancel</button>
-              <button class="btn" style="flex:1" [disabled]="namePromptSubmitting()" (click)="submitNamePrompt()">
+            <div class="bkactions two">
+              <button type="button" class="btn ghost" (click)="cancelNamePrompt()">Cancel</button>
+              <button type="button" class="btn" [disabled]="namePromptSubmitting()" (click)="submitNamePrompt()">
                 @if (namePromptSubmitting()) { <span class="spin"></span> } @else { Continue }
               </button>
             </div>

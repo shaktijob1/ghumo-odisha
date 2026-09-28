@@ -552,9 +552,8 @@ body.customer { background: #fff; }
 .bp-check { flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: #fff; }
 .bp-info .bp-rowtext { padding-left: 14px; border-left: 1px solid #BFDDD4; }
 .bp-info .bp-rowtext b { color: var(--accent); }
-.bp-terms { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; font-size: 13px; color: var(--muted); cursor: pointer; }
-.bp-terms input { width: 17px; height: 17px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
-.bp-terms a { color: var(--accent); font-weight: 600; }
+/* Terms line in the booking popup's Seats step (the popup reuses the login popup's .lm-terms look). */
+.lm-terms.bkterms { margin: 14px 0 0; }
 .bp-cta { position: relative; gap: 10px; padding: 15px 44px; border-radius: 14px; font-size: 14.5px; font-weight: 800; letter-spacing: .02em; box-shadow: 0 10px 22px rgba(15,111,92,.24); }
 .bp-cta .bp-cta-arrow { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); }
 .bp-benefits { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 14px; }
@@ -1339,8 +1338,38 @@ body.customer { background: #fff; }
 }
 
 /* ============ Trip page booking popup: Date → Seats → (Pickup) → (Sign in) → Summary ============ */
-.modal.bkmodal { max-width: 480px; padding: 22px 22px 20px; }
+.modal.bkmodal {
+  --bk-pt: 22px; --bk-px: 22px; --bk-pb: 20px;
+  max-width: 480px; max-height: min(680px, calc(100dvh - 40px)); padding: var(--bk-pt) var(--bk-px) var(--bk-pb); overscroll-behavior: contain;
+}
 .bkmodal .bookpanel { border: none; box-shadow: none; padding: 0; background: none; }
+
+/* Step bar (+ close) pinned to the top and the step's buttons pinned to the bottom; only the
+   content between them scrolls. Negative margins stretch each bar across the popup's padding. */
+.bkmodal .bkhead {
+  position: sticky; top: calc(-1 * var(--bk-pt)); z-index: 3;
+  margin: calc(-1 * var(--bk-pt)) calc(-1 * var(--bk-px)) 16px; padding: var(--bk-pt) var(--bk-px) 12px;
+  background: #fff; border-bottom: 1px solid var(--line);
+}
+.bkmodal .bkhead .bksteps { margin-bottom: 0; }
+.bkmodal .bkactions {
+  position: sticky; bottom: calc(-1 * var(--bk-pb)); z-index: 3;
+  margin: 16px calc(-1 * var(--bk-px)) calc(-1 * var(--bk-pb)); padding: 12px var(--bk-px) var(--bk-pb);
+  background: #fff; border-top: 1px solid var(--line);
+}
+/* Payment step: "Pay ₹99 securely" stays at the bottom while the summary above it scrolls. It's
+   moved to the end of the panel (the "Talk to a Trip Expert" box now sits above it) — a pinned bar
+   has to be last, or whatever follows it pushes it off the screen. */
+.bkmodal .bookpanel { display: flex; flex-direction: column; }
+.bkmodal .bookpanel .ordivider { display: none; }
+.bkmodal .bookpanel .orgbox { margin-top: 14px; }
+.bkmodal .bp-cta-bar {
+  order: 10; position: sticky; bottom: calc(-1 * var(--bk-pb)); z-index: 3;
+  margin: 14px calc(-1 * var(--bk-px)) calc(-1 * var(--bk-pb)); padding: 12px var(--bk-px) var(--bk-pb);
+  background: #fff; border-top: 1px solid var(--line);
+}
+/* Shorter departure cards inside the popup. */
+.bkmodal .depcard { padding: 15px 12px 10px; margin-bottom: 14px; }
 .bksteps { list-style: none; display: flex; align-items: flex-start; margin: 0 40px 18px 0; padding: 0; }
 .bksteps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; font-size: 10.5px; font-weight: 600; color: var(--muted); text-align: center; }
 .bksteps li + li::before { content: ""; position: absolute; top: 11px; right: calc(50% + 15px); left: calc(-50% + 15px); height: 2px; border-radius: 2px; background: var(--line); }
@@ -1397,7 +1426,7 @@ body.customer { background: #fff; }
 .bksum-facts svg { color: var(--accent); flex-shrink: 0; }
 
 @media (max-width: 640px) {
-  .modal.bkmodal { padding: 18px 16px 16px; }
+  .modal.bkmodal { --bk-pt: 18px; --bk-px: 16px; --bk-pb: 16px; }
   .bksteps { margin-right: 36px; }
   .bksteps li { font-size: 9.5px; }
 }
