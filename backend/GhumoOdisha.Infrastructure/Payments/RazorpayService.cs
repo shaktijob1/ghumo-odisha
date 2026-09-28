@@ -64,7 +64,10 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
 
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
-            logger.LogError("Razorpay rejected our API credentials while creating an order.");
+            // Key id is public (it ships to the browser checkout); only the secret's length is logged.
+            logger.LogError(
+                "Razorpay rejected our API credentials while creating an order (key id {KeyId}, secret length {SecretLength}): {Body}",
+                _options.KeyId, _options.KeySecret.Length, body);
             throw new PaymentGatewayAuthException();
         }
 

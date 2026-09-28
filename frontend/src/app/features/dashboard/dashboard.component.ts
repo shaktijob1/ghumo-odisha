@@ -12,6 +12,7 @@ import { TripCardComponent } from '../../shared/components/trip-card.component';
 import { DestinationCardComponent } from '../../shared/components/destination-card.component';
 import { FeatureCardComponent, FeatureIcon } from '../../shared/components/feature-card.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
+import { scrollRowBy } from '../../shared/utils/scroll-row';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -95,7 +96,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   scrollTrending(direction: 1 | -1): void {
     const el = this.trendScroll()?.nativeElement;
     if (!el) return;
-    el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.85, 140), behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    scrollRowBy(el, direction * Math.max(el.clientWidth * 0.85, 140), '.dcard', !this.reducedMotion);
   }
 
   // --- "Upcoming Trips" row: 4 cards per view (3 / 2 on narrower screens, ~1 on phones), arrows move 2 (1 on phones) ---
@@ -128,7 +129,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const step = card.getBoundingClientRect().width + gap;
     // Phones show about one card per view, so move one at a time there.
     const cards = step * 2 <= el.clientWidth ? 2 : 1;
-    el.scrollBy({ left: direction * cards * step, behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    scrollRowBy(el, direction * cards * step, '.tslot', !this.reducedMotion);
   }
 
   @HostListener('window:resize')

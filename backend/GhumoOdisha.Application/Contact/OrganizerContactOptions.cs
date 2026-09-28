@@ -9,4 +9,5 @@ public class OrganizerContactOptions
     public string Phone { get; set; } = string.Empty;
     public string WhatsAppNumber { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string InstagramUrl { get; set; } = string.Empty;
 }

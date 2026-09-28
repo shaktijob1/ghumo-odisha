@@ -3,12 +3,14 @@ import { Component, ElementRef, HostListener, OnInit, computed, effect, inject, 
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicDestinationService } from '../../core/services/public-destination.service';
+import { SeoService } from '../../core/services/seo.service';
 import { DestinationDetail } from '../../core/models/destination.model';
 import { TripSummary } from '../../core/models/trip.model';
 import { TripCardComponent } from '../../shared/components/trip-card.component';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { DatePickerComponent } from '../../shared/components/date-picker.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
+import { scrollRowBy } from '../../shared/utils/scroll-row';
 
 type LoadState = 'loading' | 'ready' | 'error' | 'not-found';
 type TripsState = 'loading' | 'ready' | 'error';
@@ -23,6 +25,7 @@ export class DestinationDetailComponent implements OnInit {
   readonly todayIso = new Date().toISOString().slice(0, 10);
   private readonly route = inject(ActivatedRoute);
   private readonly destinationService = inject(PublicDestinationService);
+  private readonly seo = inject(SeoService);
 
   readonly state = signal<LoadState>('loading');
   readonly destination = signal<DestinationDetail | null>(null);
@@ -74,7 +77,7 @@ export class DestinationDetailComponent implements OnInit {
     const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
     const step = card.getBoundingClientRect().width + gap;
     const cards = step * 2 <= el.clientWidth ? 2 : 1;
-    el.scrollBy({ left: direction * cards * step, behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    scrollRowBy(el, direction * cards * step, '.tslot', !this.reducedMotion);
   }
 
   @HostListener('window:resize')
@@ -99,6 +102,15 @@ export class DestinationDetailComponent implements OnInit {
     this.destinationService.getDestination(this.slug).subscribe({
       next: (d) => {
         this.destination.set(d);
+        // Same title/description the API writes into the first page load (SeoPageRenderer.DestinationPage).
+        const about = (d.aboutText ?? d.tagline ?? d.knownFor ?? '').replace(/\s+/g, ' ').trim();
+        const summary = `Explore ${d.name}, Odisha with Ghumo Odisha group trips and tour packages. ${about}`.trim();
+        this.seo.setPage({
+          title: `${d.name} Tour Packages & Trips | Ghumo Odisha`,
+          description: summary.length > 160 ? summary.slice(0, summary.lastIndexOf(' ', 159)) + '…' : summary,
+          path: `/destinations/${d.slug}`,
+          image: d.heroImageUrl,
+        });
         this.state.set('ready');
         this.loadTrips();
       },

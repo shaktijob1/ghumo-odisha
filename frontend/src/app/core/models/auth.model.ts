@@ -54,4 +54,5 @@ export interface ContactInfo {
   whatsAppNumber: string;
   email: string;
   photoUrl: string | null;
+  instagramUrl: string | null;
 }

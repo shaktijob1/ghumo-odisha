@@ -202,10 +202,16 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
         var reportingTime = pickup is null ? null : FormatTime(pickup.Time);
 
         var inclusions = new List<string>();
-        if (m.Trip.IncludesStay) inclusions.Add("Stay");
+        if (m.Trip.IncludesStay) inclusions.Add("AC room");
+        if (m.Trip.IncludesAcVehicle) inclusions.Add("AC vehicle");
+        if (m.Trip.IncludesPushbackVehicle) inclusions.Add("Pushback vehicle");
         if (m.Trip.IncludesBreakfast) inclusions.Add("Breakfast");
         if (m.Trip.IncludesLunch) inclusions.Add("Lunch");
         if (m.Trip.IncludesDinner) inclusions.Add("Dinner");
+        if (m.Trip.IncludesCamping) inclusions.Add("Camping");
+        if (m.Trip.IncludesBonfire) inclusions.Add("Bonfire");
+        if (m.Trip.IncludesMusicalNight) inclusions.Add("Musical night");
+        if (m.Trip.IncludesSwimmingPool) inclusions.Add("Swimming pool");
         if (m.Trip.IncludesCoordinator) inclusions.Add("Trip coordinator");
 
         var destinations = m.Trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList();
@@ -375,7 +381,7 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
         var b = m.Booking;
         container.ShowEntire().Row(row =>
         {
-            row.RelativeItem().Element(ComposeNotes);
+            row.RelativeItem().Element(c => ComposeNotes(c, m));
             row.ConstantItem(16);
             row.ConstantItem(250).Column(col =>
             {
@@ -396,13 +402,24 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
         });
     }
 
-    private void ComposeNotes(IContainer container)
+    private void ComposeNotes(IContainer container, InvoiceModel m)
     {
+        var b = m.Booking;
+        // 30% of the trip amount is due in cash/offline 3 days before departure — capped at what's
+        // still owed, and left off once nothing remains.
+        var offlineInstalment = Math.Min(Math.Round(b.TotalAmount * 0.30m, 2, MidpointRounding.AwayFromZero), b.RemainingAmount);
+        var offlineDueDate = m.Slot.StartDate.AddDays(-3);
+
         container.Background(Canvas).Padding(12).Column(col =>
         {
             col.Spacing(3);
             col.Item().Text("IMPORTANT").FontSize(8).SemiBold().FontColor(Muted).LetterSpacing(0.08f);
+            if (offlineInstalment > 0)
+            {
+                Bullet(col, $"Pay 30% of the trip amount ({Money(offlineInstalment)}) in cash/offline at least 3 days before departure, i.e. by {FormatLongDate(offlineDueDate)}.");
+            }
             Bullet(col, "Clear any balance before departure — cash, UPI and bank transfer are accepted.");
+            Bullet(col, "The booking amount paid at the time of booking is non-refundable.");
             Bullet(col, "Report 15 minutes before the reporting time with a photo ID for every traveller.");
             Bullet(col, "Cancellations up to 72 hours before departure, as per the Terms & Conditions.");
             var contact = string.Join(" or ", new[] { _company.Phone, _company.Email }.Where(s => !string.IsNullOrWhiteSpace(s)));

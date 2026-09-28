@@ -234,6 +234,19 @@ select.inp { appearance: auto; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,20,22,.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; place-items: center; padding: 20px; z-index: 50; }
 .modal { position: relative; max-width: 440px; width: 100%; max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 30px 80px rgba(15,20,22,.35), 0 10px 30px rgba(15,20,22,.18); }
 .modal h4 { font-size: 16px; margin-bottom: 14px; }
+
+/* ============ terms & conditions popup ============ */
+.modal.termsmodal { max-width: 640px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.modal-backdrop.termsbackdrop { z-index: 80; }
+.termsmodal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+.termsmodal-head h4 { margin: 2px 0 0; font-size: 17px; }
+.termsmodal-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 14px; line-height: 1; display: grid; place-items: center; cursor: pointer; }
+.termsmodal-x:hover { background: #F7F8F8; }
+.termsmodal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px; }
+.termsmodal-sec { margin-bottom: 14px; }
+.termsmodal-sec b { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+.termsmodal-sec p { font-size: 13px; line-height: 1.65; color: #3A4346; }
+.termsmodal-foot { padding: 12px 20px 16px; border-top: 1px solid var(--line); }
 .warnbox { background: var(--wait-bg); color: var(--wait); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; margin-bottom: 14px; }
 .errorbox { background: var(--danger-bg); color: var(--danger); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; margin-bottom: 14px; }
 
@@ -749,6 +762,16 @@ body.customer { background: #fff; }
 .foot2 .flinks { display: grid; gap: 9px; font-size: 12.5px; }
 .foot2 .flinks a, .foot2 .flinks span { color: var(--ink); }
 .foot2 .fbrand p { margin-top: 8px; max-width: 30ch; }
+.footconnect { margin-top: 26px; padding: 18px 16px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.footconnect-lbl { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.footconnect-icons { display: flex; gap: 12px; }
+.footicon { width: 42px; height: 42px; border-radius: 999px; color: #fff; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(15,20,22,.12); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+.footicon:hover, .footicon:focus-visible { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(15,20,22,.18); filter: brightness(1.05); }
+/* Brand colours: mail red, Instagram gradient, WhatsApp green. */
+.footicon.mail { background: #EA4335; }
+.footicon.instagram { background: radial-gradient(circle at 30% 107%, #FDF497 0%, #FDF497 5%, #FD5949 45%, #D6249F 60%, #285AEB 90%); }
+.footicon.whatsapp { background: #25D366; }
+.footconnect + .footbar { margin-top: 16px; border-top: none; }
 .footbar { margin-top: 26px; padding: 16px 28px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); text-align: center; }
 
 /* ============ destination detail page ============ */
@@ -1246,6 +1269,19 @@ body.customer { background: #fff; }
 .tdtl-ic[data-kind="stay"] { background: #F5F0FA; color: #5E3F8C; }
 .tdtl-ic[data-kind="fun"] { background: #FDEDEA; color: #A33E31; }
 .tdtl-text { font-size: 13.5px; font-weight: 500; color: var(--ink); line-height: 1.45; }
+/* Each schedule point gets its own tint, cycling by position; the icon follows the card's tone. */
+.tdtl-card[data-tone="0"] { background: #EEF7F3; border-color: #CFE7DD; }
+.tdtl-card[data-tone="0"] .tdtl-ic { background: #D5EDE4; color: #0F6F5C; }
+.tdtl-card[data-tone="1"] { background: #FFF7EA; border-color: #F5E4C4; }
+.tdtl-card[data-tone="1"] .tdtl-ic { background: #F8E5BF; color: #8A5A0B; }
+.tdtl-card[data-tone="2"] { background: #EFF4FA; border-color: #D8E4F1; }
+.tdtl-card[data-tone="2"] .tdtl-ic { background: #D8E4F1; color: #2F5B86; }
+.tdtl-card[data-tone="3"] { background: #F5F0FA; border-color: #E4DAF0; }
+.tdtl-card[data-tone="3"] .tdtl-ic { background: #E4DAF0; color: #5E3F8C; }
+.tdtl-card[data-tone="4"] { background: #FDF0EE; border-color: #F4D6D1; }
+.tdtl-card[data-tone="4"] .tdtl-ic { background: #F7DCD7; color: #A33E31; }
+.tdtl-card[data-tone="5"] { background: #EAF5F8; border-color: #CDE5EC; }
+.tdtl-card[data-tone="5"] .tdtl-ic { background: #D2E9F0; color: #1F6F8B; }
 @media (max-width: 640px) {
   .tdtl li { grid-template-columns: 56px minmax(0, 1fr); column-gap: 10px; padding-bottom: 8px; }
   .tdtl li:not(:last-child)::before { left: 27px; }
@@ -1565,3 +1601,10 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
   .dabout-text { font-size: 13.5px; line-height: 1.7; }
   #dest-about .tdfacts { grid-template-columns: 1fr 1fr; margin-top: 14px; }
 }
+
+/* Scroll-snap rows: the last card snaps by its end edge so every snap point is reachable. Otherwise
+   iOS Safari can settle an arrow scroll on an unreachable "start" point, past the end of the row. */
+#trending-destinations .dscroll > app-destination-card:last-child > .dcard,
+:is(#upcoming-trips, #dest-trips) .tslot:last-child,
+.hlscroll > .hlcard:last-child,
+.galscroll > .gitem:last-child { scroll-snap-align: end; }

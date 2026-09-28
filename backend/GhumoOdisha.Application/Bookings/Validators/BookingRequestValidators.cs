@@ -69,7 +69,7 @@ public class ChangeSeatsRequestValidator : AbstractValidator<ChangeSeatsRequest>
 {
     public ChangeSeatsRequestValidator()
     {
-        RuleFor(x => x.NumberOfSeats).InclusiveBetween(1, 100);
+        RuleFor(x => x.NumberOfSeats).GreaterThan(0);
         RuleFor(x => x.Reason).NotEmpty().WithMessage("A reason is required to change the seats.").MaximumLength(300);
     }
 }

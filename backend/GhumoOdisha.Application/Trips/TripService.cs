@@ -144,6 +144,12 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             IncludesDinner = request.IncludesDinner,
             IncludesStay = request.IncludesStay,
             IncludesCoordinator = request.IncludesCoordinator,
+            IncludesAcVehicle = request.IncludesAcVehicle,
+            IncludesPushbackVehicle = request.IncludesPushbackVehicle,
+            IncludesCamping = request.IncludesCamping,
+            IncludesBonfire = request.IncludesBonfire,
+            IncludesMusicalNight = request.IncludesMusicalNight,
+            IncludesSwimmingPool = request.IncludesSwimmingPool,
             Status = TripStatus.Active,
             CreatedAt = now,
             UpdatedAt = now
@@ -178,6 +184,12 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         trip.IncludesDinner = request.IncludesDinner;
         trip.IncludesStay = request.IncludesStay;
         trip.IncludesCoordinator = request.IncludesCoordinator;
+        trip.IncludesAcVehicle = request.IncludesAcVehicle;
+        trip.IncludesPushbackVehicle = request.IncludesPushbackVehicle;
+        trip.IncludesCamping = request.IncludesCamping;
+        trip.IncludesBonfire = request.IncludesBonfire;
+        trip.IncludesMusicalNight = request.IncludesMusicalNight;
+        trip.IncludesSwimmingPool = request.IncludesSwimmingPool;
         trip.Status = request.Status;
         trip.UpdatedAt = DateTime.UtcNow;
 
@@ -800,7 +812,9 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         trip.ItineraryPdfUrl);
 
     private static TripInclusionsDto MapInclusions(Trip trip) => new(
-        trip.IncludesBreakfast, trip.IncludesLunch, trip.IncludesDinner, trip.IncludesStay, trip.IncludesCoordinator);
+        trip.IncludesBreakfast, trip.IncludesLunch, trip.IncludesDinner, trip.IncludesStay, trip.IncludesCoordinator,
+        trip.IncludesAcVehicle, trip.IncludesPushbackVehicle, trip.IncludesCamping, trip.IncludesBonfire,
+        trip.IncludesMusicalNight, trip.IncludesSwimmingPool);
 
     private static List<TripPhotoDto> MapPhotos(Trip trip) => trip.TripPhotos
         .OrderBy(p => p.DisplayOrder)

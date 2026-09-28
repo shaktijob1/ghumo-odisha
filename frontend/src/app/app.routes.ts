@@ -8,7 +8,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/customer-layout/customer-layout.component').then((m) => m.CustomerLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
-      { path: 'trips', loadComponent: () => import('./features/trips/home.component').then((m) => m.HomeComponent) },
+      { path: 'trips', title: 'Odisha Tour Packages & Group Trips | Ghumo Odisha', loadComponent: () => import('./features/trips/home.component').then((m) => m.HomeComponent) },
       { path: 'trips/:id', loadComponent: () => import('./features/trips/trip-detail.component').then((m) => m.TripDetailComponent) },
       {
         path: 'destinations/:slug',
@@ -24,7 +24,7 @@ export const routes: Routes = [
         data: { title: 'Hotels' },
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
       },
-      { path: 'terms', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
+      { path: 'terms', title: 'Trip Terms & Conditions | Ghumo Odisha', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
       { path: 'login', loadComponent: () => import('./features/auth/customer-auth.component').then((m) => m.CustomerAuthComponent) },
       {
         path: 'my-bookings',

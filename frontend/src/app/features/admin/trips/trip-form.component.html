@@ -43,7 +43,13 @@
           <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesBreakfast" /> Breakfast</label>
           <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesLunch" /> Lunch</label>
           <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesDinner" /> Dinner</label>
-          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesStay" /> Stay</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesStay" /> AC Room</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesAcVehicle" /> AC Vehicle</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesPushbackVehicle" /> Pushback Vehicle</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesCamping" /> Camping</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesBonfire" /> Bonfire</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesMusicalNight" /> Musical Night</label>
+          <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesSwimmingPool" /> Swimming Pool</label>
           <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesCoordinator" /> Coordinator</label>
         </div>
       </div>
@@ -281,7 +287,7 @@
         <div class="row" style="gap:10px">
           <select class="inp" style="width:130px" [(ngModel)]="newPickupPoint.time" [ngModelOptions]="{standalone: true}">
             <option value="" disabled selected>Select time</option>
-            @for (o of hourOptions; track o.value) {
+            @for (o of quarterHourOptions; track o.value) {
               <option [value]="o.value">{{ o.label }}</option>
             }
           </select>

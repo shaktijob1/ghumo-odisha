@@ -2,13 +2,17 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Location } from '@angular/common';
+import { SeoService } from '../../core/services/seo.service';
+import { durationLabel, parseTripId, tripPath } from '../../shared/utils/trip-path';
 import { PublicTripService } from '../../core/services/public-trip.service';
 import { CustomerBookingService } from '../../core/services/customer-booking.service';
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
 import { CustomerProfileService } from '../../core/services/customer-profile.service';
 import { ContactService } from '../../core/services/contact.service';
 import { ToastService } from '../../core/services/toast.service';
-import { TripDetail, DateSlot, TripHighlight } from '../../core/models/trip.model';
+import { TermsDialogService } from '../../core/services/terms-dialog.service';
+import { TripDetail, DateSlot, TripHighlight, TripInclusions } from '../../core/models/trip.model';
 import { BookingResponse, CreateBookingResult } from '../../core/models/booking.model';
 import { CustomerAuthResponse } from '../../core/models/auth.model';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
@@ -21,6 +25,7 @@ import { toLocalDateKey } from '../../shared/utils/date-key';
 import { payNowFor } from '../../shared/components/booking-price-summary.component';
 import { CouponSelection } from '../../shared/components/coupon-field.component';
 import { roomsForSeats } from '../../shared/utils/rooms';
+import { scrollRowBy } from '../../shared/utils/scroll-row';
 
 type PhotoRow = 'hl' | 'stay' | 'travel';
 
@@ -29,6 +34,8 @@ type PhotoRow = 'hl' | 'stay' | 'travel';
 type BookingStep = 'date' | 'seats' | 'flow';
 
 type LoadState = 'loading' | 'ready' | 'error';
+
+type InclusionKey = keyof TripInclusions;
 
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -41,12 +48,15 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
+  private readonly seo = inject(SeoService);
   private readonly tripService = inject(PublicTripService);
   private readonly bookingService = inject(CustomerBookingService);
   readonly auth = inject(CustomerAuthService);
   private readonly contactService = inject(ContactService);
   private readonly profileService = inject(CustomerProfileService);
   private readonly toast = inject(ToastService);
+  readonly termsDialog = inject(TermsDialogService);
 
   readonly contact = this.contactService.get();
   readonly state = signal<LoadState>('loading');
@@ -135,11 +145,17 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   readonly includedItems = computed(() => {
     const inc = this.trip()?.inclusions;
     if (!inc) return [];
-    const items: { key: 'breakfast' | 'lunch' | 'dinner' | 'stay' | 'coordinator'; label: string; caption: string }[] = [];
+    const items: { key: InclusionKey; label: string; caption: string }[] = [];
     if (inc.breakfast) items.push({ key: 'breakfast', label: 'Breakfast included', caption: 'Breakfast' });
     if (inc.lunch) items.push({ key: 'lunch', label: 'Lunch included', caption: 'Lunch' });
     if (inc.dinner) items.push({ key: 'dinner', label: 'Dinner included', caption: 'Dinner' });
-    if (inc.stay) items.push({ key: 'stay', label: 'Stay included', caption: 'Stay' });
+    if (inc.stay) items.push({ key: 'stay', label: 'AC room included', caption: 'AC Room' });
+    if (inc.acVehicle) items.push({ key: 'acVehicle', label: 'AC vehicle included', caption: 'AC Vehicle' });
+    if (inc.pushbackVehicle) items.push({ key: 'pushbackVehicle', label: 'Pushback vehicle included', caption: 'Pushback Vehicle' });
+    if (inc.camping) items.push({ key: 'camping', label: 'Camping included', caption: 'Camping' });
+    if (inc.bonfire) items.push({ key: 'bonfire', label: 'Bonfire included', caption: 'Bonfire' });
+    if (inc.musicalNight) items.push({ key: 'musicalNight', label: 'Musical night included', caption: 'Musical Night' });
+    if (inc.swimmingPool) items.push({ key: 'swimmingPool', label: 'Swimming pool included', caption: 'Swimming Pool' });
     if (inc.coordinator) items.push({ key: 'coordinator', label: 'Trip coordinator included', caption: 'Coordinator' });
     return items;
   });
@@ -150,13 +166,6 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   // payment panel charges once the booking request exists. Never used to compute what's actually
   // charged; that's recomputed server-side from scratch.
   readonly bookingAdvance = computed(() => payNowFor(this.trip()?.amountPerPerson ?? 0, this.seats(), this.couponDiscount()));
-
-  private static readonly MAX_SEATS_SHOWN = 10;
-
-  /** Seats offered on this page: the real availability, but never more than 10 per booking. */
-  seatsShown(available: number): number {
-    return Math.min(available, TripDetailComponent.MAX_SEATS_SHOWN);
-  }
 
   /** Booking advance for one seat — what the "PAY ₹99 & CONFIRM BOOKING" button shows before seats are chosen. */
   get perSeatAdvance(): number {
@@ -206,12 +215,14 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     return Math.max(0, this.bookingSteps().findIndex((s) => s.key === key));
   });
 
+  // The pickup step stays open until "Continue" confirms a choice — picking a point alone doesn't advance.
+  readonly pickupConfirmed = signal(false);
   readonly needsPickupSelection = computed(
-    () => this.requiresPickupPoint() && !this.selectedPickupPointId() && !this.bookingResult(),
+    () => this.requiresPickupPoint() && !(this.pickupConfirmed() && this.selectedPickupPointId()) && !this.bookingResult(),
   );
 
   ngOnInit(): void {
-    this.tripId = Number(this.route.snapshot.paramMap.get('id'));
+    this.tripId = parseTripId(this.route.snapshot.paramMap.get('id'));
     this.load();
   }
 
@@ -224,6 +235,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.tripService.getTrip(this.tripId).subscribe({
       next: (t) => {
         this.trip.set(t);
+        this.applySeo(t);
         const firstOpenSlot = this.upcomingSlots().find((s) => !s.isSoldOut);
         this.selectedSlotId.set(firstOpenSlot?.tripDateSlotId ?? null);
         // Open on the month holding the next bookable departure (e.g. October if September is
@@ -231,13 +243,35 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         this.selectedMonth.set(firstOpenSlot?.startDate.slice(0, 7) ?? this.slotMonths()[0]?.key ?? null);
         // No pickup point is pre-selected — choosing one is now an explicit step in the booking
         // popup, not a silently-applied default the customer might not notice.
-        this.selectedPickupPointId.set(null);
+        this.resetPickup();
         this.selectedDayIndex.set(0);
         this.showAllSlots.set(false);
         this.state.set('ready');
         this.startHeroAutoplay();
       },
       error: () => this.state.set('error'),
+    });
+  }
+
+  // Same title/description the API writes into the first page load (SeoPageRenderer.TripPage),
+  // plus swapping an old /trips/1 address for the readable /trips/1-puri-konark one in place.
+  private applySeo(t: TripDetail): void {
+    const path = tripPath(t.tripId, t.title);
+    const [currentPath, query] = this.location.path(false).split('?');
+    if (currentPath !== path) {
+      this.location.replaceState(path, query ?? '');
+    }
+
+    const today = toLocalDateKey(new Date());
+    const next = t.dateSlots.filter((s) => s.startDate.slice(0, 10) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+    const duration = next ? ` – ${durationLabel(next.startDate, next.endDate)}` : '';
+    const price = `₹${t.amountPerPerson.toLocaleString('en-IN')}`;
+    const summary = `${t.title}${duration} group trip from ${price} per person. ${t.description.replace(/\s+/g, ' ').trim()}`;
+    this.seo.setPage({
+      title: `${t.title}${duration} from ${price} | Ghumo Odisha`,
+      description: summary.length > 160 ? summary.slice(0, summary.lastIndexOf(' ', 159)) + '…' : summary,
+      path,
+      image: [...t.photos].sort((a, b) => a.displayOrder - b.displayOrder)[0]?.imageUrl ?? null,
     });
   }
 
@@ -291,9 +325,20 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Only marks the choice — the visitor moves on with "Continue" (or goes back to seats). */
   selectPickupPoint(id: number): void {
     this.selectedPickupPointId.set(id);
+  }
+
+  confirmPickup(): void {
+    if (!this.selectedPickupPointId()) return;
+    this.pickupConfirmed.set(true);
     this.tryProceed();
+  }
+
+  private resetPickup(): void {
+    this.selectedPickupPointId.set(null);
+    this.pickupConfirmed.set(false);
   }
 
   selectMonth(key: string): void {
@@ -391,7 +436,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     const card = el?.querySelector<HTMLElement>('.hlcard');
     if (!el || !card) return;
     const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
-    el.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
+    scrollRowBy(el, direction * (card.getBoundingClientRect().width + gap), '.hlcard');
   }
 
   // ---------- Photo viewer for "Where you'll stay" / "How you'll travel" ----------
@@ -478,7 +523,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     const booking = this.bookingResult()?.booking;
     if (!booking) return;
     this.setAsideBooking();
-    this.selectedPickupPointId.set(null);
+    this.resetPickup();
     this.submitError.set(null);
     this.selectedMonth.set(booking.startDate.slice(0, 7));
     this.bookingStep.set('date');
@@ -488,8 +533,9 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.bookingStep.set('date');
   }
 
+  // Keeps the chosen pickup point highlighted, so coming forward again only needs "Continue".
   backToSeats(): void {
-    this.selectedPickupPointId.set(null);
+    this.pickupConfirmed.set(false);
     this.bookingStep.set('seats');
   }
 
@@ -502,7 +548,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.setAsideBooking();
     // Reopening starts fresh: 1 seat, pickup to choose again (a matching draft is still reused).
     if (!this.bookingResult()) {
-      this.selectedPickupPointId.set(null);
+      this.resetPickup();
       this.seats.set(1);
     }
     this.bookingStep.set('date');

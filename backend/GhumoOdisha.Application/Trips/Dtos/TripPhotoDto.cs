@@ -16,4 +16,6 @@ public record ItineraryDayDto(int ItineraryDayId, int DayNumber, string Title, s
 
 public record DateSlotDto(int TripDateSlotId, DateOnly StartDate, DateOnly EndDate, int TotalSeats, int AvailableSeats, bool IsSoldOut);
 
-public record TripInclusionsDto(bool Breakfast, bool Lunch, bool Dinner, bool Stay, bool Coordinator);
+public record TripInclusionsDto(
+    bool Breakfast, bool Lunch, bool Dinner, bool Stay, bool Coordinator,
+    bool AcVehicle, bool PushbackVehicle, bool Camping, bool Bonfire, bool MusicalNight, bool SwimmingPool);

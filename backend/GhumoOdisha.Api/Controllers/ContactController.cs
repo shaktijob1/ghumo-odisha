@@ -14,7 +14,8 @@ public class ContactController(IOptions<OrganizerContactOptions> options, IOrgan
     {
         var contact = options.Value;
         var photoUrl = await organizerProfileService.GetPhotoUrlAsync(cancellationToken);
-        var dto = new ContactDto(contact.Name, contact.Role, contact.Phone, contact.WhatsAppNumber, contact.Email, photoUrl);
+        var dto = new ContactDto(contact.Name, contact.Role, contact.Phone, contact.WhatsAppNumber, contact.Email, photoUrl,
+            string.IsNullOrWhiteSpace(contact.InstagramUrl) ? null : contact.InstagramUrl);
         return Ok(ApiResponse<ContactDto>.Ok(dto));
     }
 }

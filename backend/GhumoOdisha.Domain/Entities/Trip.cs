@@ -13,6 +13,12 @@ public class Trip
     public bool IncludesDinner { get; set; }
     public bool IncludesStay { get; set; }
     public bool IncludesCoordinator { get; set; }
+    public bool IncludesAcVehicle { get; set; }
+    public bool IncludesPushbackVehicle { get; set; }
+    public bool IncludesCamping { get; set; }
+    public bool IncludesBonfire { get; set; }
+    public bool IncludesMusicalNight { get; set; }
+    public bool IncludesSwimmingPool { get; set; }
     public TripStatus Status { get; set; }
     public string? ItineraryPdfUrl { get; set; }
     public DateTime CreatedAt { get; set; }

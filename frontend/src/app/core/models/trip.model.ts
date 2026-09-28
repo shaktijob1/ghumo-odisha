@@ -6,6 +6,12 @@ export interface TripInclusions {
   dinner: boolean;
   stay: boolean;
   coordinator: boolean;
+  acVehicle: boolean;
+  pushbackVehicle: boolean;
+  camping: boolean;
+  bonfire: boolean;
+  musicalNight: boolean;
+  swimmingPool: boolean;
 }
 
 export interface TripPhoto {
@@ -142,6 +148,12 @@ export interface CreateTripRequest {
   includesDinner: boolean;
   includesStay: boolean;
   includesCoordinator: boolean;
+  includesAcVehicle: boolean;
+  includesPushbackVehicle: boolean;
+  includesCamping: boolean;
+  includesBonfire: boolean;
+  includesMusicalNight: boolean;
+  includesSwimmingPool: boolean;
   destinationIds?: number[];
 }
 

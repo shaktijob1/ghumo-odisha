@@ -9,8 +9,9 @@ import { BookingResponse } from '../../core/models/booking.model';
 import { PaymentPlan } from '../../core/models/enums.model';
 import { BookingPriceSummaryComponent, payNowFor } from './booking-price-summary.component';
 import { CouponFieldComponent, CouponSelection } from './coupon-field.component';
+import { loadRazorpay, razorpayReady } from '../utils/razorpay-loader';
 
-// Loaded globally via the <script> tag in index.html — no official Angular types published.
+// Loaded on demand by loadRazorpay() — no official Angular types published.
 declare const Razorpay: any;
 
 /**
@@ -74,6 +75,8 @@ export class PaymentPanelComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    // Warm the checkout script now so it's ready before the customer taps Pay.
+    loadRazorpay().catch(() => undefined);
     const carried = this.coupon;
     if (!carried) {
       this.prefetchOrder();
@@ -189,6 +192,18 @@ export class PaymentPanelComponent implements OnInit {
   }
 
   private openRazorpayCheckout(order: { orderId: string; amountPaise: number; currency: string; keyId: string }): void {
+    // Normally already loaded (warmed in ngOnInit), so checkout opens inside the tap itself.
+    if (!razorpayReady()) {
+      loadRazorpay().then(
+        () => this.openRazorpayCheckout(order),
+        () => {
+          this.payingNow.set(false);
+          this.paymentError.set('Could not load the payment gateway. Please check your connection and try again.');
+        },
+      );
+      return;
+    }
+
     const customer = this.auth.currentCustomer();
 
     const checkout = new Razorpay({

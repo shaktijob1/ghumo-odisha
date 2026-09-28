@@ -5,19 +5,25 @@ import { ContactService } from '../../core/services/contact.service';
 import { LoginModalService } from '../../core/services/login-modal.service';
 import { ToastHostComponent } from '../../shared/components/toast-host.component';
 import { LoginModalComponent } from '../../shared/components/login-modal.component';
+import { TermsDialogComponent } from '../../shared/components/terms-dialog.component';
+import { TermsDialogService } from '../../core/services/terms-dialog.service';
 
 @Component({
   selector: 'app-customer-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, LoginModalComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, LoginModalComponent, TermsDialogComponent],
   templateUrl: './customer-layout.component.html',
 })
 export class CustomerLayoutComponent {
   readonly auth = inject(CustomerAuthService);
   readonly loginModal = inject(LoginModalService);
+  readonly termsDialog = inject(TermsDialogService);
   private readonly contactService = inject(ContactService);
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly contact = this.contactService.get();
+  readonly whatsAppLink = computed(() =>
+    this.contact()?.whatsAppNumber ? this.contactService.buildWhatsAppLink('Hi Ghumo Odisha! I would like to know more about your trips.') : null,
+  );
   readonly menuOpen = signal(false);
   readonly accountOpen = signal(false);
   readonly year = new Date().getFullYear();

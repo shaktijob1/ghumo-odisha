@@ -3,13 +3,14 @@ import { Component, Input, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TripSummary, UpcomingSlot } from '../../core/models/trip.model';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
+import { tripPath } from '../utils/trip-path';
 
 @Component({
   selector: 'app-trip-card',
   standalone: true,
   imports: [CommonModule, RouterLink, ImageUrlPipe],
   template: `
-    <a class="tcard" [class.dash]="showNextDeparture" [routerLink]="['/trips', trip.tripId]">
+    <a class="tcard" [class.dash]="showNextDeparture" [routerLink]="link">
       <div class="shot" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
         @if (photoUrls.length > 0 && !imgFailed()) {
           <img [src]="photoUrls[activeIndex()] | imageUrl" alt="{{ trip.title }}" (error)="imgFailed.set(true)" />
@@ -50,12 +51,6 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
 
         <div class="heroinfo mobiletab-only">
           <h3>{{ trip.title }}</h3>
-          @if (placesLine) {
-            <div class="herometa">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-              <span>{{ placesLine }}</span>
-            </div>
-          }
         </div>
       </div>
       @if (rollingSlots.length > 0) {
@@ -89,13 +84,6 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
           <div class="metaline desktop-only">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
             <span>{{ trip.nextSlotStartDate | date:'d MMM' }} → {{ trip.nextSlotEndDate | date:'d MMM y' }}</span>
-          </div>
-        }
-
-        @if (placesLine) {
-          <div class="metaline desktop-only">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-            <span>{{ placesLine }}</span>
           </div>
         }
 
@@ -264,17 +252,14 @@ export class TripCardComponent implements OnInit, OnDestroy {
     return `In ${days} days`;
   }
 
-  get placesLine(): string {
-    const names = this.trip.highlightPlaceNames ?? [];
-    if (names.length === 0) return '';
-    const shown = names.slice(0, 3).join(' · ');
-    return names.length > 3 ? `${shown} · More` : shown;
+  get link(): string {
+    return tripPath(this.trip.tripId, this.trip.title);
   }
 
   get features(): { key: 'stay' | 'breakfast' | 'dinner' | 'coordinator'; label: string }[] {
     const inc = this.trip.inclusions;
     const items: { key: 'stay' | 'breakfast' | 'dinner' | 'coordinator'; label: string }[] = [];
-    if (inc?.stay) items.push({ key: 'stay', label: 'Twin Sharing Room' });
+    if (inc?.stay) items.push({ key: 'stay', label: 'AC Room' });
     if (inc?.breakfast) items.push({ key: 'breakfast', label: 'Breakfast Included' });
     if (inc?.dinner) items.push({ key: 'dinner', label: 'Dinner Included' });
     if (inc?.coordinator) items.push({ key: 'coordinator', label: 'Trip Coordinator' });

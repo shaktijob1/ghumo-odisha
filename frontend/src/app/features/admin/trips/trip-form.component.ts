@@ -36,6 +36,12 @@ export class TripFormComponent implements OnInit {
     return { value, label: this.to12Hour(value) };
   });
 
+  // pickup times need finer control than itinerary points: every 15 minutes
+  readonly quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
+    const value = `${Math.floor(i / 4).toString().padStart(2, '0')}:${((i % 4) * 15).toString().padStart(2, '0')}`;
+    return { value, label: this.to12Hour(value) };
+  });
+
   tripId: number | null = null;
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -50,6 +56,12 @@ export class TripFormComponent implements OnInit {
     includesDinner: [false],
     includesStay: [false],
     includesCoordinator: [false],
+    includesAcVehicle: [false],
+    includesPushbackVehicle: [false],
+    includesCamping: [false],
+    includesBonfire: [false],
+    includesMusicalNight: [false],
+    includesSwimmingPool: [false],
     status: [TripStatus.Active],
   });
 
@@ -113,6 +125,12 @@ export class TripFormComponent implements OnInit {
           includesDinner: t.inclusions.dinner,
           includesStay: t.inclusions.stay,
           includesCoordinator: t.inclusions.coordinator,
+          includesAcVehicle: t.inclusions.acVehicle,
+          includesPushbackVehicle: t.inclusions.pushbackVehicle,
+          includesCamping: t.inclusions.camping,
+          includesBonfire: t.inclusions.bonfire,
+          includesMusicalNight: t.inclusions.musicalNight,
+          includesSwimmingPool: t.inclusions.swimmingPool,
           status: t.status,
         });
         this.loading.set(false);

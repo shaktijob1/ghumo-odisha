@@ -5,6 +5,7 @@ using GhumoOdisha.Api.BackgroundServices;
 using GhumoOdisha.Api.Filters;
 using GhumoOdisha.Api.Logging;
 using GhumoOdisha.Api.Middleware;
+using GhumoOdisha.Api.Seo;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
 using GhumoOdisha.Application.Bookings;
@@ -22,6 +23,7 @@ using GhumoOdisha.Application.Notifications;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Application.Refunds;
 using GhumoOdisha.Application.SearchLogs;
+using GhumoOdisha.Application.Seo;
 using GhumoOdisha.Application.Trips;
 using GhumoOdisha.Infrastructure.Auth;
 using GhumoOdisha.Infrastructure.Invoices;
@@ -118,6 +120,13 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IRefundService, RefundService>();
 
 builder.Services.Configure<RazorpayOptions>(builder.Configuration.GetSection(RazorpayOptions.SectionName));
+// Env files saved with Windows line endings (or quoted values) leave a stray \r / quote on the
+// key, which Razorpay rejects with 401 even though the key itself is right.
+builder.Services.PostConfigure<RazorpayOptions>(o =>
+{
+    o.KeyId = o.KeyId.Trim().Trim('"', '\'');
+    o.KeySecret = o.KeySecret.Trim().Trim('"', '\'');
+});
 builder.Services.AddHttpClient<IRazorpayService, RazorpayService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
@@ -135,6 +144,9 @@ builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
 builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
 builder.Services.AddScoped<IInvoiceService, QuestPdfInvoiceService>();
+builder.Services.Configure<SeoOptions>(builder.Configuration.GetSection(SeoOptions.SectionName));
+builder.Services.AddScoped<ISeoService, SeoService>();
+builder.Services.AddScoped<SeoPageRenderer>();
 
 // Persistent storage root (uploaded photos, and anywhere else the app writes at runtime) lives
 // outside the deployed application directory — see Storage:RootPath / Storage__RootPath — so a
@@ -313,7 +325,8 @@ using (var scope = app.Services.CreateScope())
         seedDemoContent: app.Configuration.GetValue<bool>("Seed:DemoContent"));
 }
 
-app.UseDefaultFiles();
+// No UseDefaultFiles: "/" must go through SeoPageRenderer (MapSeo below) rather than being
+// served as the raw index.html, so the home page gets its SEO tags too.
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();
@@ -336,10 +349,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Angular SPA fallback: any GET without a file extension and not under /api
-// (e.g. /trips, /booking, /trip/123 on a hard refresh) serves index.html so
-// the Angular router can take over client-side. Extensioned paths (missing
-// static assets) and unmatched /api/* requests still fall through to a 404.
-app.MapFallbackToFile("{*path:nonfile:regex(^(?!api).*$)}", "index.html");
+// Angular SPA fallback + robots.txt + sitemap.xml: any GET without a file extension and not
+// under /api (e.g. /trips, /trips/1-puri on a hard refresh) serves index.html — with that page's
+// title, description, preview tags and structured data — so the Angular router can take over.
+// Extensioned paths (missing static assets) and unmatched /api/* requests still 404.
+app.MapSeo();
 
 app.Run();

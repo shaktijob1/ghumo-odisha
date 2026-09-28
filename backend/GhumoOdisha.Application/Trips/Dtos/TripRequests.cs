@@ -11,7 +11,13 @@ public record CreateTripRequest(
     bool IncludesDinner,
     bool IncludesStay,
     bool IncludesCoordinator,
-    IReadOnlyList<int>? DestinationIds = null);
+    IReadOnlyList<int>? DestinationIds = null,
+    bool IncludesAcVehicle = false,
+    bool IncludesPushbackVehicle = false,
+    bool IncludesCamping = false,
+    bool IncludesBonfire = false,
+    bool IncludesMusicalNight = false,
+    bool IncludesSwimmingPool = false);
 
 public record UpdateTripRequest(
     string Title,
@@ -23,4 +29,10 @@ public record UpdateTripRequest(
     bool IncludesStay,
     bool IncludesCoordinator,
     TripStatus Status,
-    IReadOnlyList<int>? DestinationIds = null);
+    IReadOnlyList<int>? DestinationIds = null,
+    bool IncludesAcVehicle = false,
+    bool IncludesPushbackVehicle = false,
+    bool IncludesCamping = false,
+    bool IncludesBonfire = false,
+    bool IncludesMusicalNight = false,
+    bool IncludesSwimmingPool = false);
