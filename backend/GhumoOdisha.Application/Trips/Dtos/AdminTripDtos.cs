@@ -31,4 +31,5 @@ public record AdminTripDetailDto(
     IReadOnlyList<DateSlotDto> DateSlots,
     IReadOnlyList<int> DestinationIds,
     IReadOnlyList<string> DestinationNames,
-    string? ItineraryPdfUrl);
+    string? ItineraryPdfUrl,
+    bool AllowCoupons);

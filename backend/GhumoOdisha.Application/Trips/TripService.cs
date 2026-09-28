@@ -150,6 +150,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             IncludesBonfire = request.IncludesBonfire,
             IncludesMusicalNight = request.IncludesMusicalNight,
             IncludesSwimmingPool = request.IncludesSwimmingPool,
+            AllowCoupons = request.AllowCoupons,
             Status = TripStatus.Active,
             CreatedAt = now,
             UpdatedAt = now
@@ -190,6 +191,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         trip.IncludesBonfire = request.IncludesBonfire;
         trip.IncludesMusicalNight = request.IncludesMusicalNight;
         trip.IncludesSwimmingPool = request.IncludesSwimmingPool;
+        trip.AllowCoupons = request.AllowCoupons;
         trip.Status = request.Status;
         trip.UpdatedAt = DateTime.UtcNow;
 
@@ -411,6 +413,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             throw new NotFoundException("Trip not found.");
         }
 
+        await EnsureDayNumberFreeAsync(tripId, request.DayNumber, exceptDayId: null, cancellationToken);
         var nextOrder = await NextDisplayOrderAsync(db.ItineraryDays.Where(d => d.TripId == tripId), cancellationToken);
 
         var day = new ItineraryDay
@@ -432,12 +435,24 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         var day = await db.ItineraryDays.FirstOrDefaultAsync(d => d.ItineraryDayId == dayId, cancellationToken)
             ?? throw new NotFoundException("Itinerary day not found.");
 
+        await EnsureDayNumberFreeAsync(day.TripId, request.DayNumber, exceptDayId: dayId, cancellationToken);
         day.DayNumber = request.DayNumber;
         day.Title = request.Title;
         day.Description = request.Description;
         day.DisplayOrder = request.DisplayOrder;
 
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureDayNumberFreeAsync(int tripId, int dayNumber, int? exceptDayId, CancellationToken cancellationToken)
+    {
+        var taken = await db.ItineraryDays.AnyAsync(
+            d => d.TripId == tripId && d.DayNumber == dayNumber && (exceptDayId == null || d.ItineraryDayId != exceptDayId),
+            cancellationToken);
+        if (taken)
+        {
+            throw new ConflictException($"Day {dayNumber} already exists in this itinerary. Edit that day or pick another number.");
+        }
     }
 
     public async Task DeleteItineraryDayAsync(int dayId, CancellationToken cancellationToken = default)
@@ -809,7 +824,8 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         trip.TripDateSlots.OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
         trip.Destinations.Select(d => d.DestinationId).ToList(),
         trip.Destinations.Select(d => d.Name).ToList(),
-        trip.ItineraryPdfUrl);
+        trip.ItineraryPdfUrl,
+        trip.AllowCoupons);
 
     private static TripInclusionsDto MapInclusions(Trip trip) => new(
         trip.IncludesBreakfast, trip.IncludesLunch, trip.IncludesDinner, trip.IncludesStay, trip.IncludesCoordinator,
@@ -841,8 +857,10 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         .Select(h => new TripHighlightDto(h.TripHighlightId, h.PlaceName, h.Description, h.PhotoUrl, h.DisplayOrder))
         .ToList();
 
+    // Always Day 1, Day 2, Day 3… regardless of the order days were added in.
     private static List<ItineraryDayDto> MapItineraryDays(Trip trip) => trip.ItineraryDays
-        .OrderBy(d => d.DisplayOrder)
+        .OrderBy(d => d.DayNumber)
+        .ThenBy(d => d.DisplayOrder)
         .Select(d => new ItineraryDayDto(
             d.ItineraryDayId,
             d.DayNumber,

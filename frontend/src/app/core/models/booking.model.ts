@@ -206,4 +206,6 @@ export interface BookingResponse {
   payments: BookingPayment[];
   /** Cancelled with money paid: the refund's progress (booker only). */
   refund: CustomerRefund | null;
+  /** False when the organizer has switched coupons off for this trip. */
+  couponsAllowed: boolean;
 }

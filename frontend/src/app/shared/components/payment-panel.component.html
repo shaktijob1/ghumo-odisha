@@ -14,13 +14,20 @@
     [seats]="booking.numberOfSeats"
     [couponDiscount]="couponDiscount()"
   >
-    <app-coupon-field
-      couponSlot
-      [signedIn]="true"
-      [selection]="selection()"
-      [externalError]="couponError()"
-      (selectionChange)="onCouponChange($event)"
-    ></app-coupon-field>
+    @if (couponsAllowed) {
+      <app-coupon-field
+        couponSlot
+        [signedIn]="true"
+        [selection]="selection()"
+        [externalError]="couponError()"
+        (selectionChange)="onCouponChange($event)"
+      ></app-coupon-field>
+    } @else {
+      <div couponSlot class="coupon-na">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg>
+        <span><b>Coupons not applicable</b>This trip is already offered at its best price, so coupon codes can't be applied.</span>
+      </div>
+    }
   </app-booking-price-summary>
 
   <div class="bp-info">

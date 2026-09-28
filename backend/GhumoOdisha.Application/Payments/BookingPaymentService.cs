@@ -69,6 +69,12 @@ public class BookingPaymentService(
             var trip = await db.Trips.AsNoTracking().FirstOrDefaultAsync(t => t.TripId == booking.TripId, cancellationToken)
                 ?? throw new NotFoundException("Trip not found.");
 
+            // The organizer can switch coupons off per trip — refuse a code here rather than trust the UI to hide the field.
+            if (couponCodeId is not null && !trip.AllowCoupons)
+            {
+                throw new ConflictException("Coupons are not applicable for this trip.");
+            }
+
             // Never take money for a departure that can't be confirmed — a full, hidden or departed
             // slot is rejected here, before a Razorpay order even exists.
             var slot = await db.TripDateSlots.AsNoTracking().FirstOrDefaultAsync(s => s.TripDateSlotId == booking.TripDateSlotId, cancellationToken)

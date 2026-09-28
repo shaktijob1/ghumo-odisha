@@ -143,7 +143,7 @@ public class BookingService(
         // The first message a customer/organizer gets is on confirmation (NotifyBookingConfirmedAsync),
         // once an advance has actually been paid.
         var message = BuildWhatsAppMessage(booking, trip, slot, customer);
-        return new CreateBookingResult(MapToResponse(booking, trip.Title, CoverImageUrl(trip.TripPhotos), slot, pickupPoint, isOwner: true, [], []), message);
+        return new CreateBookingResult(MapToResponse(booking, trip, slot, pickupPoint, isOwner: true, [], []), message);
     }
 
     private async Task<CreateBookingResult?> TryLoadExistingBookingResultAsync(int customerId, Guid clientRequestId, CancellationToken cancellationToken)
@@ -162,7 +162,7 @@ public class BookingService(
         }
 
         var message = BuildWhatsAppMessage(existing, existing.Trip, existing.TripDateSlot, existing.Customer);
-        return new CreateBookingResult(MapToResponse(existing, existing.Trip.Title, CoverImageUrl(existing.Trip.TripPhotos), existing.TripDateSlot, existing.PickupPoint, isOwner: true, [], []), message);
+        return new CreateBookingResult(MapToResponse(existing, existing.Trip, existing.TripDateSlot, existing.PickupPoint, isOwner: true, [], []), message);
     }
 
     /// <summary>Bookings this customer made, plus ones the organizer added them to as a traveller (view-only).</summary>
@@ -186,7 +186,7 @@ public class BookingService(
 
         var timelines = await GetCustomerTimelinesAsync(bookings.Select(b => b.BookingId).ToList(), cancellationToken);
         var payments = await GetCustomerPaymentsAsync(bookings.Where(b => b.CustomerId == customerId).Select(b => b.BookingId).ToList(), cancellationToken);
-        var items = bookings.Select(b => MapToResponse(b, b.Trip.Title, CoverImageUrl(b.Trip.TripPhotos), b.TripDateSlot, b.PickupPoint,
+        var items = bookings.Select(b => MapToResponse(b, b.Trip, b.TripDateSlot, b.PickupPoint,
             isOwner: b.CustomerId == customerId, timelines.GetValueOrDefault(b.BookingId, []), payments.GetValueOrDefault(b.BookingId, []))).ToList();
         return new PagedResult<BookingResponseDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
     }
@@ -203,7 +203,7 @@ public class BookingService(
 
         var timelines = await GetCustomerTimelinesAsync([bookingId], cancellationToken);
         var payments = booking.CustomerId == customerId ? await GetCustomerPaymentsAsync([bookingId], cancellationToken) : new();
-        return MapToResponse(booking, booking.Trip.Title, CoverImageUrl(booking.Trip.TripPhotos), booking.TripDateSlot, booking.PickupPoint,
+        return MapToResponse(booking, booking.Trip, booking.TripDateSlot, booking.PickupPoint,
             isOwner: booking.CustomerId == customerId, timelines.GetValueOrDefault(bookingId, []), payments.GetValueOrDefault(bookingId, []));
     }
 
@@ -1201,13 +1201,13 @@ public class BookingService(
     private static string? CoverImageUrl(IEnumerable<TripPhoto> photos) =>
         photos.OrderBy(p => p.DisplayOrder).FirstOrDefault()?.ImageUrl;
 
-    private static BookingResponseDto MapToResponse(Booking booking, string tripTitle, string? tripCoverImageUrl, TripDateSlot slot, PickupPoint? pickupPoint,
+    private static BookingResponseDto MapToResponse(Booking booking, Trip trip, TripDateSlot slot, PickupPoint? pickupPoint,
         bool isOwner, IReadOnlyList<BookingEventDto> timeline, IReadOnlyList<BookingPaymentDto> payments) => new(
         booking.BookingId,
         booking.Reference,
         booking.TripId,
-        tripTitle,
-        tripCoverImageUrl,
+        trip.Title,
+        CoverImageUrl(trip.TripPhotos),
         booking.TripDateSlotId,
         slot.StartDate,
         slot.EndDate,
@@ -1231,7 +1231,8 @@ public class BookingService(
         RoomAllocation.ForSeats(booking.NumberOfSeats),
         timeline,
         payments,
-        isOwner ? ToCustomerRefund(booking.Refund) : null);
+        isOwner ? ToCustomerRefund(booking.Refund) : null,
+        trip.AllowCoupons);
 
     private static Refunds.Dtos.CustomerRefundDto? ToCustomerRefund(BookingRefund? refund) => refund is null ? null : new(
         refund.Amount, refund.Status, refund.Method, refund.Reference, refund.RequestedAt, refund.InitiatedAt, refund.SettledAt);

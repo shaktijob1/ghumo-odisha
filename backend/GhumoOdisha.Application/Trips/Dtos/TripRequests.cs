@@ -17,7 +17,8 @@ public record CreateTripRequest(
     bool IncludesCamping = false,
     bool IncludesBonfire = false,
     bool IncludesMusicalNight = false,
-    bool IncludesSwimmingPool = false);
+    bool IncludesSwimmingPool = false,
+    bool AllowCoupons = true);
 
 public record UpdateTripRequest(
     string Title,
@@ -35,4 +36,5 @@ public record UpdateTripRequest(
     bool IncludesCamping = false,
     bool IncludesBonfire = false,
     bool IncludesMusicalNight = false,
-    bool IncludesSwimmingPool = false);
+    bool IncludesSwimmingPool = false,
+    bool AllowCoupons = true);

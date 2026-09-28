@@ -57,6 +57,11 @@ export class PaymentPanelComponent implements OnInit {
 
   readonly contact = this.contactService.get();
 
+  /** The organizer can switch coupons off per trip; older API responses without the flag allow them. */
+  get couponsAllowed(): boolean {
+    return this.booking.couponsAllowed !== false;
+  }
+
   readonly payingNow = signal(false);
   readonly paymentError = signal<string | null>(null);
 
@@ -78,6 +83,12 @@ export class PaymentPanelComponent implements OnInit {
     // Warm the checkout script now so it's ready before the customer taps Pay.
     loadRazorpay().catch(() => undefined);
     const carried = this.coupon;
+    if (!this.couponsAllowed) {
+      // Coupons are switched off for this trip — drop any code picked earlier; the API would refuse it anyway.
+      if (carried) this.couponChange.emit(null);
+      this.prefetchOrder();
+      return;
+    }
     if (!carried) {
       this.prefetchOrder();
       return;

@@ -35,6 +35,9 @@ public record BookingResponseDto(
     // Only for the booking's owner — a linked traveller doesn't see the booker's payment details.
     IReadOnlyList<BookingPaymentDto> Payments,
     // Cancelled bookings with money paid: the refund's progress (owner only).
-    Refunds.Dtos.CustomerRefundDto? Refund = null);
+    Refunds.Dtos.CustomerRefundDto? Refund = null,
+    // False when the organizer has switched coupons off for this trip — the payment panel then
+    // shows "not applicable" instead of the coupon field (and the API rejects a code anyway).
+    bool CouponsAllowed = true);
 
 public record CreateBookingResult(BookingResponseDto Booking, string WhatsAppMessage);

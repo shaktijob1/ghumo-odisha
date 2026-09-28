@@ -137,6 +137,7 @@ export interface AdminTripDetail {
   destinationIds: number[];
   destinationNames: string[];
   itineraryPdfUrl: string | null;
+  allowCoupons: boolean;
 }
 
 export interface CreateTripRequest {
@@ -154,6 +155,7 @@ export interface CreateTripRequest {
   includesBonfire: boolean;
   includesMusicalNight: boolean;
   includesSwimmingPool: boolean;
+  allowCoupons: boolean;
   destinationIds?: number[];
 }
 

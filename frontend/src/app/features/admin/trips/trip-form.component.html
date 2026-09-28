@@ -53,6 +53,11 @@
           <label class="row" style="gap:6px"><input type="checkbox" formControlName="includesCoordinator" /> Coordinator</label>
         </div>
       </div>
+      <div class="fld">
+        <span class="lbl">Coupons</span>
+        <label class="row" style="gap:6px"><input type="checkbox" formControlName="allowCoupons" /> Allow coupon codes on this trip</label>
+        <span class="note">When unticked, customers see "Coupons are not applicable for this trip" at payment, and any code is refused.</span>
+      </div>
 
       <div class="fld">
         <span class="lbl">Destinations</span>
@@ -169,24 +174,54 @@
 
       @for (d of t.itineraryDays; track d.itineraryDayId) {
         <div class="repeat">
-          <div class="rh">
-            <b>Day {{ d.dayNumber }} · {{ d.title }}</b>
-            <div class="tools"><button (click)="deleteDay(d.itineraryDayId)">×</button></div>
-          </div>
-          <p class="note" style="margin-bottom:8px">{{ d.description }}</p>
+          @if (editingDayId() === d.itineraryDayId) {
+            <div class="f3">
+              <div class="fld" style="margin:0"><span class="lbl">Day number</span><input class="inp" type="number" min="1" [(ngModel)]="dayDraft.dayNumber" [ngModelOptions]="{standalone: true}" /></div>
+              <div class="fld" style="margin:0"><span class="lbl">Day title</span><input class="inp" [(ngModel)]="dayDraft.title" [ngModelOptions]="{standalone: true}" /></div>
+              <div class="fld" style="margin:0"><span class="lbl">Description</span><input class="inp" [(ngModel)]="dayDraft.description" [ngModelOptions]="{standalone: true}" /></div>
+            </div>
+            <div class="row" style="gap:8px;margin:8px 0 12px">
+              <button type="button" class="btn sm" (click)="saveDay(d)">Save day</button>
+              <button type="button" class="btn sm ghost" (click)="editingDayId.set(null)">Cancel</button>
+            </div>
+          } @else {
+            <div class="rh">
+              <b>Day {{ d.dayNumber }} · {{ d.title }}</b>
+              <div class="tools">
+                <button type="button" title="Edit day" aria-label="Edit day" (click)="startEditDay(d)">✎</button>
+                <button type="button" title="Delete day" aria-label="Delete day" (click)="deleteDay(d.itineraryDayId)">×</button>
+              </div>
+            </div>
+            <p class="note" style="margin-bottom:8px">{{ d.description }}</p>
+          }
 
           @for (p of d.points; track p.itineraryPointId) {
-            <div class="row" style="gap:10px;margin-bottom:8px">
-              <span class="sel" style="width:110px">{{ p.time }}</span>
-              <span style="flex:1">{{ p.description }}</span>
-              <span class="sel" style="padding:8px 10px;cursor:pointer" (click)="deletePoint(p.itineraryPointId)">×</span>
-            </div>
+            @if (editingPointId() === p.itineraryPointId) {
+              <div class="row" style="gap:10px;margin-bottom:8px">
+                <select class="inp" style="width:130px" [(ngModel)]="pointDraft.time" [ngModelOptions]="{standalone: true}">
+                  <option value="" disabled>Select time</option>
+                  @for (o of quarterHourOptions; track o.value) {
+                    <option [value]="o.value">{{ o.label }}</option>
+                  }
+                </select>
+                <input class="inp" style="flex:1" [(ngModel)]="pointDraft.description" [ngModelOptions]="{standalone: true}" />
+                <button type="button" class="btn sm" (click)="savePoint(p)">Save</button>
+                <button type="button" class="btn sm ghost" (click)="editingPointId.set(null)">Cancel</button>
+              </div>
+            } @else {
+              <div class="row" style="gap:10px;margin-bottom:8px">
+                <span class="sel" style="width:110px">{{ p.time }}</span>
+                <span style="flex:1">{{ p.description }}</span>
+                <span class="sel" style="padding:8px 10px;cursor:pointer" title="Edit point" (click)="startEditPoint(p)">✎</span>
+                <span class="sel" style="padding:8px 10px;cursor:pointer" title="Delete point" (click)="deletePoint(p.itineraryPointId)">×</span>
+              </div>
+            }
           }
 
           <div class="row" style="gap:10px">
             <select class="inp" style="width:130px" [(ngModel)]="newPoint[d.itineraryDayId].time" [ngModelOptions]="{standalone: true}">
               <option value="" disabled selected>Select time</option>
-              @for (o of hourOptions; track o.value) {
+              @for (o of quarterHourOptions; track o.value) {
                 <option [value]="o.value">{{ o.label }}</option>
               }
             </select>

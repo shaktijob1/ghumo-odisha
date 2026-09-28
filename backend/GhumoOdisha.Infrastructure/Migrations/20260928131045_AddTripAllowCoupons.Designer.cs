@@ -4,6 +4,7 @@ using GhumoOdisha.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GhumoOdisha.Infrastructure.Migrations
 {
     [DbContext(typeof(GhumoOdishaDbContext))]
-    partial class GhumoOdishaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928131045_AddTripAllowCoupons")]
+    partial class AddTripAllowCoupons
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

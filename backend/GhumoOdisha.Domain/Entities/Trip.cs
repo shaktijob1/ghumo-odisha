@@ -19,6 +19,9 @@ public class Trip
     public bool IncludesBonfire { get; set; }
     public bool IncludesMusicalNight { get; set; }
     public bool IncludesSwimmingPool { get; set; }
+
+    /// <summary>Whether customers may apply a coupon code when booking this trip. Enforced when the payment order is created.</summary>
+    public bool AllowCoupons { get; set; } = true;
     public TripStatus Status { get; set; }
     public string? ItineraryPdfUrl { get; set; }
     public DateTime CreatedAt { get; set; }

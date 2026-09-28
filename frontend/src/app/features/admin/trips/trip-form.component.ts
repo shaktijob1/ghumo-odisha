@@ -4,7 +4,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminDestinationService } from '../../../core/services/admin-destination.service';
-import { AdminTripDetail } from '../../../core/models/trip.model';
+import { AdminTripDetail, ItineraryDay, ItineraryPoint } from '../../../core/models/trip.model';
 import { AdminDestinationListItem } from '../../../core/models/destination.model';
 import { TripStatus } from '../../../core/models/enums.model';
 import { ToastService } from '../../../core/services/toast.service';
@@ -30,13 +30,7 @@ export class TripFormComponent implements OnInit {
   readonly destinationOptions = signal<AdminDestinationListItem[]>([]);
   readonly selectedDestinationIds = signal<Set<number>>(new Set());
 
-  // hourly options ("00:00".."23:00") for the time dropdowns, e.g. { value: '09:00', label: '9:00 AM' }
-  readonly hourOptions = Array.from({ length: 24 }, (_, hour) => {
-    const value = `${hour.toString().padStart(2, '0')}:00`;
-    return { value, label: this.to12Hour(value) };
-  });
-
-  // pickup times need finer control than itinerary points: every 15 minutes
+  // pickup and itinerary-point times, every 15 minutes, e.g. { value: '09:15', label: '9:15 AM' }
   readonly quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
     const value = `${Math.floor(i / 4).toString().padStart(2, '0')}:${((i % 4) * 15).toString().padStart(2, '0')}`;
     return { value, label: this.to12Hour(value) };
@@ -62,6 +56,7 @@ export class TripFormComponent implements OnInit {
     includesBonfire: [false],
     includesMusicalNight: [false],
     includesSwimmingPool: [false],
+    allowCoupons: [true],
     status: [TripStatus.Active],
   });
 
@@ -77,6 +72,12 @@ export class TripFormComponent implements OnInit {
 
   // add-point draft, keyed by dayId
   newPoint: Record<number, { time: string; description: string }> = {};
+
+  // inline edit of a saved day / point (one at a time)
+  readonly editingDayId = signal<number | null>(null);
+  dayDraft = { dayNumber: 1, title: '', description: '' };
+  readonly editingPointId = signal<number | null>(null);
+  pointDraft = { time: '', description: '' };
 
   // add-pickup-point draft
   newPickupPoint = { location: '', time: '' };
@@ -116,6 +117,10 @@ export class TripFormComponent implements OnInit {
         for (const day of t.itineraryDays) {
           this.newPoint[day.itineraryDayId] ??= { time: '', description: '' };
         }
+        // Suggest the next free day number (Day 1 when empty) unless a new day is half-typed.
+        if (!this.newDay.title && !this.newDay.description) {
+          this.newDay.dayNumber = Math.max(0, ...t.itineraryDays.map((d) => d.dayNumber)) + 1;
+        }
         this.form.patchValue({
           title: t.title,
           description: t.description,
@@ -131,6 +136,7 @@ export class TripFormComponent implements OnInit {
           includesBonfire: t.inclusions.bonfire,
           includesMusicalNight: t.inclusions.musicalNight,
           includesSwimmingPool: t.inclusions.swimmingPool,
+          allowCoupons: t.allowCoupons,
           status: t.status,
         });
         this.loading.set(false);
@@ -257,7 +263,7 @@ export class TripFormComponent implements OnInit {
     this.tripService.addItineraryDay(this.tripId, this.newDay).subscribe({
       next: () => {
         this.toast.success('Itinerary day added.');
-        this.newDay = { dayNumber: (this.trip()?.itineraryDays.length ?? 0) + 2, title: '', description: '' };
+        this.newDay = { dayNumber: this.newDay.dayNumber + 1, title: '', description: '' };
         this.loadTrip(this.tripId!, true);
       },
     });
@@ -284,6 +290,50 @@ export class TripFormComponent implements OnInit {
 
   deletePoint(id: number): void {
     this.tripService.deleteItineraryPoint(id).subscribe(() => this.loadTrip(this.tripId!, true));
+  }
+
+  startEditDay(d: ItineraryDay): void {
+    this.editingPointId.set(null);
+    this.dayDraft = { dayNumber: d.dayNumber, title: d.title, description: d.description };
+    this.editingDayId.set(d.itineraryDayId);
+  }
+
+  saveDay(d: ItineraryDay): void {
+    if (!this.dayDraft.dayNumber || this.dayDraft.dayNumber < 1 || !this.dayDraft.title.trim() || !this.dayDraft.description.trim()) {
+      this.toast.error('Enter a day number, title and description.');
+      return;
+    }
+    this.tripService
+      .updateItineraryDay(d.itineraryDayId, { ...this.dayDraft, displayOrder: d.displayOrder })
+      .subscribe({
+        next: () => {
+          this.toast.success('Itinerary day updated.');
+          this.editingDayId.set(null);
+          this.loadTrip(this.tripId!, true);
+        },
+      });
+  }
+
+  startEditPoint(p: ItineraryPoint): void {
+    this.editingDayId.set(null);
+    this.pointDraft = { time: this.to24Hour(p.time), description: p.description };
+    this.editingPointId.set(p.itineraryPointId);
+  }
+
+  savePoint(p: ItineraryPoint): void {
+    if (!this.pointDraft.time || !this.pointDraft.description.trim()) {
+      this.toast.error('Enter a time and description for the point.');
+      return;
+    }
+    this.tripService
+      .updateItineraryPoint(p.itineraryPointId, { time: this.to12Hour(this.pointDraft.time), description: this.pointDraft.description, displayOrder: p.displayOrder })
+      .subscribe({
+        next: () => {
+          this.toast.success('Itinerary point updated.');
+          this.editingPointId.set(null);
+          this.loadTrip(this.tripId!, true);
+        },
+      });
   }
 
   // ---------- room photos ----------
@@ -378,5 +428,15 @@ export class TripFormComponent implements OnInit {
     const period = hours >= 12 ? 'PM' : 'AM';
     const hour12 = hours % 12 === 0 ? 12 : hours % 12;
     return `${hour12}:${minutes} ${period}`;
+  }
+
+  // "7:30 PM" → "19:30", so a saved point's time can be picked again in the edit dropdown.
+  // Anything that isn't in that shape comes back empty and the admin re-picks the time.
+  private to24Hour(time12: string): string {
+    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time12.trim());
+    if (!match) return '';
+    let hours = Number(match[1]) % 12;
+    if (match[3].toUpperCase() === 'PM') hours += 12;
+    return `${hours.toString().padStart(2, '0')}:${match[2]}`;
   }
 }
