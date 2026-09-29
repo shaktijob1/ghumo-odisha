@@ -12,4 +12,10 @@ public static class ClaimsPrincipalExtensions
 
         return int.Parse(value);
     }
+
+    /// <summary>The signed-in driver's id — only meaningful on [Authorize(Roles = "Driver")] endpoints.</summary>
+    public static int GetDriverId(this ClaimsPrincipal user) => user.GetCustomerId();
+
+    /// <summary>The signed-in admin's id — only meaningful on [Authorize(Roles = "Admin")] endpoints.</summary>
+    public static int GetAdminId(this ClaimsPrincipal user) => user.GetCustomerId();
 }

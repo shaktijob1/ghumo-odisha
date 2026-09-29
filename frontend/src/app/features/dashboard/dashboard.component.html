@@ -1,75 +1,282 @@
-<div class="container">
-  <section class="dhero">
-    @if (heroImage()) {
-      <img [src]="heroImage() | imageUrl" alt="Odisha landscape" (error)="onHeroImageError()" />
-    }
-    <div class="dhero-inner">
-      <span class="eyebrow">EXPLORE ODISHA</span>
-      <h1>Discover Odisha.<br />Travel. Explore. Experience.</h1>
-      <p>Explore Odisha's mountains, waterfalls, beaches, temples and hidden destinations with Ghumo Odisha.</p>
-    </div>
+<!-- Hero: "Meet. Travel. Explore." + one search card with Trips / Cars / Holidays tabs. -->
+<section class="hx" aria-labelledby="hx-title">
+  <div class="hx-decor" aria-hidden="true">
+    <svg class="hx-birds" width="120" height="70" viewBox="0 0 120 70" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 22c6-7 12-7 16 0 4-7 10-7 16 0"></path>
+      <path d="M62 46c4-5 8-5 11 0 3-5 7-5 11 0"></path>
+    </svg>
+    <svg class="hx-trail" width="260" height="180" viewBox="0 0 260 180" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 9">
+      <path d="M8 170C60 150 70 90 130 80s110-30 122-72"></path>
+    </svg>
+  </div>
 
-    <div class="dhero-search">
-      <div class="searchbar">
-        <!-- Month: the whole section opens a month-only picker (next 12 months). -->
-        <div class="sfield hs-field hs-month" [class.open]="monthOpen()">
-          <button type="button" class="hs-trigger" aria-haspopup="listbox" [attr.aria-expanded]="monthOpen()" (click)="toggleMonth()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-            @if (searchMonthOption(); as m) {
-              <span class="hs-value"><span class="m-long">{{ m.label }}</span><span class="m-short">{{ m.short }}</span></span>
-            } @else {
-              <span class="hs-value ph">Month</span>
-            }
-            <svg class="hs-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+  <div class="container">
+    <!-- Spaces sit inside the spans: Angular drops whitespace-only text between elements. -->
+    <h1 id="hx-title" class="hx-title"><span class="hx-meet">Meet. </span><span class="hx-travel">Travel. </span><span class="hx-explore">Explore.</span></h1>
+    <p class="hx-sub">
+      @if (tripsOnly()) { Join group trips across Odisha with Ghumo Odisha. } @else { Join group trips, book vehicles or plan your next holiday with Ghumo Odisha. }
+    </p>
+
+    <div class="hx-card" #heroCard>
+      <!-- Cars and Holidays are hidden while appsettings Features:HideCarsAndHolidays is on: no tab bar, Trips search only. -->
+      @if (!tripsOnly()) {
+      <div class="hx-tabs" role="tablist" aria-label="What would you like to plan?">
+        @for (tab of searchTabs; track tab.key) {
+          <button type="button" role="tab" class="hx-tab" [class.on]="searchTab() === tab.key" [attr.aria-selected]="searchTab() === tab.key"
+            aria-controls="hx-panel" (click)="selectSearchTab(tab.key)">
+            <span class="hx-tab-ic" aria-hidden="true">
+              @switch (tab.key) {
+                @case ('trips') {
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="15" rx="3"></rect><path d="M4 11h16M8 18v3M16 18v3"></path><circle cx="8" cy="14.5" r=".9" fill="currentColor"></circle><circle cx="16" cy="14.5" r=".9" fill="currentColor"></circle><path d="M8 6.5h8"></path></svg>
+                }
+                @case ('cars') {
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3.5a1 1 0 0 1-1-1v-3.2a2 2 0 0 1 .6-1.4L5 9.5l1.7-3.4A2 2 0 0 1 8.5 5h7a2 2 0 0 1 1.8 1.1L19 9.5l1.9 1.9a2 2 0 0 1 .6 1.4V16a1 1 0 0 1-1 1H19"></path><path d="M5 9.5h14"></path><circle cx="7.5" cy="17" r="2"></circle><circle cx="16.5" cy="17" r="2"></circle><path d="M9.5 17h5"></path></svg>
+                }
+                @case ('holidays') {
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v11"></path><path d="M12 10C10 6 6 5.5 3.5 7c2.5.2 4.5 1.3 5.5 3"></path><path d="M12 10c2-4 6-4.5 8.5-3-2.5.2-4.5 1.3-5.5 3"></path><path d="M12 10c-1.5-3-1-5.5.5-7.5.5 2.5 0 5-.5 7.5z"></path><path d="M4 21c2.5-2 5-2.5 8-2.5s5.5.5 8 2.5"></path></svg>
+                }
+              }
+            </span>
+            <span class="hx-tab-text"><b>{{ tab.title }}</b><small>{{ tab.subtitle }}</small></span>
           </button>
-          @if (monthOpen()) {
-            <div class="hs-pop hs-months" role="listbox" aria-label="Month">
-              @for (m of monthOptions; track m.value) {
-                <button type="button" role="option" [class.on]="searchMonth() === m.value" [attr.aria-selected]="searchMonth() === m.value" (click)="pickMonth(m.value)">{{ m.label }}</button>
+        }
+      </div>
+      }
+
+      <div id="hx-panel" class="hx-panel" role="tabpanel" (focusin)="onSearchFieldsEngaged($event)" (click)="onSearchFieldsEngaged($event)">
+        @switch (searchTab()) {
+          @case ('trips') {
+            <!-- Same month + place search as before: filters Upcoming Trips below and logs the search. -->
+            <div class="hx-field hs-month" [class.open]="monthOpen()">
+              <label class="hx-lbl" for="hx-month">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                Travel Month
+              </label>
+              <button type="button" id="hx-month" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="monthOpen()" (click)="toggleMonth()">
+                <span class="hx-val" [class.ph]="!searchMonthOption()">{{ searchMonthOption()?.full ?? 'Any month' }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (monthOpen()) {
+                <div class="hs-pop hs-months" role="listbox" aria-label="Travel month">
+                  @for (m of monthOptions; track m.value) {
+                    <button type="button" role="option" [class.on]="searchMonth() === m.value" [attr.aria-selected]="searchMonth() === m.value" (click)="pickMonth(m.value)">{{ m.short }} {{ m.year }}</button>
+                  }
+                </div>
               }
             </div>
-          }
-        </div>
-        <span class="sdiv hero-sdiv" aria-hidden="true"></span>
-        <!-- Place: the whole section focuses a text box with matching suggestions below it. -->
-        <div class="sfield hs-field hs-place" [class.open]="placeOpen()" (click)="openPlace()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-          <input
-            #placeInput
-            class="sinput hs-input"
-            placeholder="Place"
-            aria-label="Place"
-            autocomplete="off"
-            [ngModel]="searchPlace()"
-            (ngModelChange)="searchPlace.set($event); placeOpen.set(true)"
-            (focus)="placeOpen.set(true); monthOpen.set(false)"
-            (keydown.enter)="applyFilters()"
-          />
-          @if (searchPlace()) {
-            <button type="button" class="hs-clear" aria-label="Clear place" (click)="clearSearchPlace($event)">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+
+            <span class="hx-sep" aria-hidden="true"></span>
+
+            <div class="hx-field hs-place" [class.open]="placeOpen()">
+              <label class="hx-lbl" for="hx-place">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                Destination
+              </label>
+              <div class="hx-box" (click)="openPlace()">
+                <input
+                  #placeInput
+                  id="hx-place"
+                  class="hx-input"
+                  placeholder="Where do you want to go?"
+                  autocomplete="off"
+                  [ngModel]="searchPlace()"
+                  (ngModelChange)="searchPlace.set($event); placeOpen.set(true)"
+                  (focus)="monthOpen.set(false)"
+                  (keydown.enter)="applyFilters()"
+                />
+                @if (searchPlace()) {
+                  <button type="button" class="hs-clear" aria-label="Clear destination" (click)="clearSearchPlace($event)">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                  </button>
+                }
+              </div>
+              @if (placeOpen() && placeSuggestions().length > 0) {
+                <div class="hs-pop hs-places" role="listbox" aria-label="Destinations">
+                  @for (p of placeSuggestions(); track p) {
+                    <button type="button" role="option" [class.on]="searchPlace() === p" (mousedown)="$event.preventDefault()" (click)="pickPlace(p); $event.stopPropagation()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                      {{ p }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Compact icon button next to the fields; spells out "Search Trips" when full width on phones. -->
+            <button type="button" class="hx-go hx-go-icon" aria-label="Search trips" title="Search trips" (click)="applyFilters()">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              <span class="hx-go-text">Search Trips</span>
             </button>
           }
-          @if (placeOpen() && placeSuggestions().length > 0) {
-            <div class="hs-pop hs-places" role="listbox" aria-label="Places">
-              @for (p of placeSuggestions(); track p) {
-                <button type="button" role="option" [class.on]="searchPlace() === p" (mousedown)="$event.preventDefault()" (click)="pickPlace(p); $event.stopPropagation()">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-                  {{ p }}
-                </button>
+
+          @case ('cars') {
+            <!-- Live car search: results (approved cars only) appear below the card. -->
+            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carPickup'">
+              <label class="hx-lbl" for="hx-car-pickup">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                Pickup Location
+              </label>
+              <button type="button" id="hx-car-pickup" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carPickup'" (click)="toggleDropdown('carPickup')">
+                <span class="hx-val" [class.ph]="!carPickup()">{{ carPickup() || 'Any location' }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (openDropdown() === 'carPickup') {
+                <div class="hs-pop hs-places" role="listbox" aria-label="Pickup location">
+                  <button type="button" role="option" [class.on]="!carPickup()" [attr.aria-selected]="!carPickup()" (click)="carPickup.set(''); openDropdown.set(null)">Any location</button>
+                  @for (o of carPickups(); track o) {
+                    <button type="button" role="option" [class.on]="carPickup() === o" [attr.aria-selected]="carPickup() === o" (click)="carPickup.set(o); openDropdown.set(null)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                      {{ o }}
+                    </button>
+                  }
+                </div>
               }
             </div>
+            <span class="hx-sep" aria-hidden="true"></span>
+            <div class="hx-field">
+              <span class="hx-lbl">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                Date
+              </span>
+              <!-- The site's own calendar picker; its button fills the whole box. -->
+              <div class="hx-datebox">
+                <app-date-picker [value]="carDate()" (valueChange)="carDate.set($event)" placeholder="Tomorrow" [min]="todayIso"></app-date-picker>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </div>
+            </div>
+            <span class="hx-sep" aria-hidden="true"></span>
+            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carTime'">
+              <label class="hx-lbl" for="hx-car-time">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                Pickup Time
+              </label>
+              <button type="button" id="hx-car-time" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carTime'" (click)="toggleDropdown('carTime')">
+                <span class="hx-val">{{ carTimeLabel() }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (openDropdown() === 'carTime') {
+                <div class="hs-pop hs-places hx-timelist" role="listbox" aria-label="Pickup time">
+                  @for (t of carTimes; track t.value) {
+                    <button type="button" role="option" [class.on]="carTime() === t.value" [attr.aria-selected]="carTime() === t.value" (click)="carTime.set(t.value); openDropdown.set(null)">{{ t.label }}</button>
+                  }
+                </div>
+              }
+            </div>
+            <span class="hx-sep" aria-hidden="true"></span>
+            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carDuration'">
+              <label class="hx-lbl" for="hx-car-duration">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"></path></svg>
+                Duration
+              </label>
+              <button type="button" id="hx-car-duration" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carDuration'" (click)="toggleDropdown('carDuration')">
+                <span class="hx-val">{{ carDurationLabel() }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (openDropdown() === 'carDuration') {
+                <div class="hs-pop hs-places" role="listbox" aria-label="Duration">
+                  @for (d of carDurationPresets; track d.hours) {
+                    <button type="button" role="option" [class.on]="!carCustom() && carHours() === d.hours" [attr.aria-selected]="!carCustom() && carHours() === d.hours" (click)="pickCarDuration(d.hours)">{{ d.label }}</button>
+                  }
+                  <button type="button" role="option" [class.on]="carCustom()" [attr.aria-selected]="carCustom()" (click)="carCustom.set(true)">Custom duration…</button>
+                  @if (carCustom()) {
+                    <div class="hx-custom">
+                      <input class="inp" type="number" min="1" inputmode="numeric" aria-label="How long" [ngModel]="carCustomValue()" (ngModelChange)="carCustomValue.set(+$event)" />
+                      <select class="inp" aria-label="Unit" [ngModel]="carCustomUnit()" (ngModelChange)="carCustomUnit.set($event)">
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                      </select>
+                      <button type="button" class="btn sm" (click)="applyCustomDuration()">Done</button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            <button type="button" class="hx-go hx-go-cars" (click)="searchCars()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              Search Cars
+            </button>
+          }
+
+          @case ('holidays') {
+            <!-- No holiday package system yet: the search sends these details to the organizer on WhatsApp. -->
+            <div class="hx-field">
+              <label class="hx-lbl" for="hx-hol-place">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                Destination
+              </label>
+              <div class="hx-box">
+                <input id="hx-hol-place" class="hx-input" placeholder="e.g. Koraput, Puri" autocomplete="off" [ngModel]="holidayPlace()" (ngModelChange)="holidayPlace.set($event)" (keydown.enter)="exploreHolidays()" />
+              </div>
+            </div>
+            <span class="hx-sep" aria-hidden="true"></span>
+            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'holidayMonth'">
+              <label class="hx-lbl" for="hx-hol-month">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                Travel Month
+              </label>
+              <button type="button" id="hx-hol-month" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'holidayMonth'" (click)="toggleDropdown('holidayMonth')">
+                <span class="hx-val" [class.ph]="!holidayMonth()">{{ holidayMonthLabel() }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (openDropdown() === 'holidayMonth') {
+                <!-- Same month grid as the Trips tab; tapping the chosen month again clears it. -->
+                <div class="hs-pop hs-months" role="listbox" aria-label="Travel month">
+                  @for (m of monthOptions; track m.value) {
+                    <button type="button" role="option" [class.on]="holidayMonth() === m.value" [attr.aria-selected]="holidayMonth() === m.value"
+                      (click)="holidayMonth.set(holidayMonth() === m.value ? '' : m.value); openDropdown.set(null)">{{ m.short }} {{ m.year }}</button>
+                  }
+                </div>
+              }
+            </div>
+            <span class="hx-sep" aria-hidden="true"></span>
+            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'holidayTravellers'">
+              <label class="hx-lbl" for="hx-hol-travellers">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"></path></svg>
+                Travellers
+              </label>
+              <button type="button" id="hx-hol-travellers" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'holidayTravellers'" (click)="toggleDropdown('holidayTravellers')">
+                <span class="hx-val">{{ holidayTravellers() }} {{ holidayTravellers() === '1' ? 'Traveller' : 'Travellers' }}</span>
+                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+              </button>
+              @if (openDropdown() === 'holidayTravellers') {
+                <div class="hs-pop hs-months hx-numgrid" role="listbox" aria-label="Travellers">
+                  @for (n of travellerOptions; track n) {
+                    <button type="button" role="option" [class.on]="holidayTravellers() === n" [attr.aria-selected]="holidayTravellers() === n" (click)="holidayTravellers.set(n); openDropdown.set(null)">{{ n }}</button>
+                  }
+                </div>
+              }
+            </div>
+            <button type="button" class="hx-go" (click)="exploreHolidays()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+              Explore Holidays
+            </button>
+          }
+        }
+      </div>
+
+      @if (showPopularSearches && searchTab() === 'trips') {
+        <div class="hx-popular">
+          <span class="hx-popular-lbl">Popular searches:</span>
+          @for (p of popularSearches; track p) {
+            <button type="button" class="hx-chip" (click)="searchPopular(p)">{{ p }}</button>
           }
         </div>
-        <button type="button" class="btn searchbtn" aria-label="Search" (click)="applyFilters()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-          <span class="searchbtn-label">Search</span>
-        </button>
-      </div>
+      }
     </div>
-  </section>
-</div>
+  </div>
+  <!-- Phones: temporary room so the card can scroll up under the navbar on a short page. -->
+  @if (searchRoom() > 0) {
+    <div class="hx-room" [style.height.px]="searchRoom()" aria-hidden="true"></div>
+  }
+</section>
 
+<!-- Cars search results (while the Cars tab is open, after Search Cars). -->
+@if (searchTab() === 'cars' && carSearch(); as q) {
+  <app-car-results [city]="q.city" [window]="q.window"></app-car-results>
+}
+
+<!-- Everything below is trip content; while the Cars tab is open only car results show. -->
+@if (searchTab() !== 'cars') {
 <section id="trending-destinations" class="sect tight">
   <div class="container">
    <!-- White panel with a horizontal card row + prev/next arrows, on desktop and mobile alike. -->
@@ -77,8 +284,8 @@
     <div class="sechead">
       <div class="sechead-text">
         <span class="eyebrow">Trending Now</span>
-        <h2><span class="h-full">Trending Odisha Destinations</span><span class="h-mobile">Trending in Odisha</span></h2>
-        <p class="sub coupon-sub">Apply Coupon <span class="coupon-code">GHUMO200</span> to get extra &#8377;200 discount</p>
+        <!-- Section titles follow one pattern site-wide: .up-g green, .up-o orange (plain text stays black). -->
+        <h2><span class="up-g">Trending </span><span class="up-o">Places</span></h2>
       </div>
       <div class="trend-arrows">
         <button type="button" aria-label="Previous destinations" [disabled]="!canScrollPrev()" (click)="scrollTrending(-1)">
@@ -124,56 +331,64 @@
 
 <section id="upcoming-trips" class="sect">
   <div class="container" [class.section-flash]="highlightUpcoming()">
-   <!-- White panel with one scrollable row of trip cards + prev/next arrows, on desktop and mobile alike. -->
+   <!-- White panel; trip cards in balanced rows (4 per row on laptops), "View more" loads the next page. -->
    <div class="trend-panel">
     <div class="sechead">
       <div>
         <span class="eyebrow">Upcoming Departures</span>
-        <h2>Book Now at &#8377;99 only</h2>
-        <p class="sub coupon-sub">Apply Code <span class="coupon-code">GO200</span> to get extra &#8377;200 discount</p>
+        <!-- Spaces sit inside the spans: Angular drops whitespace-only text between elements. -->
+        <h2 class="up-title"><span class="up-g">Upcoming </span><span class="up-o">Adventures</span></h2>
+        @if (upcomingSubtitle()) {
+          <p class="sub coupon-sub">{{ upcomingSubtitle() }}</p>
+        }
       </div>
-      <div class="trend-arrows">
-        <button type="button" aria-label="Previous trips" [disabled]="!tripCanScrollPrev()" (click)="scrollTrips(-1)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+      <!-- Phones only: soft hills, trees and a paper plane beside the heading. -->
+      <svg class="up-art" width="132" height="86" viewBox="0 0 132 86" fill="none" aria-hidden="true">
+        <path d="M58 20c14-12 32-18 52-14" stroke="#9AA4A6" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="1.5 5"></path>
+        <path d="M110 6l14-4-6 13-2.5-5.5z" fill="#EE6A2A"></path>
+        <path d="M115.5 9.5 124 2" stroke="#fff" stroke-width="1" stroke-linecap="round"></path>
+        <path d="M18 84 50 44l20 22 16-14 30 32z" fill="#D5EDE4"></path>
+        <path d="M50 44l7 8-4 3-3-4-3 4-3-3z" fill="#fff" opacity=".85"></path>
+        <path d="M60 84l26-30 30 30z" fill="#BFDDD4"></path>
+        <path d="M86 54l6 7-3 2-3-3-3 3-3-2z" fill="#fff" opacity=".85"></path>
+        <path d="M100 84V74M100 60l-5 9h3l-4 7h12l-4-7h3z" stroke="#0F6F5C" stroke-width="1.2" fill="#8FC7B4" stroke-linejoin="round"></path>
+        <path d="M112 84V76M112 64l-4 7h2.5l-3.5 6h10l-3.5-6H116z" stroke="#0F6F5C" stroke-width="1.2" fill="#A9D4C4" stroke-linejoin="round"></path>
+        <path d="M6 84h124" stroke="#CFE7DD" stroke-width="1.4" stroke-linecap="round"></path>
+      </svg>
+    <!-- Location dropdown (only places on the cards) + trip count: right of the heading on larger
+         screens, a row of its own under it on phones. -->
+    <div class="up-bar">
+      <div class="up-loc" [class.open]="locOpen()">
+        <button type="button" class="up-loc-btn" aria-haspopup="listbox" [attr.aria-expanded]="locOpen()" (click)="locOpen.set(!locOpen())">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+          <span class="up-loc-val">
+            @if (selectedLocation() ?? placeQuery(); as place) {
+              {{ place }}
+            } @else {
+              <!-- Narrow phones (under 380px) get the short label so it isn't cut off. -->
+              <span class="lv-long">Explore destinations</span><span class="lv-short">Destinations</span>
+            }
+          </span>
+          <svg class="up-loc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
         </button>
-        <button type="button" aria-label="Next trips" [disabled]="!tripCanScrollNext()" (click)="scrollTrips(1)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-        </button>
+        @if (locOpen()) {
+          <div class="hs-pop hs-places up-loc-pop" role="listbox" aria-label="Location">
+            <button type="button" role="option" [class.on]="selectedLocation() === null && !placeQuery()" [attr.aria-selected]="selectedLocation() === null && !placeQuery()" (click)="selectLocation(null)">All destinations</button>
+            @for (loc of distinctLocations(); track loc) {
+              <button type="button" role="option" [class.on]="selectedLocation() === loc" [attr.aria-selected]="selectedLocation() === loc" (click)="selectLocation(loc)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                {{ loc }}
+              </button>
+            }
+          </div>
+        }
       </div>
+      <span class="sechead-meta up-count">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2.5"></rect><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"></path></svg>
+        <b>{{ tripsTotal() }}</b> {{ tripsTotal() === 1 ? 'trip' : 'trips' }}
+      </span>
     </div>
-
-    @if (distinctLocations().length > 0) {
-      <div class="locfilters">
-        <button type="button" class="locbtn" [class.on]="selectedLocation() === null" (click)="selectLocation(null)">All</button>
-        @for (loc of distinctLocations(); track loc) {
-          <button type="button" class="locbtn" [class.on]="selectedLocation() === loc" (click)="selectLocation(loc)">{{ loc }}</button>
-        }
-      </div>
-    }
-
-    @if (hasActiveFilters()) {
-      <div class="filterchips">
-        @if (appliedMonth()) {
-          <span class="chip">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-            {{ appliedMonthLabel() }}
-            <button type="button" class="chipx" (click)="clearMonthFilter()" aria-label="Remove month filter">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
-            </button>
-          </span>
-        }
-        @if (placeQuery()) {
-          <span class="chip">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-            &ldquo;{{ placeQuery() }}&rdquo;
-            <button type="button" class="chipx" (click)="clearPlaceQuery()" aria-label="Remove place filter">
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
-            </button>
-          </span>
-        }
-        <button type="button" class="clearall-btn" (click)="clearAllFilters()">Clear all filters</button>
-      </div>
-    }
+    </div>
 
     @switch (state()) {
       @case ('loading') {
@@ -200,20 +415,32 @@
         @if (upcomingTrips().length === 0) {
           <div class="state-panel">
             @if (hasActiveFilters() || selectedLocation()) {
-              <p class="mut" style="margin-bottom:14px">No trips match your search. Try another month or place.</p>
+              <!-- Says exactly what isn't available (place and/or month) instead of a generic "no match". -->
+              <div class="up-na">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><path d="m10 8 4 4M14 8l-4 4"></path></svg>
+                <b>Not available</b>
+                <p class="mut">{{ unavailableMessage() }}</p>
+              </div>
               <button class="btn sm ghost" (click)="clearAllFilters()">Show all trips</button>
             } @else {
               <p class="mut">No upcoming trips are available right now. Please check back soon.</p>
             }
           </div>
         } @else {
-          <div class="tgrid trow" #tripScroll (scroll)="updateTripArrows()">
-            @for (t of upcomingTrips(); track $index) {
+          <!-- --per: cards per row for this many cards (5 → 3 + 2, 1 → centred); --max: most that fit in a row. -->
+          <div class="tgrid trow up-grid" [style.--per]="tripsPerRow()" [style.--max]="tripsMaxPerRow()">
+            @for (t of upcomingTrips(); track t.tripId) {
               <div class="tslot">
                 <app-trip-card [trip]="t" [showNextDeparture]="true"></app-trip-card>
               </div>
             }
           </div>
+          <!-- The next page (8 cards; 5 on phones) comes from the server. -->
+          @if (upcomingTrips().length < tripsTotal()) {
+            <div class="up-more">
+              <button type="button" class="btn up-more-btn" [disabled]="loadingMoreTrips()" (click)="loadMoreTrips()">{{ loadingMoreTrips() ? 'Loading…' : 'View more' }}</button>
+            </div>
+          }
         }
       }
     }
@@ -228,8 +455,9 @@
     <div class="sechead">
       <div>
         <span class="eyebrow">Why Ghumo Odisha</span>
-        <h2>Why Travel With Ghumo Odisha</h2>
-        <p class="sub">What to expect when you travel with us.</p>
+        <!-- "Why" black, "Ghumo" green, "Odisha" orange; spaces inside the spans (Angular drops
+             whitespace-only text between elements). -->
+        <h2 class="why-title">Why <span class="wg-g">Ghumo </span><span class="wg-o">Odisha</span></h2>
       </div>
     </div>
 
@@ -291,3 +519,4 @@
     </div>
   </div>
 </section>
+}

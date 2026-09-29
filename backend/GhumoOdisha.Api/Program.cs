@@ -9,6 +9,7 @@ using GhumoOdisha.Api.Seo;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
 using GhumoOdisha.Application.Bookings;
+using GhumoOdisha.Application.Cars;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Contact;
 using GhumoOdisha.Application.Coupons;
@@ -110,6 +111,7 @@ builder.Services.AddScoped<IBookingEmailService, BookingEmailService>();
 
 builder.Services.AddScoped<IPinHasher, PinHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
 builder.Services.AddScoped<ICustomerAuthService, CustomerAuthService>();
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<ITripService, TripService>();
@@ -139,7 +141,20 @@ builder.Services.AddHostedService<LogRetentionBackgroundService>();
 builder.Services.AddScoped<ILogQueryService, LogQueryService>();
 builder.Services.AddScoped<ISearchLogService, SearchLogService>();
 
+builder.Services.Configure<CarRentalOptions>(builder.Configuration.GetSection(CarRentalOptions.SectionName));
+builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
+builder.Services.AddScoped<IDriverService, DriverService>();
+builder.Services.AddScoped<IDriverCarService, DriverCarService>();
+builder.Services.AddScoped<IAdminCarService, AdminCarService>();
+builder.Services.AddScoped<ICarCatalogService, CarCatalogService>();
+// Registered as itself too: the payment service uses its internal confirm/lock helpers.
+builder.Services.AddScoped<CarBookingService>();
+builder.Services.AddScoped<ICarBookingService>(sp => sp.GetRequiredService<CarBookingService>());
+builder.Services.AddScoped<ICarBookingPaymentService, CarBookingPaymentService>();
+builder.Services.AddScoped<ICarTripService, CarTripService>();
+builder.Services.AddHostedService<CarBookingHoldExpiryBackgroundService>();
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
+builder.Services.Configure<FeatureOptions>(builder.Configuration.GetSection(FeatureOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
 builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
@@ -161,7 +176,8 @@ if (string.IsNullOrWhiteSpace(storageRootPath))
 }
 
 var uploadsBasePath = Path.Combine(storageRootPath, "Uploads");
-foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero" })
+// "driver-documents" is private: not in UploadedFilesController's public list, served only via authorized endpoints.
+foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents" })
 {
     Directory.CreateDirectory(Path.Combine(uploadsBasePath, category));
 }

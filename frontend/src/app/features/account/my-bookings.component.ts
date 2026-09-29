@@ -8,6 +8,7 @@ import { BookingTimelineComponent } from '../../shared/components/booking-timeli
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
 import { downloadFile } from '../../shared/utils/download-file';
+import { MyCarBookingsComponent } from '../cars/my-car-bookings.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -15,7 +16,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-my-bookings',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatePanelComponent, PaymentPanelComponent, ImageUrlPipe, BookingTimelineComponent],
+  imports: [CommonModule, RouterLink, StatePanelComponent, PaymentPanelComponent, ImageUrlPipe, BookingTimelineComponent, MyCarBookingsComponent],
   templateUrl: './my-bookings.component.html',
 })
 export class MyBookingsComponent implements OnInit {

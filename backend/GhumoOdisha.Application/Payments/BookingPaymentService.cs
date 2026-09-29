@@ -81,6 +81,9 @@ public class BookingPaymentService(
                 ?? throw new NotFoundException("Date slot not found.");
             SlotBookingRules.EnsureBookable(slot, booking.NumberOfSeats);
 
+            // A coupon's amount is per seat: ₹200 off × 4 seats = ₹800 off the booking. Seats come from
+            // the booking row, never from the client.
+            couponDiscount *= booking.NumberOfSeats;
             var (advanceAmount, totalDiscount) = ComputeAmounts(booking, trip, plan, couponDiscount);
             var amountPaise = ToPaise(advanceAmount);
 
@@ -254,6 +257,7 @@ public class BookingPaymentService(
         return booking;
     }
 
+    /// <summary><paramref name="couponDiscount"/> is the whole booking's coupon discount (per-seat amount × seats).</summary>
     private (decimal AdvanceAmount, decimal TotalDiscount) ComputeAmounts(Booking booking, Trip trip, BookingPaymentPlan plan, decimal couponDiscount)
     {
         var totalAmount = trip.AmountPerPerson * booking.NumberOfSeats;

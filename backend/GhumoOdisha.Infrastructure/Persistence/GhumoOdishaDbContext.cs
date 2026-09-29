@@ -40,6 +40,16 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<AdminActivity> AdminActivities => Set<AdminActivity>();
     public DbSet<SearchLog> SearchLogs => Set<SearchLog>();
     public DbSet<Destination> Destinations => Set<Destination>();
+    public DbSet<Driver> Drivers => Set<Driver>();
+    public DbSet<DriverRefreshToken> DriverRefreshTokens => Set<DriverRefreshToken>();
+    public DbSet<DriverDocument> DriverDocuments => Set<DriverDocument>();
+    public DbSet<Car> Cars => Set<Car>();
+    public DbSet<CarPhoto> CarPhotos => Set<CarPhoto>();
+    public DbSet<CarPricing> CarPricings => Set<CarPricing>();
+    public DbSet<CarPricingTier> CarPricingTiers => Set<CarPricingTier>();
+    public DbSet<CarBooking> CarBookings => Set<CarBooking>();
+    public DbSet<CarTripExecution> CarTripExecutions => Set<CarTripExecution>();
+    public DbSet<CarAuditEvent> CarAuditEvents => Set<CarAuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

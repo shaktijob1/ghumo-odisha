@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
+import { carsEnabledGuard } from './core/guards/cars-enabled.guard';
 import { customerGuard } from './core/guards/customer.guard';
+import { driverGuard } from './core/guards/driver.guard';
 
 export const routes: Routes = [
   {
@@ -14,14 +16,36 @@ export const routes: Routes = [
         path: 'destinations/:slug',
         loadComponent: () => import('./features/destinations/destination-detail.component').then((m) => m.DestinationDetailComponent),
       },
+      // Customer Cars pages: redirect home while appsettings Features:HideCarsAndHolidays is on.
+      // (A customer's own car bookings under My Bookings stay reachable.)
       {
         path: 'cars',
-        data: { title: 'Cars' },
-        loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
+        title: 'Book Cars & Tempo Travellers with Driver | Ghumo Odisha',
+        canActivate: [carsEnabledGuard],
+        loadComponent: () => import('./features/cars/cars-page.component').then((m) => m.CarsPageComponent),
+      },
+      {
+        path: 'cars/:id',
+        title: 'Car details | Ghumo Odisha',
+        canActivate: [carsEnabledGuard],
+        loadComponent: () => import('./features/cars/car-detail.component').then((m) => m.CarDetailComponent),
+      },
+      {
+        path: 'cars/:id/book',
+        title: 'Book your car | Ghumo Odisha',
+        canActivate: [carsEnabledGuard],
+        loadComponent: () => import('./features/cars/car-booking.component').then((m) => m.CarBookingComponent),
+      },
+      {
+        path: 'my-bookings/cars/:id',
+        title: 'Car booking | Ghumo Odisha',
+        canActivate: [customerGuard],
+        loadComponent: () => import('./features/cars/car-booking-detail.component').then((m) => m.CarBookingDetailComponent),
       },
       {
         path: 'hotels',
         data: { title: 'Hotels' },
+        canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
       },
       { path: 'terms', title: 'Trip Terms & Conditions | Ghumo Odisha', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
@@ -110,6 +134,40 @@ export const routes: Routes = [
         path: 'logs',
         loadComponent: () => import('./features/admin/logs/logs.component').then((m) => m.LogsComponent),
       },
+      // Cars module: driver / car / pricing approvals and car bookings with their ₹ refunds.
+      {
+        path: 'drivers',
+        loadComponent: () => import('./features/admin/cars/driver-list.component').then((m) => m.AdminDriverListComponent),
+      },
+      {
+        path: 'drivers/:id',
+        loadComponent: () => import('./features/admin/cars/driver-detail.component').then((m) => m.AdminDriverDetailComponent),
+      },
+      {
+        path: 'cars',
+        loadComponent: () => import('./features/admin/cars/car-list.component').then((m) => m.AdminCarListComponent),
+      },
+      {
+        path: 'cars/new',
+        loadComponent: () => import('./features/admin/cars/car-new.component').then((m) => m.AdminCarNewComponent),
+      },
+      {
+        path: 'cars/pricing',
+        loadComponent: () => import('./features/admin/cars/pricing-queue.component').then((m) => m.AdminPricingQueueComponent),
+      },
+      {
+        path: 'cars/:id',
+        loadComponent: () => import('./features/admin/cars/car-detail.component').then((m) => m.AdminCarDetailComponent),
+      },
+      {
+        path: 'car-bookings',
+        loadComponent: () => import('./features/admin/cars/car-booking-list.component').then((m) => m.AdminCarBookingListComponent),
+      },
+      {
+        path: 'car-bookings/:id',
+        loadComponent: () =>
+          import('./features/admin/cars/car-booking-detail.component').then((m) => m.AdminCarBookingDetailComponent),
+      },
       {
         path: 'coupons',
         loadComponent: () => import('./features/admin/coupons/coupon-list.component').then((m) => m.CouponListComponent),
@@ -119,6 +177,27 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/customers/customer-detail.component').then((m) => m.CustomerDetailComponent),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+    ],
+  },
+  {
+    path: 'driver/login',
+    title: 'Driver sign in | Ghumo Odisha',
+    loadComponent: () => import('./features/driver/driver-login.component').then((m) => m.DriverLoginComponent),
+  },
+  {
+    // Driver area: own shell (bottom tab bar on phones), signed in with the Driver role.
+    path: 'driver',
+    title: 'Driver | Ghumo Odisha',
+    canActivate: [driverGuard],
+    loadComponent: () => import('./layouts/driver-layout/driver-layout.component').then((m) => m.DriverLayoutComponent),
+    children: [
+      { path: '', loadComponent: () => import('./features/driver/driver-home.component').then((m) => m.DriverHomeComponent) },
+      { path: 'profile', loadComponent: () => import('./features/driver/driver-profile.component').then((m) => m.DriverProfileComponent) },
+      { path: 'cars', loadComponent: () => import('./features/driver/driver-cars.component').then((m) => m.DriverCarsComponent) },
+      { path: 'cars/:id', loadComponent: () => import('./features/driver/driver-car-form.component').then((m) => m.DriverCarFormComponent) },
+      { path: 'bookings', loadComponent: () => import('./features/driver/driver-bookings.component').then((m) => m.DriverBookingsComponent) },
+      { path: 'bookings/:id', loadComponent: () => import('./features/driver/driver-trip.component').then((m) => m.DriverTripComponent) },
+      { path: 'earnings', loadComponent: () => import('./features/driver/driver-earnings.component').then((m) => m.DriverEarningsComponent) },
     ],
   },
   { path: '**', loadComponent: () => import('./features/misc/not-found.component').then((m) => m.NotFoundComponent) },

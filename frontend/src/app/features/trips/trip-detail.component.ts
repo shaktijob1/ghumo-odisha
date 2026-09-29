@@ -67,7 +67,8 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   readonly seats = signal(1);
   // Chosen in the sidebar; carried into the payment step, where it is (re)validated for this customer.
   readonly coupon = signal<CouponSelection | null>(null);
-  readonly couponDiscount = computed(() => (this.coupon()?.validated ? this.coupon()!.discountAmount : 0));
+  // A coupon's amount is per seat (₹200 × 4 seats = ₹800 off) — same as BookingPaymentService server-side.
+  readonly couponDiscount = computed(() => (this.coupon()?.validated ? this.coupon()!.discountAmount * this.seats() : 0));
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly bookingResult = signal<CreateBookingResult | null>(null);
@@ -366,6 +367,20 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.selectedHighlight.set(h);
   }
 
+  /** Position of the open place in "What you'll see", in the same order as the cards on the page. */
+  readonly highlightIndex = computed(() => {
+    const open = this.selectedHighlight();
+    return open ? (this.trip()?.highlights ?? []).findIndex((h) => h.tripHighlightId === open.tripHighlightId) : -1;
+  });
+
+  /** Back / next inside the open place's popup; wraps around at either end. */
+  stepHighlight(direction: 1 | -1): void {
+    const places = this.trip()?.highlights ?? [];
+    const at = this.highlightIndex();
+    if (places.length < 2 || at < 0) return;
+    this.selectedHighlight.set(places[(at + direction + places.length) % places.length]);
+  }
+
   // ---------- "About this trip" key facts (all from the trip's own data) ----------
 
   readonly tripFacts = computed(() => {
@@ -462,8 +477,10 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       if (event.key === 'Escape') this.closePhotos();
       else if (event.key === 'ArrowRight') this.stepPhoto(1);
       else if (event.key === 'ArrowLeft') this.stepPhoto(-1);
-    } else if (this.selectedHighlight() && event.key === 'Escape') {
-      this.closeHighlight();
+    } else if (this.selectedHighlight()) {
+      if (event.key === 'Escape') this.closeHighlight();
+      else if (event.key === 'ArrowRight') this.stepHighlight(1);
+      else if (event.key === 'ArrowLeft') this.stepHighlight(-1);
     }
   }
 

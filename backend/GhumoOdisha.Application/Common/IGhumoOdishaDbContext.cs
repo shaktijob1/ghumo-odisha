@@ -36,6 +36,16 @@ public interface IGhumoOdishaDbContext
     DbSet<AdminActivity> AdminActivities { get; }
     DbSet<SearchLog> SearchLogs { get; }
     DbSet<Destination> Destinations { get; }
+    DbSet<Driver> Drivers { get; }
+    DbSet<DriverRefreshToken> DriverRefreshTokens { get; }
+    DbSet<DriverDocument> DriverDocuments { get; }
+    DbSet<Car> Cars { get; }
+    DbSet<CarPhoto> CarPhotos { get; }
+    DbSet<CarPricing> CarPricings { get; }
+    DbSet<CarPricingTier> CarPricingTiers { get; }
+    DbSet<CarBooking> CarBookings { get; }
+    DbSet<CarTripExecution> CarTripExecutions { get; }
+    DbSet<CarAuditEvent> CarAuditEvents { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

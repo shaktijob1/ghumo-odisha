@@ -71,7 +71,10 @@ export class PaymentPanelComponent implements OnInit {
 
   /** Only a coupon the API has validated for this customer counts toward the amounts. */
   private readonly appliedCode = computed(() => (this.selection()?.validated ? this.selection()!.code : null));
-  readonly couponDiscount = computed(() => (this.selection()?.validated ? this.selection()!.discountAmount : 0));
+  // A coupon's amount is per seat (₹200 × 4 seats = ₹800 off) — same as BookingPaymentService server-side.
+  readonly couponDiscount = computed(() =>
+    this.selection()?.validated ? this.selection()!.discountAmount * this.booking.numberOfSeats : 0,
+  );
 
   // Coupons only ever come off the cash balance due before the trip, never the ₹99 reservation
   // fee. Same formula as BookingPaymentService.ComputeAmounts server-side.

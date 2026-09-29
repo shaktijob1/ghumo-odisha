@@ -36,6 +36,18 @@ public class JwtTokenService(IOptions<JwtSettings> jwtOptions) : IJwtTokenServic
         return GenerateToken(claims, TimeSpan.FromHours(_settings.AdminTokenLifetimeHours));
     }
 
+    public string GenerateDriverToken(Driver driver)
+    {
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, driver.DriverId.ToString()),
+            new Claim(ClaimTypes.Role, "Driver"),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        return GenerateToken(claims, TimeSpan.FromMinutes(_settings.CustomerAccessTokenLifetimeMinutes));
+    }
+
     private string GenerateToken(IEnumerable<Claim> claims, TimeSpan lifetime)
     {
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SigningKey));

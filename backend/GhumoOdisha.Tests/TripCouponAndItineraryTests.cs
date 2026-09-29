@@ -11,6 +11,7 @@ using GhumoOdisha.Domain.Entities;
 using GhumoOdisha.Domain.Enums;
 using GhumoOdisha.Infrastructure.Persistence;
 using GhumoOdisha.Tests.Fixtures;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -107,6 +108,33 @@ public class TripCouponAndItineraryTests
 
         var order = await payments.CreateOrderAsync(customer.CustomerId, request.Booking.BookingId, BookingPaymentPlan.Partial, code);
         Assert.False(string.IsNullOrEmpty(order.OrderId));
+    }
+
+    [Fact]
+    public async Task Coupon_DiscountIsPerSeat()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db, allowCoupons: true);
+        trip.AmountPerPerson = 2000m;
+        await db.SaveChangesAsync();
+        var now = DateTime.UtcNow;
+        var code = $"S{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+        db.CouponCodes.Add(new CouponCode { Code = code, HolderName = "Agent", DiscountAmount = 200m, CommissionPerSeat = 0m, IsActive = true, CreatedAt = now, UpdatedAt = now });
+        await db.SaveChangesAsync();
+        var (bookings, payments) = CreateServices(db);
+
+        // ₹2,000 × 4 seats = ₹8,000; a ₹200 coupon takes ₹200 off each seat = ₹800 off.
+        var request = await bookings.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 4, null, AgreedToTerms: true));
+        var order = await payments.CreateOrderAsync(customer.CustomerId, request.Booking.BookingId, BookingPaymentPlan.Partial, code);
+        Assert.Equal(800m, order.DiscountApplied);
+
+        // Paying in full: the ₹7,200 after the coupon (minus the full-payment offer, if any) is charged.
+        var full = await payments.CreateOrderAsync(customer.CustomerId, request.Booking.BookingId, BookingPaymentPlan.Full, code);
+        Assert.Equal(8000m - full.DiscountApplied, full.AmountPaise / 100m);
+        Assert.True(full.DiscountApplied >= 800m);
+
+        var stored = await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == request.Booking.BookingId);
+        Assert.Equal(800m, stored.PendingCouponDiscountAmount);
     }
 
     [Fact]

@@ -21,7 +21,7 @@ interface DayCell {
       @if (open()) {
         <div class="dpick-pop" (click)="$event.stopPropagation()">
           <div class="dpick-head">
-            <button type="button" class="dpick-nav" (click)="prevMonth()" aria-label="Previous month">&lsaquo;</button>
+            <button type="button" class="dpick-nav" (click)="prevMonth()" [disabled]="!canGoPrev" aria-label="Previous month">&lsaquo;</button>
             <b>{{ monthLabel }}</b>
             <button type="button" class="dpick-nav" (click)="nextMonth()" aria-label="Next month">&rsaquo;</button>
           </div>
@@ -81,7 +81,11 @@ export class DatePickerComponent {
 
   get displayLabel(): string {
     if (!this.value) return this.placeholder;
-    return this.parseIso(this.value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    // "Thu, 15 Oct 2026" — built by hand: en-IN adds a comma before the year and writes "Sept".
+    const d = this.parseIso(this.value);
+    const weekday = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    const dayMonth = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }).replace('Sept', 'Sep');
+    return `${weekday}, ${dayMonth} ${d.getFullYear()}`;
   }
 
   get monthLabel(): string {
@@ -92,7 +96,7 @@ export class DatePickerComponent {
     const first = this.viewMonth();
     const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay());
     const minDate = this.min ? this.parseIso(this.min) : null;
-    return Array.from({ length: 42 }, (_, i) => {
+    const cells = Array.from({ length: 42 }, (_, i) => {
       const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i);
       return {
         date,
@@ -100,6 +104,12 @@ export class DatePickerComponent {
         disabled: !!minDate && date < minDate,
       };
     });
+    // Drop whole weeks that are entirely before `min` (e.g. late in the month only the last week or
+    // two are offered) so the calendar isn't mostly greyed-out rows.
+    while (cells.length > 7 && cells.slice(0, 7).every((c) => c.disabled)) {
+      cells.splice(0, 7);
+    }
+    return cells;
   }
 
   isSelected(date: Date): boolean {
@@ -110,7 +120,14 @@ export class DatePickerComponent {
     return new Date().toDateString() === date.toDateString();
   }
 
+  /** No stepping back into months that are entirely before `min`. */
+  get canGoPrev(): boolean {
+    if (!this.min) return true;
+    return this.viewMonth() > this.startOfMonth(this.parseIso(this.min));
+  }
+
   prevMonth(): void {
+    if (!this.canGoPrev) return;
     const d = this.viewMonth();
     this.viewMonth.set(new Date(d.getFullYear(), d.getMonth() - 1, 1));
   }

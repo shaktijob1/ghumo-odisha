@@ -71,7 +71,10 @@ public class UserLogContextMiddleware(RequestDelegate next)
             return (null, null);
         }
 
-        var role = user.IsInRole("Admin") ? "Admin" : user.IsInRole("Customer") ? "Customer" : null;
+        var role = user.IsInRole("Admin") ? "Admin"
+            : user.IsInRole("Customer") ? "Customer"
+            : user.IsInRole("Driver") ? "Driver"
+            : null;
         return (id, role);
     }
 }

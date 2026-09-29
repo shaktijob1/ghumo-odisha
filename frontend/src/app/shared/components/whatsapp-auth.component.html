@@ -13,7 +13,7 @@
       <span class="lm-code">+91</span>
       <span class="lm-sep" aria-hidden="true"></span>
       <input id="lm-phone" [(ngModel)]="whatsAppNumber" placeholder="Enter your mobile number" maxlength="10" inputmode="numeric"
-        autocomplete="tel-national" aria-describedby="lm-phone-hint" [attr.aria-invalid]="!!errorMessage()" (keyup.enter)="sendOtp()" />
+        autocomplete="tel-national" aria-describedby="lm-phone-hint" [attr.aria-invalid]="!!errorMessage()" (keyup.enter)="sendOtp()" (focus)="revealAboveKeyboard(sendBtnPopup)" />
     </div>
     <p id="lm-phone-hint" class="lm-hint">We'll send a one-time code to this number on WhatsApp.</p>
 
@@ -21,7 +21,7 @@
       <div class="errorbox" role="alert">{{ errorMessage() }}</div>
     }
 
-    <button type="button" class="btn block lm-primary" [disabled]="submitting()" (click)="sendOtp()">
+    <button #sendBtnPopup type="button" class="btn block lm-primary" [disabled]="submitting()" (click)="sendOtp()">
       @if (submitting()) {
         <span class="spin"></span>
       } @else {
@@ -41,10 +41,6 @@
     }
 
     <div class="wa-head">
-      <div class="wa-badge">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.2A7.5 7.5 0 1 1 21 11.5z"></path></svg>
-      </div>
-      <span class="eyebrow">Quick &amp; secure</span>
       <h4>{{ title }}</h4>
       <p class="note">Get a verification code on WhatsApp, or continue with Google.</p>
     </div>
@@ -53,7 +49,7 @@
       <span class="lbl">Mobile Number</span>
       <div class="inp numprefix wa-phone">
         <span class="numprefix-code">+91</span>
-        <input [(ngModel)]="whatsAppNumber" placeholder="Enter your mobile number" maxlength="10" inputmode="numeric" (keyup.enter)="sendOtp()" />
+        <input [(ngModel)]="whatsAppNumber" placeholder="Enter your mobile number" maxlength="10" inputmode="numeric" (keyup.enter)="sendOtp()" (focus)="revealAboveKeyboard(sendBtn)" />
       </div>
     </div>
 
@@ -61,7 +57,7 @@
       <div class="errorbox">{{ errorMessage() }}</div>
     }
 
-    <button class="btn block" [disabled]="submitting()" (click)="sendOtp()">
+    <button #sendBtn class="btn block" [disabled]="submitting()" (click)="sendOtp()">
       @if (submitting()) {
         <span class="spin"></span>
       } @else {
@@ -93,10 +89,6 @@
     }
 
     <div class="wa-head">
-      <div class="wa-badge">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle></svg>
-      </div>
-      <span class="eyebrow">Almost there</span>
       <h4>Verify WhatsApp Number</h4>
       <p class="note">We sent a verification code to <b>+91 {{ whatsAppNumber }}</b> on WhatsApp</p>
     </div>
@@ -113,6 +105,7 @@
           [value]="otpDigits()[$index]"
           (input)="onDigitInput($index, $event)"
           (keydown)="onDigitKeydown($index, $event)"
+          (focus)="revealAboveKeyboard(verifyBtn)"
         />
       }
     </div>
@@ -121,7 +114,7 @@
       <div class="errorbox" style="margin-top:14px">{{ errorMessage() }}</div>
     }
 
-    <button class="btn block" style="margin-top:16px" [disabled]="submitting()" (click)="verify()">
+    <button #verifyBtn class="btn block" style="margin-top:16px" [disabled]="submitting()" (click)="verify()">
       @if (submitting()) { <span class="spin"></span> } @else { Verify & Continue }
     </button>
 

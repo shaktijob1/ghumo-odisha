@@ -35,13 +35,22 @@ public static class TestServices
     {
         return new CustomerAuthService(
             db,
-            new PinHasher(),
+            CreatePhoneOtpService(db, fakeWhatsApp, otpSettings),
             new JwtTokenService(Options.Create(JwtSettings)),
-            fakeWhatsApp,
             fakeGoogle ?? new FakeGoogleTokenValidator(),
-            Options.Create(otpSettings ?? OtpSettings),
             Options.Create(JwtSettings),
-            new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CustomerAuthService>.Instance);
     }
+
+    public static PhoneOtpService CreatePhoneOtpService(
+        GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db,
+        FakeWhatsAppService fakeWhatsApp,
+        OtpSettings? otpSettings = null) =>
+        new(
+            db,
+            new PinHasher(),
+            fakeWhatsApp,
+            Options.Create(otpSettings ?? OtpSettings),
+            new MemoryCache(new MemoryCacheOptions()),
+            NullLogger<PhoneOtpService>.Instance);
 }

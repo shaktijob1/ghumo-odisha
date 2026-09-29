@@ -7,7 +7,8 @@ namespace GhumoOdisha.Application.Trips;
 public interface ITripService
 {
     // Public
-    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default);
+    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default, string? destination = null, bool upcomingOnly = false);
+    Task<IReadOnlyList<string>> GetUpcomingTripLocationsAsync(DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default);
 
     Task<TripDetailDto> GetTripDetailAsync(int tripId, CancellationToken cancellationToken = default);
 

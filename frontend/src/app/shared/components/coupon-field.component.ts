@@ -31,7 +31,8 @@ export interface CouponSelection {
         <div class="bp-coupon-applied" [class.pending]="!s.validated">
           <span>
             @if (s.validated) {
-              <b>{{ s.code }}</b> applied — ₹{{ s.discountAmount | number: '1.0-0' }} off the remaining amount
+              <b>{{ s.code }}</b> applied — ₹{{ s.discountAmount | number: '1.0-0' }} off per seat
+              @if (seats > 1) { · ₹{{ s.discountAmount * seats | number: '1.0-0' }} off for {{ seats }} seats }
             } @else {
               <b>{{ s.code }}</b> will be applied after you verify your WhatsApp number
             }
@@ -64,6 +65,8 @@ export class CouponFieldComponent implements OnChanges {
   private readonly paymentService = inject(PaymentService);
 
   @Input() signedIn = false;
+  /** Seats being booked — the coupon takes its amount off each seat. */
+  @Input() seats = 1;
   /** Current selection, owned by the parent. */
   @Input() selection: CouponSelection | null = null;
   /** Shown under the field — e.g. why a remembered code couldn't be applied after sign-in. */

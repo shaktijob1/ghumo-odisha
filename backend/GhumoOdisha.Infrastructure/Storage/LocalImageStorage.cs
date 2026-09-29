@@ -56,6 +56,24 @@ public class LocalImageStorage(IOptions<ImageStorageOptions> options) : IImageSt
         }
     }
 
+    public Stream? OpenRead(string relativeUrl)
+    {
+        var prefix = $"{_options.PublicUrlPrefix}/";
+        if (!relativeUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var root = Path.GetFullPath(_options.BasePath);
+        var fullPath = Path.GetFullPath(Path.Combine(root, relativeUrl[prefix.Length..].Replace('/', Path.DirectorySeparatorChar)));
+        if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+        {
+            return null;
+        }
+
+        return File.OpenRead(fullPath);
+    }
+
     private static void DeleteIfExists(string path)
     {
         if (File.Exists(path))

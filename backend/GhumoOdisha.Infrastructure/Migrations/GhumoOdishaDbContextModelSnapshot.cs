@@ -560,6 +560,545 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.Car", b =>
+                {
+                    b.Property<int>("CarId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarId"));
+
+                    b.Property<int?>("ActivePricingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("BaseCity")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FuelType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("HasAc")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ModelName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("RegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SeatCapacity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("SubmittedForReviewAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("CarId");
+
+                    b.HasIndex("ActivePricingId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("RegistrationNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "BaseCity", "SeatCapacity");
+
+                    b.ToTable("Cars", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Car_SeatCapacity", "SeatCapacity IN (5, 7, 9, 13, 15, 17, 20, 26)");
+                        });
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarAuditEvent", b =>
+                {
+                    b.Property<long>("CarAuditEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("CarAuditEventId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<int?>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int?>("CarBookingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EntityType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsVisibleToCustomer")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("NewValue")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("OldValue")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("varchar(160)");
+
+                    b.HasKey("CarAuditEventId");
+
+                    b.HasIndex("CarBookingId", "CreatedAt");
+
+                    b.HasIndex("EntityType", "EntityId", "CreatedAt");
+
+                    b.ToTable("CarAuditEvents", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarBooking", b =>
+                {
+                    b.Property<int>("CarBookingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarBookingId"));
+
+                    b.Property<decimal?>("AdditionalCharges")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("AdditionalChargesNote")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<string>("AdminNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("BalanceCollectedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal?>("BalanceDue")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("BookingAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("BookingNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CarPricingId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ClientRequestId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CustomerNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DurationHours")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EndsAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<decimal>("EstimatedBaseFare")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("EstimatedKm")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("EstimatedKmCharge")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("EstimatedNightHaltCharge")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("EstimatedNights")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("EstimatedTotal")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("FinalBaseFare")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int?>("FinalKm")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("FinalKmCharge")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("FinalNightHaltCharge")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int?>("FinalNights")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("FinalTotal")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("HoldExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PickupAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("PickupAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PickupCity")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("RazorpayOrderId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("RazorpayPaymentId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("RazorpayRefundId")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<decimal?>("RefundAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("RefundIssuedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RefundMethod")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RefundReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)");
+
+                    b.Property<DateTime?>("RefundSettledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("CarBookingId");
+
+                    b.HasIndex("BookingNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CarPricingId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PaymentStatus");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("CustomerId", "ClientRequestId")
+                        .IsUnique();
+
+                    b.HasIndex("DriverId", "Status");
+
+                    b.HasIndex("CarId", "Status", "PickupAt", "EndsAt");
+
+                    b.ToTable("CarBookings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CarBooking_AdditionalCharges", "AdditionalCharges IS NULL OR AdditionalCharges >= 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_BookingAmount", "BookingAmount >= 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_Duration", "DurationHours > 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_EstimatedKm", "EstimatedKm >= 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_EstimatedNights", "EstimatedNights >= 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_FinalKm", "FinalKm IS NULL OR FinalKm >= 0");
+
+                            t.HasCheckConstraint("CK_CarBooking_Window", "EndsAt > PickupAt");
+                        });
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPhoto", b =>
+                {
+                    b.Property<int>("CarPhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarPhotoId"));
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.HasKey("CarPhotoId");
+
+                    b.HasIndex("CarId", "Kind", "DisplayOrder");
+
+                    b.ToTable("CarPhotos", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPricing", b =>
+                {
+                    b.Property<int>("CarPricingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarPricingId"));
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("NightHaltPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("PricePerKm")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("SubmittedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubmittedByRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("CarPricingId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("CarId", "Status");
+
+                    b.ToTable("CarPricings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CarPricing_NightHaltPrice", "NightHaltPrice >= 0");
+
+                            t.HasCheckConstraint("CK_CarPricing_PricePerKm", "PricePerKm >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPricingTier", b =>
+                {
+                    b.Property<int>("CarPricingTierId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarPricingTierId"));
+
+                    b.Property<decimal>("BaseFare")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("CarPricingId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UpToKm")
+                        .HasColumnType("int");
+
+                    b.HasKey("CarPricingTierId");
+
+                    b.HasIndex("CarPricingId", "UpToKm")
+                        .IsUnique();
+
+                    b.ToTable("CarPricingTiers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CarPricingTier_BaseFare", "BaseFare >= 0");
+
+                            t.HasCheckConstraint("CK_CarPricingTier_UpToKm", "UpToKm IS NULL OR UpToKm > 0");
+                        });
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarTripExecution", b =>
+                {
+                    b.Property<int>("CarTripExecutionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CarTripExecutionId"));
+
+                    b.Property<int?>("ActualKm")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CarBookingId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("EndLatitude")
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal?>("EndLongitude")
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int?>("EndOdometerKm")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("NightHalts")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("StartLatitude")
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<decimal?>("StartLongitude")
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<int>("StartOdometerKm")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("CarTripExecutionId");
+
+                    b.HasIndex("CarBookingId")
+                        .IsUnique();
+
+                    b.HasIndex("DriverId", "CompletedAt");
+
+                    b.ToTable("CarTripExecutions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CarTripExecution_ActualKm", "ActualKm IS NULL OR ActualKm = EndOdometerKm - StartOdometerKm");
+
+                            t.HasCheckConstraint("CK_CarTripExecution_EndKm", "EndOdometerKm IS NULL OR EndOdometerKm >= StartOdometerKm");
+
+                            t.HasCheckConstraint("CK_CarTripExecution_NightHalts", "NightHalts IS NULL OR NightHalts >= 0");
+
+                            t.HasCheckConstraint("CK_CarTripExecution_StartKm", "StartOdometerKm >= 0");
+                        });
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.CouponCode", b =>
                 {
                     b.Property<int>("CouponCodeId")
@@ -909,6 +1448,177 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Destinations", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.Driver", b =>
+                {
+                    b.Property<int>("DriverId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("DriverId"));
+
+                    b.Property<int?>("AddedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("DrivingLicenceNumber")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<bool>("EmailVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("ExperienceYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GoogleSubject")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly?>("LicenceExpiryDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)");
+
+                    b.Property<string>("ProfilePhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime?>("SubmittedForReviewAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("DriverId");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("GoogleSubject")
+                        .IsUnique();
+
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Drivers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Driver_ExperienceYears", "ExperienceYears IS NULL OR (ExperienceYears >= 0 AND ExperienceYears <= 60)");
+                        });
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.DriverDocument", b =>
+                {
+                    b.Property<int>("DriverDocumentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("DriverDocumentId"));
+
+                    b.Property<int?>("CarId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("DriverDocumentId");
+
+                    b.HasIndex("CarId");
+
+                    b.HasIndex("DriverId", "CarId");
+
+                    b.ToTable("DriverDocuments", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.DriverRefreshToken", b =>
+                {
+                    b.Property<int>("DriverRefreshTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("DriverRefreshTokenId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("DriverRefreshTokenId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("DriverRefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.ItineraryDay", b =>
@@ -1484,6 +2194,103 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Navigation("LinkedCustomer");
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.Car", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.CarPricing", "ActivePricing")
+                        .WithMany()
+                        .HasForeignKey("ActivePricingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("GhumoOdisha.Domain.Entities.Driver", "Driver")
+                        .WithMany("Cars")
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActivePricing");
+
+                    b.Navigation("Driver");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarBooking", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Car", "Car")
+                        .WithMany("Bookings")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GhumoOdisha.Domain.Entities.CarPricing", "CarPricing")
+                        .WithMany()
+                        .HasForeignKey("CarPricingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GhumoOdisha.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GhumoOdisha.Domain.Entities.Driver", "Driver")
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+
+                    b.Navigation("CarPricing");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Driver");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPhoto", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Car", "Car")
+                        .WithMany("Photos")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPricing", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Car", "Car")
+                        .WithMany("Pricings")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPricingTier", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.CarPricing", "CarPricing")
+                        .WithMany("Tiers")
+                        .HasForeignKey("CarPricingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CarPricing");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarTripExecution", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.CarBooking", "CarBooking")
+                        .WithOne("Execution")
+                        .HasForeignKey("GhumoOdisha.Domain.Entities.CarTripExecution", "CarBookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CarBooking");
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.CouponPayout", b =>
                 {
                     b.HasOne("GhumoOdisha.Domain.Entities.CouponCode", "CouponCode")
@@ -1531,6 +2338,35 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.DriverDocument", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Car", "Car")
+                        .WithMany()
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("GhumoOdisha.Domain.Entities.Driver", "Driver")
+                        .WithMany("Documents")
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Car");
+
+                    b.Navigation("Driver");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.DriverRefreshToken", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.Driver", "Driver")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Driver");
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.ItineraryDay", b =>
@@ -1651,6 +2487,25 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Navigation("Travellers");
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.Car", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("Photos");
+
+                    b.Navigation("Pricings");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarBooking", b =>
+                {
+                    b.Navigation("Execution");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.CarPricing", b =>
+                {
+                    b.Navigation("Tiers");
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.CouponCode", b =>
                 {
                     b.Navigation("Payouts");
@@ -1661,6 +2516,15 @@ namespace GhumoOdisha.Infrastructure.Migrations
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.Customer", b =>
                 {
                     b.Navigation("Bookings");
+
+                    b.Navigation("RefreshTokens");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.Driver", b =>
+                {
+                    b.Navigation("Cars");
+
+                    b.Navigation("Documents");
 
                     b.Navigation("RefreshTokens");
                 });

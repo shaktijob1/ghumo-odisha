@@ -31,13 +31,6 @@ import { tripPath } from '../utils/trip-path';
           </div>
         }
 
-        @if (seatsLabel) {
-          <span class="seatpill" [class.low]="seatState === 'low'" [class.soldout]="seatState === 'soldout'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c1.5 1.5 2 3.5 2 5.5A6.5 6.5 0 0 1 5 14.5C5 9 9 6 12 2z"></path></svg>
-            {{ seatsLabel }}
-          </span>
-        }
-
         @if (shortDuration) {
           <span class="durbadge mobiletab-only">{{ shortDuration }}</span>
         }
@@ -102,7 +95,6 @@ import { tripPath } from '../utils/trip-path';
                 </b>
                 <span class="nd-meta">
                   @if (departsIn) { <span>{{ departsIn }}</span> }
-                  @if (seatsLabel) { <span class="nd-seats" [class.low]="seatState === 'low'" [class.soldout]="seatState === 'soldout'">{{ seatsLabel }}</span> }
                 </span>
               </div>
             </div>
@@ -111,6 +103,24 @@ import { tripPath } from '../utils/trip-path';
               <div class="nd-info">
                 <span class="nd-lbl">Next departure</span>
                 <b class="nd-range">Dates coming soon</b>
+              </div>
+            </div>
+          }
+          <!-- Next few departure start dates as mini calendars — only shown in the phone layout of
+               the home page's Upcoming Adventures (styles.css), in place of the rolling strip. -->
+          @if (departureChips.length > 0) {
+            <div class="depchips">
+              <span class="depchips-lbl">Next departures</span>
+              <!-- The chips always share the full row; with fewer than four they're wider, so they
+                   spell out the month and add the weekday (data-count drives that in styles.css). -->
+              <div class="depchips-row" [attr.data-count]="departureChips.length">
+                @for (s of departureChips; track s.startDate) {
+                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Sold out' : null">
+                    <span class="dchip-mon"><span class="m-short">{{ s.startDate | date:'MMM' | uppercase }}</span><span class="m-long">{{ s.startDate | date:'MMMM' | uppercase }}</span></span>
+                    <span class="dchip-day">{{ s.startDate | date:'d' }}</span>
+                    <span class="dchip-wd">{{ s.startDate | date:'EEEE' }}</span>
+                  </span>
+                }
               </div>
             </div>
           }
@@ -155,7 +165,7 @@ import { tripPath } from '../utils/trip-path';
 
         <div class="pricerow">
           <div class="price"><b>₹{{ trip.amountPerPerson | number:'1.0-0' }}</b><small>/ person</small></div>
-          <span class="btn sm">Book Now →</span>
+          <span class="btn sm">Book Now</span>
         </div>
       </div>
     </a>
@@ -191,22 +201,6 @@ export class TripCardComponent implements OnInit, OnDestroy {
     return this.trip.coverImageUrl ? [this.trip.coverImageUrl] : [];
   }
 
-  get seatsLabel(): string | null {
-    const seats = this.trip.nextSlotAvailableSeats;
-    if (seats === null) return null;
-    if (seats === 0) return 'Sold out';
-    if (seats <= 3) return `Only ${seats} seat${seats === 1 ? '' : 's'} left`;
-    return `${seats} seats left`;
-  }
-
-  get seatState(): 'normal' | 'low' | 'soldout' {
-    const seats = this.trip.nextSlotAvailableSeats;
-    if (seats === null) return 'normal';
-    if (seats === 0) return 'soldout';
-    if (seats <= 5) return 'low';
-    return 'normal';
-  }
-
   // One copy of the strip must be at least as wide as the card, otherwise a gap shows at the right
   // edge before the second copy arrives. With only a few departures, repeat them until one copy
   // holds enough pills to fill the card width.
@@ -222,6 +216,11 @@ export class TripCardComponent implements OnInit, OnDestroy {
       this.rollingCache = Array.from({ length: repeats }, () => slots).flat();
     }
     return this.rollingCache;
+  }
+
+  /** Up to four upcoming departures (the API already limits them to a searched month, if any). */
+  get departureChips(): UpcomingSlot[] {
+    return (this.trip.upcomingSlots ?? []).slice(0, 4);
   }
 
   // No per-trip advance-booking amount exists on TripSummary yet; this mirrors

@@ -19,7 +19,7 @@
       <input class="inp" placeholder="e.g. Rahul Das" maxlength="100" [ngModel]="holderName()" (ngModelChange)="holderName.set($event)" />
     </div>
     <div class="fld" style="width:140px">
-      <span class="lbl">Discount (₹)</span>
+      <span class="lbl">Discount per seat (₹)</span>
       <input class="inp" type="number" min="1" [ngModel]="discountAmount()" (ngModelChange)="discountAmount.set($event)" />
     </div>
     <div class="fld" style="width:160px">
@@ -64,7 +64,7 @@
         <div class="tblwrap couponwrap">
           <table class="tbl">
             <tr>
-              <th>Code</th><th>Holder</th><th>Discount</th><th>Commission / seat</th><th>Scope</th><th>Valid</th>
+              <th>Code</th><th>Holder</th><th>Discount / seat</th><th>Commission / seat</th><th>Scope</th><th>Valid</th>
               <th class="num">Bookings</th><th class="num">New / Existing</th><th class="num">Earned</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th>
             </tr>
             @for (c of coupons(); track c.couponCodeId) {

@@ -70,7 +70,7 @@
             <span class="pulse"></span>{{ s.isActive ? 'Active' : 'Inactive' }}
           </span>
           <span class="pp-coupon-meta">
-            ₹{{ s.discountAmount | number: '1.0-0' }} off for your followers · ₹{{ s.commissionPerSeat | number: '1.0-0' }} per seat for you
+            ₹{{ s.discountAmount | number: '1.0-0' }} off per seat for your followers · ₹{{ s.commissionPerSeat | number: '1.0-0' }} per seat for you
             @if (s.validUntil) { · valid till {{ s.validUntil | date: 'd MMM y' }} }
           </span>
         </div>

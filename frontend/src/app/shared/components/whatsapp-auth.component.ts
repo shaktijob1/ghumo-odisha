@@ -43,6 +43,15 @@ export class WhatsappAuthComponent implements OnDestroy {
   @ViewChildren('otpBox') otpBoxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   private readonly auth = inject(CustomerAuthService);
+
+  /**
+   * Phones: once the keyboard has slid up (~350ms after focus), scroll the popup so the step's main
+   * button (Send OTP / Verify) sits just above it instead of hidden behind it.
+   */
+  revealAboveKeyboard(button: HTMLElement): void {
+    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 640px)').matches) return;
+    setTimeout(() => button.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 350);
+  }
   readonly termsDialog = inject(TermsDialogService);
 
   readonly step = signal<Step>('details');

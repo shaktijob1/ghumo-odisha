@@ -1,6 +1,8 @@
 <div class="container" style="padding-top:30px">
-  <h2 style="font-size:22px;margin-bottom:5px">My bookings</h2>
+  <h2 style="font-size:22px;margin-bottom:5px"><span class="up-g">My </span><span class="up-o">bookings</span></h2>
   <p class="mut" style="font-size:13px;margin-bottom:20px">{{ bookings().length }} booking(s) · showing newest first</p>
+
+  <app-my-car-bookings></app-my-car-bookings>
 
   <div class="filters">
     @for (f of filters; track f.label) {

@@ -15,7 +15,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 
     // ---------- Public ----------
 
-    public async Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default, string? destination = null, bool upcomingOnly = false)
     {
         var query = db.Trips
             .Where(t => t.Status == TripStatus.Active)
@@ -23,13 +23,30 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(t => t.Title.Contains(search));
+            // Title or a destination name ("puri" finds "Puri • Konark • Satapada" and trips tagged Puri).
+            query = query.Where(t => t.Title.Contains(search) || t.Destinations.Any(d => d.Name.Contains(search)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(destination))
+        {
+            query = query.Where(t => t.Destinations.Any(d => d.Name == destination));
         }
 
         if (fromDate.HasValue || toDate.HasValue)
         {
             query = query.Where(t => t.TripDateSlots.Any(s =>
                 s.Status == TripDateSlotStatus.Active &&
+                (!fromDate.HasValue || s.EndDate >= fromDate.Value) &&
+                (!toDate.HasValue || s.StartDate <= toDate.Value)));
+        }
+
+        // Only trips a visitor can still book: an active departure from today on (inside the date
+        // range, if one is given). Lets the home page page through trips with an accurate total.
+        if (upcomingOnly)
+        {
+            var fromToday = TripCalendar.Today();
+            query = query.Where(t => t.TripDateSlots.Any(s =>
+                s.Status == TripDateSlotStatus.Active && s.StartDate >= fromToday &&
                 (!fromDate.HasValue || s.EndDate >= fromDate.Value) &&
                 (!toDate.HasValue || s.StartDate <= toDate.Value)));
         }
@@ -57,9 +74,28 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
-        var items = trips.Select(MapToSummary).ToList();
+        var items = trips.Select(t => MapToSummary(t, fromDate, toDate)).ToList();
 
         return new PagedResult<TripSummaryDto> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
+    }
+
+    /// <summary>
+    /// Every place that has a bookable trip (an active trip with an active departure from today on,
+    /// inside the date range if one is given) — the home page's location dropdown, which pages
+    /// through trips and so can't collect the places from the cards it has loaded.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> GetUpcomingTripLocationsAsync(DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default)
+    {
+        var fromToday = TripCalendar.Today();
+        return await db.Trips
+            .Where(t => t.Status == TripStatus.Active && t.TripDateSlots.Any(s =>
+                s.Status == TripDateSlotStatus.Active && s.StartDate >= fromToday &&
+                (!fromDate.HasValue || s.EndDate >= fromDate.Value) &&
+                (!toDate.HasValue || s.StartDate <= toDate.Value)))
+            .SelectMany(t => t.Destinations.Select(d => d.Name))
+            .Distinct()
+            .OrderBy(name => name)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<TripDetailDto> GetTripDetailAsync(int tripId, CancellationToken cancellationToken = default)
@@ -733,14 +769,18 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         }
     }
 
-    internal static TripSummaryDto MapToSummary(Trip trip)
+    internal static TripSummaryDto MapToSummary(Trip trip) => MapToSummary(trip, null, null);
+
+    /// <summary>
+    /// With a date range (the home page's month search), the card's next departure and departure
+    /// dates come from that range only — searching November shows the November departures, not
+    /// whatever comes next from today.
+    /// </summary>
+    internal static TripSummaryDto MapToSummary(Trip trip, DateOnly? fromDate, DateOnly? toDate)
     {
         var coverImage = trip.TripPhotos.OrderBy(p => p.DisplayOrder).FirstOrDefault()?.ImageUrl;
-        var today = TripCalendar.Today();
-        var nextSlot = trip.TripDateSlots
-            .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
-            .OrderBy(s => s.StartDate)
-            .FirstOrDefault();
+        var upcoming = UpcomingSlots(trip, fromDate, toDate);
+        var nextSlot = upcoming.FirstOrDefault();
 
         return new TripSummaryDto(
             trip.TripId,
@@ -756,20 +796,22 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             trip.TripHighlights.OrderBy(h => h.DisplayOrder).Select(h => h.PlaceName).ToList(),
             MapPhotos(trip),
             trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList(),
-            MapUpcomingSlots(trip));
+            upcoming.Take(MaxUpcomingSlotsOnCard).Select(s => new UpcomingSlotDto(s.StartDate, s.AvailableSeats)).ToList());
     }
 
-    // Feeds the trip card's rolling dates strip — information only, never used for booking.
+    // Feeds the trip card's departure dates — information only, never used for booking.
     private const int MaxUpcomingSlotsOnCard = 8;
 
-    private static IReadOnlyList<UpcomingSlotDto> MapUpcomingSlots(Trip trip)
+    /// <summary>Active departures from today on, soonest first; with a range, only those overlapping it
+    /// (the same overlap rule the month search uses to pick which trips to list).</summary>
+    private static List<TripDateSlot> UpcomingSlots(Trip trip, DateOnly? fromDate, DateOnly? toDate)
     {
         var today = TripCalendar.Today();
         return trip.TripDateSlots
-            .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
+            .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today
+                && (!fromDate.HasValue || s.EndDate >= fromDate.Value)
+                && (!toDate.HasValue || s.StartDate <= toDate.Value))
             .OrderBy(s => s.StartDate)
-            .Take(MaxUpcomingSlotsOnCard)
-            .Select(s => new UpcomingSlotDto(s.StartDate, s.AvailableSeats))
             .ToList();
     }
 

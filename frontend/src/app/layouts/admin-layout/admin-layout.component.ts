@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AdminAuthService } from '../../core/services/admin-auth.service';
+import { AdminCarService } from '../../core/services/admin-car.service';
 import { AdminRefundService } from '../../core/services/admin-refund.service';
 import { ToastHostComponent } from '../../shared/components/toast-host.component';
 
@@ -14,6 +15,7 @@ import { ToastHostComponent } from '../../shared/components/toast-host.component
 export class AdminLayoutComponent implements OnInit {
   readonly auth = inject(AdminAuthService);
   readonly refunds = inject(AdminRefundService);
+  readonly cars = inject(AdminCarService);
   private readonly router = inject(Router);
 
   ngOnInit(): void {
@@ -29,5 +31,7 @@ export class AdminLayoutComponent implements OnInit {
 
   private refreshRefundCount(): void {
     this.refunds.getCounts().subscribe({ error: () => undefined });
+    // Cars badges (approvals waiting, car refunds to issue) come from the Cars dashboard figures.
+    this.cars.dashboard().subscribe({ error: () => undefined });
   }
 }

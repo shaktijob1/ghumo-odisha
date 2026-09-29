@@ -45,6 +45,13 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
                 await WriteResponseAsync(context, HttpStatusCode.BadRequest, ApiResponse<object>.Fail(ex.Message, ex.Errors));
                 break;
 
+            // Optimistic concurrency (e.g. an admin approved a car while its driver was editing it).
+            case Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException:
+                logger.LogInformation("Concurrent change rejected on {Method} {Path}", context.Request.Method, context.Request.Path.Value);
+                await WriteResponseAsync(context, HttpStatusCode.Conflict,
+                    ApiResponse<object>.Fail("This was changed by someone else a moment ago. Please refresh and try again."));
+                break;
+
             case AppException ex:
                 logger.LogInformation("Request rejected ({StatusCode}) on {Method} {Path}: {Reason}",
                     (int)ex.StatusCode, context.Request.Method, context.Request.Path.Value, ex.Message);

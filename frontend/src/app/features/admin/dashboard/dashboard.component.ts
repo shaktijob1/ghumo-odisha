@@ -11,13 +11,14 @@ import { Dashboard } from '../../../core/models/dashboard.model';
 import { StatePanelComponent } from '../../../shared/components/state-panel.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge.component';
 import { ImageUrlPipe } from '../../../shared/pipes/image-url.pipe';
+import { CarsDashboardSectionComponent } from '../cars/cars-dashboard-section.component';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatePanelComponent, StatusBadgeComponent, ImageUrlPipe],
+  imports: [CommonModule, RouterLink, StatePanelComponent, StatusBadgeComponent, ImageUrlPipe, CarsDashboardSectionComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {

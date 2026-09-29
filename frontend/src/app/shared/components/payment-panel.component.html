@@ -18,6 +18,7 @@
       <app-coupon-field
         couponSlot
         [signedIn]="true"
+        [seats]="booking.numberOfSeats"
         [selection]="selection()"
         [externalError]="couponError()"
         (selectionChange)="onCouponChange($event)"

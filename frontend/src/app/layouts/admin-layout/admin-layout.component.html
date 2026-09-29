@@ -12,6 +12,16 @@
     <a routerLink="/admin/customers" routerLinkActive="on">Customers</a>
     <a routerLink="/admin/coupons" routerLinkActive="on">Coupons</a>
     <a routerLink="/admin/logs" routerLinkActive="on">Logs</a>
+    <div class="aside-group">Cars</div>
+    <a routerLink="/admin/car-bookings" routerLinkActive="on">
+      Car bookings
+      @if (cars.refundsPending() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px" title="Refunds to issue">{{ cars.refundsPending() }}</span> }
+    </a>
+    <a routerLink="/admin/cars" routerLinkActive="on">
+      Cars
+      @if (cars.pendingApprovals() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px" title="Drivers, cars and pricing waiting for approval">{{ cars.pendingApprovals() }}</span> }
+    </a>
+    <a routerLink="/admin/drivers" routerLinkActive="on">Drivers</a>
     <div class="who">
       Signed in as <b style="color:var(--ink)">{{ auth.currentAdmin()?.username }}</b><br />
       Administrator
