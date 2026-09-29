@@ -50,7 +50,7 @@
               @if (seatsRemainingLabel(b); as label) {
                 <span class="seatsleft-badge">{{ label }}</span>
               }
-              <button class="btn sm ghost" (click)="openDetails(b)">View details</button>
+              <button class="btn sm soft" (click)="openDetails(b)">View details</button>
               @if (canPayNow(b)) {
                 <button class="btn sm" (click)="openDetails(b)">Pay now</button>
               }
@@ -69,11 +69,11 @@
 
 @if (selected(); as b) {
   <div class="modal-backdrop" (click)="selected.set(null)">
-    <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal bkdetail" [class.has-pay]="canPayNow(b)" (click)="$event.stopPropagation()">
       <h4>{{ b.tripTitle }}</h4>
       <div class="kv">
-        <span class="k">Booking</span><b>{{ b.bookingReference }}</b>
-        <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
+        <span class="k">Booking ID</span><b>{{ b.bookingReference }}</b>
+        <span class="k">Starting from</span><b>{{ b.startDate | date:'EEE, d MMM y' }}</b>
         <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
         <span class="k">Rooms</span><b>{{ b.roomsAllotted }}</b>
         @if (b.pickupPointLocation) {
@@ -86,7 +86,6 @@
         <span class="k">Status</span><span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
         <span class="k">Payment</span>
         <b>{{ PaymentStatusLabels[b.paymentStatus] }}</b>
-        <span class="k">Requested</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
       </div>
       @if (refundInfo(b); as rf) {
         <div class="refundbox" [attr.data-tone]="rf.tone">
@@ -143,7 +142,7 @@
             <button class="btn ghost" style="flex:1" (click)="cancelCancelConfirmation()">Never mind</button>
           </div>
         } @else {
-          <button class="btn sm ghost" style="width:100%" (click)="requestCancelConfirmation(b)">
+          <button class="btn sm dang" style="width:100%" (click)="requestCancelConfirmation(b)">
             {{ b.bookingStatus === BookingStatus.Confirmed ? 'Cancel booking' : 'Cancel trip' }}
           </button>
         }
@@ -155,7 +154,7 @@
             @if (downloadingInvoiceId() === b.bookingId) { <span class="spin"></span> } @else { Download Invoice }
           </button>
         }
-        <button class="btn ghost" style="flex:1" (click)="selected.set(null)">Close</button>
+        <button class="btn neutral" style="flex:1" (click)="selected.set(null)">Close</button>
       </div>
     </div>
   </div>

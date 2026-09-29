@@ -3,8 +3,8 @@
  * JPEG. Phone photos (4–8 MB) come out around 200–500 KB. PDFs, small images and anything the
  * browser can't decode are returned unchanged — the server still checks type and size.
  */
-export async function compressImage(file: File, maxSide = 1600, quality = 0.82): Promise<File> {
-  if (!file.type.startsWith('image/') || file.size < 300 * 1024) return file;
+export async function compressImage(file: File, maxSide = 1600, quality = 0.82, minBytes = 300 * 1024): Promise<File> {
+  if (!file.type.startsWith('image/') || file.size < minBytes) return file;
 
   try {
     const bitmap = await createImageBitmap(file);

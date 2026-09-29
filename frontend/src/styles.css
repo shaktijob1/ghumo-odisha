@@ -319,7 +319,6 @@ body.customer { background: #fff; }
 .cnav nav { display: flex; gap: 6px; }
 .cnav nav a { padding: 8px 12px; border-radius: 10px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
 .cnav nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.burger { display: none; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 10px; place-items: center; cursor: pointer; background: #fff; }
 .container { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
 .foot { margin-top: 40px; padding: 26px max(28px, calc((100% - 1240px) / 2)); border-top: 1px solid var(--line); background: var(--canvas); font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
@@ -586,7 +585,10 @@ body.customer { background: #fff; }
 .stickycta { display: none; }
 
 .authwrap { max-width: 400px; margin: 0 auto; padding: 54px 0; }
-.bkcard { position: relative; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center; margin-bottom: 12px; }
+.bkcard { position: relative; border: 1px solid #D6DCDE; border-radius: 14px; padding: 16px; display: grid; grid-template-columns: 96px 1fr auto; gap: 16px; align-items: center; margin-bottom: 16px; background: #fff; box-shadow: 0 4px 14px rgba(15,20,22,.06); }
+/* Long trip names wrap instead of stretching the card past its border. */
+.bkcard > * { min-width: 0; }
+.bkcard b { overflow-wrap: anywhere; }
 .bkcard .shot { height: 76px; border-radius: 10px; overflow: hidden; background: var(--canvas); }
 .bkcard .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .seatsleft-badge { position: absolute; top: -9px; right: -9px; background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); box-shadow: 0 2px 8px rgba(192,72,58,.4); animation: seatsleft-pulse 1.6s ease-in-out infinite; }
@@ -594,6 +596,22 @@ body.customer { background: #fff; }
   0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(192,72,58,.4); }
   50% { transform: scale(1.1); box-shadow: 0 4px 16px rgba(192,72,58,.6); }
 }
+/* Grey "Close"-style button (neutral, not the accent or the danger colour). */
+.btn.neutral { background: #EEF1F2; color: var(--ink); border: 1px solid #DCE1E3; }
+.btn.neutral:hover { background: #E4E8E9; }
+
+/* My Bookings → View details: "Pay ₹… securely" stays pinned to the bottom of the popup (like the
+   trip booking popup). The payment panel's wrappers are flattened here so its Pay bar becomes a
+   direct item of the popup and can be moved last and pinned from the moment the popup opens. */
+.bkdetail.has-pay { display: flex; flex-direction: column; }
+.bkdetail.has-pay > *, .bkdetail.has-pay .bookpanel > * { flex-shrink: 0; }
+.bkdetail app-payment-panel, .bkdetail .bookpanel { display: contents; }
+.bkdetail .bp-cta-bar {
+  order: 99; position: sticky; bottom: -20px; z-index: 3;
+  margin: 14px -20px -20px; padding: 12px 20px 20px;
+  background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -8px 20px rgba(15,20,22,.06);
+}
+
 .money { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .money b { display: block; color: var(--ink); font-size: 13.5px; }
 
@@ -827,7 +845,6 @@ body.customer { background: #fff; }
 @media (max-width: 900px) {
   .cnav { padding: 12px 16px; }
   .cnav nav { display: none; }
-  .burger { display: grid; }
   .container { padding: 0 16px; }
   .hero { padding: 26px 0 20px; }
   .hero h1 { font-size: 25px; }
@@ -1461,7 +1478,6 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
 .tcard { isolation: isolate; }
 
 /* ---------- Navbar: desktop account menu under "Hi, name" (phones keep the ☰ menu) ---------- */
-.hi-mobile { display: none; }
 .acct { position: relative; }
 .acct-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 12px 4px 4px; font: 600 13px var(--font-body); color: var(--ink); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
 .acct-btn:hover, .acct-btn[aria-expanded="true"] { border-color: #BFDDD4; box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -1477,9 +1493,10 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
 .acct-menu .acct-out { color: var(--danger); }
 .acct-menu .acct-out svg { color: var(--danger); }
 .acct-menu .acct-out:hover { background: var(--danger-bg); }
+/* Phones: same account menu as desktop, with a little more room for fingers. */
 @media (max-width: 900px) {
-  .acct { display: none; }
-  .hi-mobile { display: inline; }
+  .acct-menu { min-width: 220px; }
+  .acct-menu a, .acct-menu button { padding: 12px 14px; font-size: 14px; }
 }
 
 /* Booking confirmed: "Get your invoice on email" — label, one-line hint, email box + icon button. */
@@ -1941,9 +1958,9 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
   #upcoming-trips .up-more-btn { gap: 6px; padding: 12px 28px; border-radius: 999px; background: #fff; color: var(--orange); border: 1.5px solid var(--orange); font-size: 15px; font-weight: 700; }
 
   /* Cards: shorter (no rolling dates or "Next departure" block, a row of next-departure mini
-     calendars instead), green-tinted with a dark green shadow; Book Now stays orange. */
-  #upcoming-trips .tgrid > .tslot .tcard.dash { --tc-a: #E6F4EE; --tc-b: #F4FAF7; --tc-line: #BFDDD4; --tc-deep: #D6EDE3; --tc-glow: 12,74,62;
-    border-color: #BFDDD4; box-shadow: 0 10px 26px rgba(12,74,62,.30); }
+     calendars instead), neutral grey with a dark shadow; Book Now stays orange. */
+  #upcoming-trips .tgrid > .tslot .tcard.dash { --tc-a: #F1F3F4; --tc-b: #F7F8F8; --tc-line: #D5DADC; --tc-deep: #E4E7E8; --tc-glow: 15,20,22;
+    border-color: #D5DADC; box-shadow: 0 10px 26px rgba(15,20,22,.22); }
   #upcoming-trips .tcard .datestrip, #upcoming-trips .tcard .nextdep { display: none; }
   #upcoming-trips .tcard .depchips { display: block; padding: 10px 12px 12px; background: #fff; border-bottom: 1px solid var(--tc-line); }
   #upcoming-trips .depchips-lbl { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -1967,8 +1984,8 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
 /* ============ Customer site: every solid button is orange (one consistent call-to-action colour).
    Outline (.ghost), soft, danger and specially styled buttons keep their own look; green stays the
    brand colour for headings, tabs, filters and calendars. Admin pages are not affected. ============ */
-app-customer-layout .btn:not(.ghost):not(.soft):not(.dang):not(.bp-pdf) { background: var(--orange); color: #fff; }
-app-customer-layout .btn:not(.ghost):not(.soft):not(.dang):not(.bp-pdf):hover:not(:disabled) { background: var(--orange-hover); box-shadow: 0 8px 20px rgba(238,106,42,.3); }
+app-customer-layout .btn:not(.ghost):not(.soft):not(.dang):not(.neutral):not(.bp-pdf) { background: var(--orange); color: #fff; }
+app-customer-layout .btn:not(.ghost):not(.soft):not(.dang):not(.neutral):not(.bp-pdf):hover:not(:disabled) { background: var(--orange-hover); box-shadow: 0 8px 20px rgba(238,106,42,.3); }
 app-customer-layout .btn.bp-cta { box-shadow: 0 10px 22px rgba(238,106,42,.26); }
 
 /* ============ Upcoming Adventures header: title on the left; on the right a cream
@@ -2057,8 +2074,9 @@ app-customer-layout .btn.bp-cta { box-shadow: 0 10px 22px rgba(238,106,42,.26); 
    bigger orange Book Now ============ */
 :is(#upcoming-trips, #dest-trips) .tcard.dash .datestrip,
 :is(#upcoming-trips, #dest-trips) .tcard.dash .nextdep { display: none; }
-:is(#upcoming-trips, #dest-trips) .tgrid .tcard.dash { --tc-a: #E6F4EE; --tc-b: #F4FAF7; --tc-line: #BFDDD4; --tc-deep: #D6EDE3; --tc-glow: 12,74,62;
-  border-color: #BFDDD4; box-shadow: 0 10px 26px rgba(12,74,62,.30); }
+/* Neutral dark shade (not green): grey price band and border, charcoal glow and shadow. */
+:is(#upcoming-trips, #dest-trips) .tgrid .tcard.dash { --tc-a: #F1F3F4; --tc-b: #F7F8F8; --tc-line: #D5DADC; --tc-deep: #E4E7E8; --tc-glow: 15,20,22;
+  border-color: #D5DADC; box-shadow: 0 10px 26px rgba(15,20,22,.22); }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .body { padding: 0; }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .titlerow, :is(#upcoming-trips, #dest-trips) .tcard.dash .metaline { padding: 0 14px; }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .titlerow { padding-top: 12px; }

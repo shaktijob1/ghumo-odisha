@@ -24,15 +24,10 @@ export class CustomerLayoutComponent {
   readonly whatsAppLink = computed(() =>
     this.contact()?.whatsAppNumber ? this.contactService.buildWhatsAppLink('Hi Ghumo Odisha! I would like to know more about your trips.') : null,
   );
-  readonly menuOpen = signal(false);
   readonly accountOpen = signal(false);
   readonly year = new Date().getFullYear();
 
   readonly firstName = computed(() => this.auth.currentCustomer()?.name?.split(' ')?.[0] || 'there');
-
-  toggleMenu(): void {
-    this.menuOpen.update((v) => !v);
-  }
 
   toggleAccount(): void {
     this.accountOpen.update((v) => !v);
@@ -47,7 +42,7 @@ export class CustomerLayoutComponent {
     this.auth.logout();
   }
 
-  // Close the desktop account menu on any click outside it, or on Escape.
+  // Close the account menu on any click (or tap) outside it, or on Escape.
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     if (!this.accountOpen()) return;

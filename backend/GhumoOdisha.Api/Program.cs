@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
@@ -35,6 +36,7 @@ using GhumoOdisha.Infrastructure.Persistence.Seed;
 using GhumoOdisha.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -263,6 +265,18 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod());
 });
 
+// Compress text responses (the Angular JS/CSS bundles, HTML and API JSON) — they're 3–5× smaller
+// with Brotli/gzip, which is most of the page weight on a phone. Images are already compressed.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["image/svg+xml"]);
+});
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+
 var app = builder.Build();
 
 // The OTP and payment bypasses let anyone sign in as any number and confirm bookings without paying.
@@ -295,6 +309,7 @@ app.UseSerilogRequestLogging(options =>
         }
     };
 });
+app.UseResponseCompression();
 app.UseCors("Default");
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -343,7 +358,19 @@ using (var scope = app.Services.CreateScope())
 
 // No UseDefaultFiles: "/" must go through SeoPageRenderer (MapSeo below) rather than being
 // served as the raw index.html, so the home page gets its SEO tags too.
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Angular's build files carry a content hash in their name (main-GZHITZBQ.js, styles-CWMVGEIM.css),
+    // so a changed file always gets a new name: browsers can keep them for a year without re-checking.
+    // index.html itself is served by SeoPageRenderer with no-cache, so a new deploy is picked up at once.
+    OnPrepareResponse = ctx =>
+    {
+        if (HashedBuildFile().IsMatch(ctx.File.Name))
+        {
+            ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        }
+    }
+});
 
 app.UseHttpsRedirection();
 
@@ -372,3 +399,10 @@ if (app.Environment.IsDevelopment())
 app.MapSeo();
 
 app.Run();
+
+public partial class Program
+{
+    /// <summary>Angular build output with a content hash: "chunk-KBHEOLRC.js", "styles-CWMVGEIM.css", "media/x-AB12CD34.woff2".</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"-[A-Z0-9]{8}\.(js|css|woff2?|ttf|svg|png|jpe?g|webp)$")]
+    private static partial System.Text.RegularExpressions.Regex HashedBuildFile();
+}

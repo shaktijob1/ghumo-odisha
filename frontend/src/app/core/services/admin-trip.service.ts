@@ -1,7 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, from, map, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { compressImage } from '../../shared/utils/compress-image';
 import { ApiResponse, PagedResult } from '../models/api-response.model';
 import { TripStatus } from '../models/enums.model';
 import {
@@ -53,9 +54,7 @@ export class AdminTripService {
 
   // Photos
   addTripPhoto(tripId: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/photos`, form).pipe(map(() => undefined));
+    return this.uploadPhoto(`${base()}/trips/${tripId}/photos`, file);
   }
 
   deleteTripPhoto(id: number): Observable<void> {
@@ -70,20 +69,30 @@ export class AdminTripService {
 
   // Highlights
   addHighlight(tripId: number, placeName: string, description: string, photo: File): Observable<void> {
-    const form = new FormData();
-    form.append('placeName', placeName);
-    form.append('description', description);
-    form.append('photo', photo);
-    return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/highlights`, form).pipe(map(() => undefined));
+    return from(compressImage(photo)).pipe(
+      switchMap((ready) => {
+        const form = new FormData();
+        form.append('placeName', placeName);
+        form.append('description', description);
+        form.append('photo', ready);
+        return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/highlights`, form);
+      }),
+      map(() => undefined),
+    );
   }
 
   updateHighlight(id: number, placeName: string, description: string, displayOrder: number, photo?: File | null): Observable<void> {
-    const form = new FormData();
-    form.append('placeName', placeName);
-    form.append('description', description);
-    form.append('displayOrder', String(displayOrder));
-    if (photo) form.append('photo', photo);
-    return this.http.put<ApiResponse<object>>(`${base()}/highlights/${id}`, form).pipe(map(() => undefined));
+    return from(photo ? compressImage(photo) : Promise.resolve(null)).pipe(
+      switchMap((ready) => {
+        const form = new FormData();
+        form.append('placeName', placeName);
+        form.append('description', description);
+        form.append('displayOrder', String(displayOrder));
+        if (ready) form.append('photo', ready);
+        return this.http.put<ApiResponse<object>>(`${base()}/highlights/${id}`, form);
+      }),
+      map(() => undefined),
+    );
   }
 
   deleteHighlight(id: number): Observable<void> {
@@ -130,9 +139,7 @@ export class AdminTripService {
 
   // Room photos
   addRoomPhoto(tripId: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/room-photos`, form).pipe(map(() => undefined));
+    return this.uploadPhoto(`${base()}/trips/${tripId}/room-photos`, file);
   }
 
   deleteRoomPhoto(id: number): Observable<void> {
@@ -147,9 +154,7 @@ export class AdminTripService {
 
   // Vehicle photos
   addVehiclePhoto(tripId: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<object>>(`${base()}/trips/${tripId}/vehicle-photos`, form).pipe(map(() => undefined));
+    return this.uploadPhoto(`${base()}/trips/${tripId}/vehicle-photos`, file);
   }
 
   deleteVehiclePhoto(id: number): Observable<void> {
@@ -171,6 +176,18 @@ export class AdminTripService {
 
   deleteItineraryPdf(tripId: number): Observable<void> {
     return this.http.delete<ApiResponse<object>>(`${base()}/trips/${tripId}/itinerary-pdf`).pipe(map(() => undefined));
+  }
+
+  /** Photos are shrunk in the browser first (max 1600px, JPEG), so the site never serves multi-MB originals. */
+  private uploadPhoto(url: string, file: File): Observable<void> {
+    return from(compressImage(file)).pipe(
+      switchMap((ready) => {
+        const form = new FormData();
+        form.append('file', ready);
+        return this.http.post<ApiResponse<object>>(url, form);
+      }),
+      map(() => undefined),
+    );
   }
 
   // Pickup points

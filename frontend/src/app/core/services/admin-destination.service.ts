@@ -1,7 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, from, map, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { compressImage } from '../../shared/utils/compress-image';
 import { ApiResponse, PagedResult } from '../models/api-response.model';
 import {
   AdminDestinationDetail,
@@ -43,14 +44,23 @@ export class AdminDestinationService {
   }
 
   updateHeroImage(id: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<object>>(`${base()}/${id}/hero-image`, form).pipe(map(() => undefined));
+    return this.uploadPhoto(`${base()}/${id}/hero-image`, file, 1920);
   }
 
   updateCoverImage(id: number, file: File): Observable<void> {
-    const form = new FormData();
-    form.append('file', file);
-    return this.http.post<ApiResponse<object>>(`${base()}/${id}/cover-image`, form).pipe(map(() => undefined));
+    // Cover images show on the small destination cards: 1000px is plenty, and any size gets shrunk.
+    return this.uploadPhoto(`${base()}/${id}/cover-image`, file, 1000, 0);
+  }
+
+  /** Photos are shrunk in the browser first, so the site never serves multi-MB originals. */
+  private uploadPhoto(url: string, file: File, maxSide: number, minBytes?: number): Observable<void> {
+    return from(compressImage(file, maxSide, 0.82, minBytes)).pipe(
+      switchMap((ready) => {
+        const form = new FormData();
+        form.append('file', ready);
+        return this.http.post<ApiResponse<object>>(url, form);
+      }),
+      map(() => undefined),
+    );
   }
 }
