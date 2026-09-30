@@ -11,11 +11,9 @@ import {
   BookingResponse,
   CancelBookingRequest,
   ChangeSeatsRequest,
-  ConfirmBookingRequest,
   TravellerInput,
   UpdateGenderCountsRequest,
   CreateManualBookingRequest,
-  RejectBookingRequest,
 } from '../models/booking.model';
 
 const base = () => `${environment.apiUrl}/admin`;
@@ -46,10 +44,6 @@ export class AdminBookingService {
       .pipe(map((r) => r.data!));
   }
 
-  confirmBooking(id: number, request: ConfirmBookingRequest): Observable<void> {
-    return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/confirm`, request).pipe(map(() => undefined));
-  }
-
   addPayment(id: number, request: AddBookingPaymentRequest): Observable<void> {
     return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/payments`, request).pipe(map(() => undefined));
   }
@@ -72,10 +66,6 @@ export class AdminBookingService {
 
   downloadInvoice(id: number): Observable<Blob> {
     return this.http.get(`${base()}/bookings/${id}/invoice`, { responseType: 'blob' });
-  }
-
-  rejectBooking(id: number, request: RejectBookingRequest): Observable<void> {
-    return this.http.post<ApiResponse<object>>(`${base()}/bookings/${id}/reject`, request).pipe(map(() => undefined));
   }
 
   cancelBooking(id: number, request: CancelBookingRequest): Observable<void> {

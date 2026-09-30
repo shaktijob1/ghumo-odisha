@@ -21,12 +21,29 @@ public class CarBooking
     public Guid? ClientRequestId { get; set; }
 
     public string PickupCity { get; set; } = null!;
+    /// <summary>The full address the customer typed (house, street, landmark) — what the driver navigates to.</summary>
     public string? PickupAddress { get; set; }
+    /// <summary>The pickup as picked on the map (place name / "current location" address) and its point.</summary>
+    public string? PickupLocation { get; set; }
+    public double? PickupLatitude { get; set; }
+    public double? PickupLongitude { get; set; }
+    /// <summary>The customer's "where to" (picked on the map).</summary>
+    public string? DropLocation { get; set; }
+    public double? DropLatitude { get; set; }
+    public double? DropLongitude { get; set; }
+    /// <summary>One way ends at "where to"; a round trip comes back to the pickup.</summary>
+    public bool RoundTrip { get; set; }
+    /// <summary>Road km: base → pickup, pickup → "where to", ("where to" → pickup on a round trip), back to base. Estimated km = their sum.</summary>
+    public int? DriverApproachKm { get; set; }
+    public int? PickupToDropKm { get; set; }
+    public int? DropToPickupKm { get; set; }
+    public int? ReturnToBaseKm { get; set; }
     public DateTime PickupAt { get; set; }
     public int DurationHours { get; set; }
     public DateTime EndsAt { get; set; }
 
     // --- Estimate (at booking) ---
+    /// <summary>Billed km: driver → pickup + pickup → drop + drop → driver (older bookings: the km the customer typed).</summary>
     public int EstimatedKm { get; set; }
     public int EstimatedNights { get; set; }
     public decimal EstimatedBaseFare { get; set; }

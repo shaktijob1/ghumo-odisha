@@ -1,0 +1,29 @@
+/* Payment QR settings */
+.qrpanel { margin-top: 18px; }
+.qredit { display: flex; gap: 16px; align-items: flex-start; margin-top: 14px; flex-wrap: wrap; }
+.qrthumb { width: 120px; height: 120px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: grid; place-items: center; padding: 6px; overflow: hidden; cursor: pointer; }
+.qrthumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* Mark-paid modal */
+.paysum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.paysum span { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 11px; color: var(--muted); }
+.paysum b { display: block; font-size: 15px; color: var(--ink); margin-top: 2px; }
+.paysum .due { border-color: #E9D3A6; background: var(--wait-bg); }
+.paysum .due b { color: var(--wait); }
+.payacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Full-screen QR — plain white so any UPI app can read it at a glance */
+.qrfull { position: fixed; inset: 0; z-index: 90; background: #fff; display: grid; place-items: center; padding: 20px 16px; overflow-y: auto; }
+.qrfull-inner { width: 100%; max-width: 420px; text-align: center; }
+.qrfull-brand { font-weight: 700; font-size: 16px; letter-spacing: -0.03em; margin-bottom: 14px; }
+.qrfull-brand em { font-style: normal; color: var(--accent); }
+.qrfull-for { font-size: 14px; color: var(--muted); }
+.qrfull-amt { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); margin-top: 6px; line-height: 1.1; }
+.qrfull-lbl { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.qrfull-img { display: block; width: min(100%, 360px, 58vh); aspect-ratio: 1; object-fit: contain; margin: 16px auto 0; border: 1px solid var(--line); border-radius: 14px; padding: 10px; background: #fff; }
+.qrfull-cap { margin-top: 12px; font-size: 14px; font-weight: 600; word-break: break-word; }
+
+@media (max-width: 720px) {
+  .payacts .btn { flex: 1 1 auto; }
+  .payacts > span { display: none; }
+}

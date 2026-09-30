@@ -61,7 +61,7 @@ public class BookingPaymentService(
                 .SingleOrDefaultAsync(b => b.CustomerId == customerId, cancellationToken)
                 ?? throw new NotFoundException("Booking not found.");
 
-            if (booking.BookingStatus is not (BookingStatus.Requested or BookingStatus.Pending))
+            if (booking.BookingStatus is not (BookingStatus.AwaitingPayment or BookingStatus.Pending))
             {
                 throw new ConflictException("This booking can no longer be paid for online.");
             }
@@ -80,6 +80,10 @@ public class BookingPaymentService(
             var slot = await db.TripDateSlots.AsNoTracking().FirstOrDefaultAsync(s => s.TripDateSlotId == booking.TripDateSlotId, cancellationToken)
                 ?? throw new NotFoundException("Date slot not found.");
             SlotBookingRules.EnsureBookable(slot, booking.NumberOfSeats);
+            if (booking.MaleCount is not null || booking.FemaleCount is not null)
+            {
+                await SlotGenderRules.EnsureWithinAsync(db, slot, booking.MaleCount ?? 0, booking.FemaleCount ?? 0, booking.BookingId, cancellationToken);
+            }
 
             // A coupon's amount is per seat: ₹200 off × 4 seats = ₹800 off the booking. Seats come from
             // the booking row, never from the client.
@@ -96,6 +100,9 @@ public class BookingPaymentService(
                 && booking.PendingDiscountAmount == totalDiscount
                 && booking.PendingCouponCodeId == couponCodeId)
             {
+                // Touched so the 24-hour unpaid-request expiry leaves a customer who's on the payment screen alone.
+                booking.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
                 return new CreatePaymentOrderResult(booking.RazorpayOrderId, amountPaise, "INR", _razorpayOptions.KeyId, totalDiscount, _razorpayOptions.DevBypassEnabled);
             }
@@ -124,7 +131,20 @@ public class BookingPaymentService(
 
     public async Task VerifyAndConfirmAsync(int customerId, int bookingId, VerifyPaymentRequest request, CancellationToken cancellationToken = default)
     {
-        var booking = await LoadOwnedPayableBookingAsync(customerId, bookingId, cancellationToken);
+        var booking = await db.Bookings
+            .Include(b => b.Trip)
+            .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId, cancellationToken)
+            ?? throw new NotFoundException("Booking not found.");
+
+        if (booking.BookingStatus is BookingStatus.Cancelled or BookingStatus.Rejected)
+        {
+            await RefundPaymentOnClosedRequestAsync(booking, request, cancellationToken);
+        }
+
+        if (booking.BookingStatus is not (BookingStatus.AwaitingPayment or BookingStatus.Pending))
+        {
+            throw new ConflictException("This booking can no longer be paid for online.");
+        }
 
         // TEMP (diagnostics): safe to remove once the order-id-mismatch race is confirmed fixed.
         // Never logs the signature value or the Razorpay key secret.
@@ -220,6 +240,28 @@ public class BookingPaymentService(
         return await razorpay.GetRefundStatusAsync(booking.RazorpayRefundId, cancellationToken);
     }
 
+    /// <summary>
+    /// The customer paid a Razorpay order for a request that was closed meanwhile — expired after
+    /// 24 hours unpaid, or rejected. There's no booking to put the money on, so it goes straight back.
+    /// Only for a genuine, signed payment against this booking's own order.
+    /// </summary>
+    private async Task RefundPaymentOnClosedRequestAsync(Booking booking, VerifyPaymentRequest request, CancellationToken cancellationToken)
+    {
+        var genuine = !string.IsNullOrEmpty(booking.RazorpayOrderId)
+            && booking.RazorpayOrderId == request.RazorpayOrderId
+            && !booking.RazorpayOrderId.StartsWith(DevOrderPrefix, StringComparison.Ordinal)
+            && razorpay.VerifySignature(request.RazorpayOrderId, request.RazorpayPaymentId, request.RazorpaySignature);
+        if (!genuine)
+        {
+            return;
+        }
+
+        logger.LogWarning("Payment {PaymentId} arrived for booking {BookingId} after it was {Status} — refunding.",
+            request.RazorpayPaymentId, booking.BookingId, booking.BookingStatus);
+        await RefundUnconfirmablePaymentAsync(booking.BookingId, request.RazorpayPaymentId, cancellationToken);
+        throw new ConflictException("This booking request had already closed, so your payment has been refunded in full. Please book again.");
+    }
+
     private async Task RefundUnconfirmablePaymentAsync(int bookingId, string? razorpayPaymentId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(razorpayPaymentId))
@@ -242,20 +284,6 @@ public class BookingPaymentService(
         }
     }
 
-    private async Task<Booking> LoadOwnedPayableBookingAsync(int customerId, int bookingId, CancellationToken cancellationToken)
-    {
-        var booking = await db.Bookings
-            .Include(b => b.Trip)
-            .FirstOrDefaultAsync(b => b.BookingId == bookingId && b.CustomerId == customerId, cancellationToken)
-            ?? throw new NotFoundException("Booking not found.");
-
-        if (booking.BookingStatus is not (BookingStatus.Requested or BookingStatus.Pending))
-        {
-            throw new ConflictException("This booking can no longer be paid for online.");
-        }
-
-        return booking;
-    }
 
     /// <summary><paramref name="couponDiscount"/> is the whole booking's coupon discount (per-seat amount × seats).</summary>
     private (decimal AdvanceAmount, decimal TotalDiscount) ComputeAmounts(Booking booking, Trip trip, BookingPaymentPlan plan, decimal couponDiscount)

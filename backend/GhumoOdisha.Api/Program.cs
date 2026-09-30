@@ -11,7 +11,10 @@ using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
 using GhumoOdisha.Application.Bookings;
 using GhumoOdisha.Application.Cars;
+using GhumoOdisha.Application.Maps;
+using GhumoOdisha.Infrastructure.Maps;
 using GhumoOdisha.Application.Common;
+using GhumoOdisha.Application.Collections;
 using GhumoOdisha.Application.Contact;
 using GhumoOdisha.Application.Coupons;
 using GhumoOdisha.Application.Customers;
@@ -139,6 +142,7 @@ builder.Services.AddScoped<IBookingPaymentService, BookingPaymentService>();
 builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddHostedService<BookingCompletionBackgroundService>();
+builder.Services.AddHostedService<UnpaidRequestExpiryBackgroundService>();
 builder.Services.AddHostedService<LogRetentionBackgroundService>();
 builder.Services.AddScoped<ILogQueryService, LogQueryService>();
 builder.Services.AddScoped<ISearchLogService, SearchLogService>();
@@ -148,6 +152,13 @@ builder.Services.AddScoped<IDriverAuthService, DriverAuthService>();
 builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IDriverCarService, DriverCarService>();
 builder.Services.AddScoped<IAdminCarService, AdminCarService>();
+builder.Services.Configure<GoogleMapsOptions>(builder.Configuration.GetSection(GoogleMapsOptions.SectionName));
+builder.Services.AddHttpClient<IMapsService, GoogleMapsService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<IServiceAreaService, ServiceAreaService>();
+builder.Services.AddScoped<ICarRoutePlanner, CarRoutePlanner>();
 builder.Services.AddScoped<ICarCatalogService, CarCatalogService>();
 // Registered as itself too: the payment service uses its internal confirm/lock helpers.
 builder.Services.AddScoped<CarBookingService>();
@@ -158,6 +169,8 @@ builder.Services.AddHostedService<CarBookingHoldExpiryBackgroundService>();
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
 builder.Services.Configure<FeatureOptions>(builder.Configuration.GetSection(FeatureOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
+builder.Services.AddScoped<ICollectionService, CollectionService>();
+builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
 builder.Services.AddScoped<IInvoiceService, QuestPdfInvoiceService>();
@@ -179,7 +192,7 @@ if (string.IsNullOrWhiteSpace(storageRootPath))
 
 var uploadsBasePath = Path.Combine(storageRootPath, "Uploads");
 // "driver-documents" is private: not in UploadedFilesController's public list, served only via authorized endpoints.
-foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents" })
+foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents", "payment-qr" })
 {
     Directory.CreateDirectory(Path.Combine(uploadsBasePath, category));
 }
@@ -252,6 +265,14 @@ builder.Services.AddRateLimiter(options =>
         factory: _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+    // Car quotes / pickup checks call paid Google APIs — enough for a customer adjusting a booking, not for scraping.
+    options.AddPolicy("MapsLookup", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 40,
             Window = TimeSpan.FromMinutes(1)
         }));
 });

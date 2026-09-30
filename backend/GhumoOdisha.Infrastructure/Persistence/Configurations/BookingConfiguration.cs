@@ -47,6 +47,8 @@ public class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.UpdatedAt).HasColumnType("datetime(6)");
 
         builder.Ignore(b => b.Reference);
+        builder.Ignore(b => b.StartDate);
+        builder.Ignore(b => b.EndDate);
         builder.HasIndex(b => b.BookingNumber).IsUnique();
         builder.HasIndex(b => b.CustomerId);
         builder.HasIndex(b => b.TripId);

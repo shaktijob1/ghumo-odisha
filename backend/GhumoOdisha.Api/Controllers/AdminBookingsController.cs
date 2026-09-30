@@ -44,13 +44,6 @@ public class AdminBookingsController(IBookingService bookingService, IBookingTra
         return Ok(ApiResponse<AdminBookingDetailDto>.Ok(result));
     }
 
-    [HttpPost("{id:int}/confirm")]
-    public async Task<ActionResult<ApiResponse<object>>> ConfirmBooking(int id, ConfirmBookingRequest request, CancellationToken cancellationToken)
-    {
-        await bookingService.ConfirmBookingAsync(id, request, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(new { }, "Booking confirmed."));
-    }
-
     [HttpPost("{id:int}/payments")]
     public async Task<ActionResult<ApiResponse<object>>> AddPayment(int id, AddBookingPaymentRequest request, CancellationToken cancellationToken)
     {
@@ -91,13 +84,6 @@ public class AdminBookingsController(IBookingService bookingService, IBookingTra
     {
         var pdf = await invoiceService.GenerateAdminInvoicePdfAsync(id, cancellationToken);
         return File(pdf, "application/pdf", "GhumoOdisha-Invoice.pdf");
-    }
-
-    [HttpPost("{id:int}/reject")]
-    public async Task<ActionResult<ApiResponse<object>>> RejectBooking(int id, RejectBookingRequest request, CancellationToken cancellationToken)
-    {
-        await bookingService.RejectBookingAsync(id, request, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(new { }, "Booking rejected."));
     }
 
     [HttpPost("{id:int}/cancel")]

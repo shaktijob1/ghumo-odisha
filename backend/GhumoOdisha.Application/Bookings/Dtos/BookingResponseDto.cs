@@ -8,7 +8,7 @@ public record BookingResponseDto(
     int TripId,
     string TripTitle,
     string? TripCoverImageUrl,
-    int TripDateSlotId,
+    int? TripDateSlotId,
     DateOnly StartDate,
     DateOnly EndDate,
     string? PickupPointLocation,

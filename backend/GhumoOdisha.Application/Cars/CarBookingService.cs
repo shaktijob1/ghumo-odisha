@@ -49,6 +49,7 @@ public interface ICarBookingService
 public class CarBookingService(
     IGhumoOdishaDbContext db,
     IRazorpayService razorpay,
+    ICarRoutePlanner routes,
     IOptions<CarRentalOptions> options,
     ILogger<CarBookingService> logger) : ICarBookingService
 {
@@ -84,7 +85,16 @@ public class CarBookingService(
 
         var now = DateTime.UtcNow;
         var window = CarRentalWindow.Resolve(request.PickupDate, request.PickupTime, request.DurationHours, _options, now);
-        CarCatalogService.ValidateKm(request.EstimatedKm, _options);
+
+        // Measure the km (Google calls) before taking the car lock, so the lock is never held on the network.
+        var driver = await db.Cars.AsNoTracking().Listed()
+            .Where(c => c.CarId == request.CarId).Select(c => c.Driver).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new ConflictException("This car isn't available for booking any more.");
+        var route = await routes.PlanAsync(driver, request.Pickup, request.Drop, request.RoundTrip, cancellationToken);
+        if (!route.IsAvailable)
+        {
+            throw new ConflictException(route.UnavailableReason ?? ServiceAreaService.OutsideAreaMessage);
+        }
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
         await LockCarAsync(request.CarId, cancellationToken);
@@ -114,7 +124,7 @@ public class CarBookingService(
         }
 
         var pricing = car.ActivePricing!;
-        var fare = CarFareCalculator.Calculate(FareTerms.From(pricing), request.EstimatedKm, window.Nights);
+        var fare = CarFareCalculator.Calculate(FareTerms.From(pricing), route.TotalKm, window.Nights);
         var booking = new CarBooking
         {
             BookingNumber = await BookingNumbers.NextAsync(db.CarBookings.Select(b => b.BookingNumber), cancellationToken),
@@ -125,10 +135,21 @@ public class CarBookingService(
             ClientRequestId = request.ClientRequestId,
             PickupCity = car.BaseCity,
             PickupAddress = Clean(request.PickupAddress, 500),
+            PickupLocation = Clean(request.Pickup.Label, 300),
+            PickupLatitude = request.Pickup.Latitude,
+            PickupLongitude = request.Pickup.Longitude,
+            DropLocation = Clean(request.Drop.Label, 300),
+            DropLatitude = request.Drop.Latitude,
+            DropLongitude = request.Drop.Longitude,
+            RoundTrip = route.RoundTrip,
+            PickupToDropKm = route.PickupToDropKm,
+            DropToPickupKm = route.RoundTrip ? route.DropToPickupKm : null,
+            ReturnToBaseKm = route.ReturnToBaseKm,
+            DriverApproachKm = route.DriverApproachKm,
             PickupAt = window.StartUtc,
             DurationHours = window.DurationHours,
             EndsAt = window.EndUtc,
-            EstimatedKm = request.EstimatedKm,
+            EstimatedKm = route.TotalKm,
             EstimatedNights = window.Nights,
             EstimatedBaseFare = fare.BaseFare,
             EstimatedKmCharge = fare.KmCharge,
@@ -146,7 +167,7 @@ public class CarBookingService(
         await db.SaveChangesAsync(cancellationToken);
 
         CarAudit.Record(db, CarAuditEntity.Booking, booking.CarBookingId, "BookingCreated", "Booking started — waiting for payment",
-            CarActor.Customer(customerId), newValue: $"Estimated {Money(fare.Total)} for {request.EstimatedKm} km", carBookingId: booking.CarBookingId);
+            CarActor.Customer(customerId), newValue: $"Estimated {Money(fare.Total)} for {route.TotalKm} km ({RouteText(route)})", carBookingId: booking.CarBookingId);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -588,6 +609,15 @@ public class CarBookingService(
                 : null,
             b.PickupCity,
             b.PickupAddress,
+            b.PickupLocation,
+            Point(b.PickupLatitude, b.PickupLongitude),
+            b.DropLocation,
+            Point(b.DropLatitude, b.DropLongitude),
+            b.RoundTrip,
+            b.DriverApproachKm,
+            b.PickupToDropKm,
+            b.DropToPickupKm,
+            b.ReturnToBaseKm,
             b.PickupAt,
             b.DurationHours,
             b.EndsAt,
@@ -619,6 +649,14 @@ public class CarBookingService(
     }
 
     internal static string Money(decimal amount) => "₹" + amount.ToString("#,##0.##", CultureInfo.GetCultureInfo("en-IN"));
+
+    internal static string RouteText(CarRoutePlan r) =>
+        r.RoundTrip
+            ? $"round trip: {r.DriverApproachKm} km to pickup + {r.PickupToDropKm} km there + {r.DropToPickupKm} km back to pickup + {r.ReturnToBaseKm} km home"
+            : $"one way: {r.DriverApproachKm} km to pickup + {r.PickupToDropKm} km there + {r.ReturnToBaseKm} km home";
+
+    private static GeoPointDto? Point(double? latitude, double? longitude) =>
+        latitude is { } lat && longitude is { } lng ? new GeoPointDto(lat, lng) : null;
 
     private static string? Clean(string? text, int max)
     {

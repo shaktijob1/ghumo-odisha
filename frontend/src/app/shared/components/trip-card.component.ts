@@ -56,7 +56,7 @@ import { tripPath } from '../utils/trip-path';
                 @let isDup = copy === 1 || $index >= trip.upcomingSlots.length;
                 <span class="datepill" [class]="'tone' + ($index % 5)" [class.dup]="isDup" [attr.aria-hidden]="isDup ? 'true' : null">
                   <b>{{ s.startDate | date:'d MMM' | uppercase }}</b>
-                  <small>{{ s.availableSeats === 0 ? 'Sold out' : s.availableSeats + (s.availableSeats === 1 ? ' seat' : ' seats') }}</small>
+                  <small>{{ s.availableSeats === 0 ? 'Seats filled' : s.availableSeats + (s.availableSeats === 1 ? ' seat' : ' seats') }}</small>
                 </span>
               }
             }
@@ -115,10 +115,17 @@ import { tripPath } from '../utils/trip-path';
                    spell out the month and add the weekday (data-count drives that in styles.css). -->
               <div class="depchips-row" [attr.data-count]="departureChips.length">
                 @for (s of departureChips; track s.startDate) {
-                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Sold out' : null">
+                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Seats filled' : null">
                     <span class="dchip-mon"><span class="m-short">{{ s.startDate | date:'MMM' | uppercase }}</span><span class="m-long">{{ s.startDate | date:'MMMM' | uppercase }}</span></span>
                     <span class="dchip-day">{{ s.startDate | date:'d' }}</span>
                     <span class="dchip-wd">{{ s.startDate | date:'EEEE' }}</span>
+                    @if (s.availableSeats > 0) {
+                      <!-- Seats left on this date: a blinking red tag on the box's top-right corner. -->
+                      <span class="dchip-seats">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.6l3.05 6.3 6.95.95-5.05 4.85 1.25 6.9L12 17.3l-6.2 3.3 1.25-6.9L2 8.85l6.95-.95z"></path></svg>
+                        <span><b>{{ s.availableSeats }}</b><span class="dchip-seats-w"> {{ s.availableSeats === 1 ? 'seat' : 'seats' }}</span> left</span>
+                      </span>
+                    }
                   </span>
                 }
               </div>

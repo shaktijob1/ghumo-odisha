@@ -9,7 +9,10 @@ public record CreateBookingRequest(
     string? CustomerNotes,
     Guid? ClientRequestId = null,
     int? PickupPointId = null,
-    bool AgreedToTerms = false);
+    bool AgreedToTerms = false,
+    /// <summary>Gents and ladies travelling — required from the website (they must add up to <see cref="NumberOfSeats"/>).</summary>
+    int? MaleCount = null,
+    int? FemaleCount = null);
 
 /// <summary><see cref="Method"/>/<see cref="PaymentReference"/> describe how the advance was received
 /// (the admin's offline confirm); a Razorpay payment always records as <see cref="PaymentMethod.Razorpay"/>.</summary>
@@ -57,9 +60,10 @@ public record CreateManualBookingRequest(
     int TripId,
     int TripDateSlotId,
     int NumberOfSeats,
-    decimal AdvanceAmount,
+    decimal AmountPaid,
+    PaymentMethod PaymentMethod,
+    string? PaymentReference,
     BookingSource BookingSource,
-    BookingStatus InitialStatus,
     string? AdminNotes);
 
 /// <summary>Customer asks for their booking invoice to be emailed to this address.</summary>

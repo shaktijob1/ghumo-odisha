@@ -21,6 +21,7 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
         builder.Property(d => d.GoogleSubject).HasMaxLength(64);
         builder.Property(d => d.Address).HasMaxLength(500);
         builder.Property(d => d.City).HasMaxLength(100);
+        builder.Property(d => d.BaseLocationLabel).HasMaxLength(300);
         builder.Property(d => d.DrivingLicenceNumber).HasMaxLength(30);
         builder.Property(d => d.ProfilePhotoUrl).HasMaxLength(500);
         builder.Property(d => d.StatusReason).HasMaxLength(500);

@@ -43,6 +43,7 @@ public class AdminCarApprovalTests : IDisposable
 
         var profile = new DriverService(db, Storage());
         await profile.UpdateProfileAsync(driverId, new UpdateDriverProfileRequest("Approval Driver", null, "Lane 3", "Puri", "OD13 20150001234", null, 5));
+        await profile.SetBaseLocationAsync(driverId, new SetBaseLocationRequest(19.81, 85.83, "Puri bus stand"));
         await profile.SetProfilePhotoAsync(driverId, Jpeg());
         await profile.UploadDocumentAsync(driverId, DriverDocumentType.DrivingLicence, null, Jpeg());
         await profile.SubmitForReviewAsync(driverId);

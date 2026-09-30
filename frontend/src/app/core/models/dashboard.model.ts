@@ -4,7 +4,7 @@ export interface DashboardCounters {
   totalTrips: number;
   activeTrips: number;
   totalCustomers: number;
-  bookingRequests: number;
+  completedBookings: number;
   confirmedBookings: number;
   upcomingTripsCount: number;
   confirmedRevenue: number;
@@ -22,6 +22,5 @@ export interface DashboardUpcomingTrip {
 export interface Dashboard {
   counters: DashboardCounters;
   upcomingTrips: DashboardUpcomingTrip[];
-  recentRequests: AdminBookingListItem[];
   recentlyConfirmed: AdminBookingListItem[];
 }

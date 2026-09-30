@@ -15,6 +15,7 @@ public interface IGhumoOdishaDbContext
     DbSet<VehiclePhoto> VehiclePhotos { get; }
     DbSet<PickupPoint> PickupPoints { get; }
     DbSet<OrganizerPhoto> OrganizerPhotos { get; }
+    DbSet<PaymentQrCode> PaymentQrCodes { get; }
     DbSet<SiteHeroPhoto> SiteHeroPhotos { get; }
     DbSet<TermsAcceptance> TermsAcceptances { get; }
     DbSet<ItineraryDay> ItineraryDays { get; }
@@ -46,6 +47,9 @@ public interface IGhumoOdishaDbContext
     DbSet<CarBooking> CarBookings { get; }
     DbSet<CarTripExecution> CarTripExecutions { get; }
     DbSet<CarAuditEvent> CarAuditEvents { get; }
+    DbSet<ServiceArea> ServiceAreas { get; }
+
+    Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

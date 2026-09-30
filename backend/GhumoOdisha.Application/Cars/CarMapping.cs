@@ -96,6 +96,10 @@ public static class CarMapping
         {
             missing.Add("Add your address and city.");
         }
+        if (driver.BaseLatitude is null || driver.BaseLongitude is null)
+        {
+            missing.Add("Set your starting point on the map.");
+        }
         if (string.IsNullOrWhiteSpace(driver.DrivingLicenceNumber))
         {
             missing.Add("Add your driving licence number.");

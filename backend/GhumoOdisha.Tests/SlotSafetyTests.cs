@@ -125,8 +125,8 @@ public class SlotSafetyTests
         var service = CreateBookingService(db, new FakeRazorpayService());
 
         await Assert.ThrowsAsync<ConflictException>(() => service.CreateManualBookingAsync(new CreateManualBookingRequest(
-            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 3, 0m,
-            BookingSource.Phone, BookingStatus.Requested, null)));
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 3, 100m,
+            PaymentMethod.Cash, null, BookingSource.Phone, null)));
     }
 
     [Fact]
@@ -138,8 +138,8 @@ public class SlotSafetyTests
         var service = CreateBookingService(db, new FakeRazorpayService());
 
         await Assert.ThrowsAsync<DepartureClosedException>(() => service.CreateManualBookingAsync(new CreateManualBookingRequest(
-            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 0m,
-            BookingSource.Phone, BookingStatus.Requested, null)));
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 100m,
+            PaymentMethod.Cash, null, BookingSource.Phone, null)));
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class SlotSafetyTests
 
         Assert.Equal("pay_fake_123", razorpay.LastRefundedPaymentId);
         var after = await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == payerBooking.Booking.BookingId);
-        Assert.Equal(BookingStatus.Requested, after.BookingStatus);
+        Assert.Equal(BookingStatus.AwaitingPayment, after.BookingStatus);
         var slotAfter = await db.TripDateSlots.AsNoTracking().SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId);
         Assert.Equal(0, slotAfter.AvailableSeats);
     }

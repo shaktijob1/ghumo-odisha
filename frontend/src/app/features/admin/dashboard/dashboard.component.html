@@ -68,7 +68,7 @@
       <div class="kpi"><div class="k">Total trips</div><div class="v">{{ d.counters.totalTrips }}</div></div>
       <div class="kpi"><div class="k">Active trips</div><div class="v">{{ d.counters.activeTrips }}</div></div>
       <div class="kpi"><div class="k">Total customers</div><div class="v">{{ d.counters.totalCustomers }}</div></div>
-      <div class="kpi"><div class="k">Booking requests</div><div class="v">{{ d.counters.bookingRequests }}</div></div>
+      <div class="kpi"><div class="k">Completed bookings</div><div class="v">{{ d.counters.completedBookings }}</div></div>
     </div>
     <div class="kpis">
       <div class="kpi"><div class="k">Confirmed bookings</div><div class="v">{{ d.counters.confirmedBookings }}</div></div>
@@ -77,43 +77,19 @@
       <div class="kpi"><div class="k">Advance collected</div><div class="v">₹{{ d.counters.advanceCollected | number:'1.0-0' }}</div></div>
     </div>
 
-    <div class="panels">
-      <div class="panel">
-        <h4>Recent booking requests</h4>
-        <div class="sub">Awaiting organizer contact</div>
-        @if (d.recentRequests.length === 0) {
-          <p class="note">No open requests right now.</p>
-        } @else {
-          <div class="tblwrap">
-            <table class="tbl">
-              <tr><th>Booking</th><th>Customer</th><th>Trip</th><th>Seats</th><th>Status</th></tr>
-              @for (b of d.recentRequests; track b.bookingId) {
-                <tr>
-                  <td><a [routerLink]="['/admin/bookings', b.bookingId]">{{ b.bookingReference }}</a></td>
-                  <td>{{ b.customerName }}</td>
-                  <td>{{ b.tripTitle }}</td>
-                  <td>{{ b.numberOfSeats }}</td>
-                  <td><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></td>
-                </tr>
-              }
-            </table>
+    <div class="panel" style="margin-bottom:14px">
+      <h4>Upcoming trips</h4>
+      <div class="sub">Next departures</div>
+      @if (d.upcomingTrips.length === 0) {
+        <p class="note">No upcoming departures scheduled.</p>
+      } @else {
+        @for (u of d.upcomingTrips; track u.tripId + u.startDate) {
+          <div class="row sp" style="padding:9px 0;border-bottom:1px solid var(--line)">
+            <div><b style="font-size:12.5px">{{ u.tripTitle }}</b><div class="note">{{ u.startDate | date:'d MMM y' }}</div></div>
+            <span class="note">{{ u.availableSeats }} / {{ u.totalSeats }} seats left</span>
           </div>
         }
-      </div>
-      <div class="panel">
-        <h4>Upcoming trips</h4>
-        <div class="sub">Next departures</div>
-        @if (d.upcomingTrips.length === 0) {
-          <p class="note">No upcoming departures scheduled.</p>
-        } @else {
-          @for (u of d.upcomingTrips; track u.tripId + u.startDate) {
-            <div class="row sp" style="padding:9px 0;border-bottom:1px solid var(--line)">
-              <div><b style="font-size:12.5px">{{ u.tripTitle }}</b><div class="note">{{ u.startDate | date:'d MMM y' }}</div></div>
-              <span class="note">{{ u.availableSeats }} / {{ u.totalSeats }} seats left</span>
-            </div>
-          }
-        }
-      </div>
+      }
     </div>
 
     <div class="panel">

@@ -1,3 +1,4 @@
+import { GeoPoint, TripPlace } from './location.model';
 // Cars module — mirrors the API's Cars DTOs. Enums are sent as numbers (the API's default).
 
 export enum FuelType {
@@ -210,6 +211,14 @@ export interface CarFareQuote {
   pickupAt: string;
   endsAt: string;
   durationHours: number;
+  /** One way ends at "where to"; a round trip comes back to the pickup. */
+  roundTrip: boolean;
+  /** Road km: base → pickup, pickup → "where to", ("where to" → pickup on a round trip), back to base. */
+  driverApproachKm: number;
+  pickupToDropKm: number;
+  dropToPickupKm: number;
+  returnToBaseKm: number;
+  /** Billed km: the sum of the three. */
   estimatedKm: number;
   pricePerKm: number;
   baseFare: number;
@@ -279,6 +288,16 @@ export interface CarBooking {
   driver: { driverId: number; name: string; phoneNumber: string | null; profilePhotoUrl: string | null } | null;
   pickupCity: string;
   pickupAddress: string | null;
+  pickupLocation: string | null;
+  pickupPoint: GeoPoint | null;
+  dropLocation: string | null;
+  dropPoint: GeoPoint | null;
+  roundTrip: boolean;
+  /** Null on bookings made before km were measured on the map. */
+  driverApproachKm: number | null;
+  pickupToDropKm: number | null;
+  dropToPickupKm: number | null;
+  returnToBaseKm: number | null;
   pickupAt: string;
   durationHours: number;
   endsAt: string;
@@ -308,8 +327,12 @@ export interface CreateCarBookingRequest {
   pickupDate: string;
   pickupTime: string;
   durationHours: number;
-  estimatedKm: number;
-  pickupAddress: string | null;
+  pickup: TripPlace;
+  /** "Where to". */
+  drop: TripPlace;
+  roundTrip: boolean;
+  /** Full address typed by the customer — required. */
+  pickupAddress: string;
   customerNotes: string | null;
   clientRequestId: string;
 }
@@ -335,4 +358,18 @@ export interface CarBookingSummary {
   estimatedTotal: number;
   finalTotal: number | null;
   createdAt: string;
+}
+
+// ---------- Search with a route (fares on the cards) ----------
+
+export interface CarWithFare {
+  car: CarSearchResult;
+  /** Null when this vehicle can't be priced (e.g. its driver hasn't set a starting point). */
+  fare: CarFareQuote | null;
+}
+
+export interface CarFareSearchResults {
+  isServiceable: boolean;
+  message: string | null;
+  cars: CarWithFare[];
 }

@@ -51,7 +51,11 @@
             @if (tripFacts().length > 0) {
               <div class="tdfacts">
                 @for (f of tripFacts(); track f.label) {
-                  <div class="tdfact" [attr.data-tone]="$index % 4">
+                  <!-- The pickup tile opens the list of every pickup point; the others are plain facts. -->
+                  <div class="tdfact" [attr.data-tone]="$index % 4" [class.tdfact-btn]="f.icon === 'pin'"
+                    [attr.role]="f.icon === 'pin' ? 'button' : null" [attr.tabindex]="f.icon === 'pin' ? 0 : null"
+                    [attr.aria-label]="f.icon === 'pin' ? 'See all ' + t.pickupPoints.length + ' pickup points' : null"
+                    (click)="f.icon === 'pin' && showPickups.set(true)" (keydown.enter)="f.icon === 'pin' && showPickups.set(true)">
                     <span class="tdfact-ic" aria-hidden="true">
                       @switch (f.icon) {
                         @case ('clock') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg> }
@@ -60,12 +64,52 @@
                         @case ('tag') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg> }
                       }
                     </span>
-                    <div><span class="tdfact-l">{{ f.label }}</span><b>{{ f.value }}</b></div>
+                    @if (f.icon === 'pin') {
+                      <div>
+                        <span class="tdfact-l">{{ f.label }}</span>
+                        <b>{{ t.pickupPoints[0].location }}</b>
+                        <span class="tdfact-more">{{ t.pickupPoints.length > 1 ? '+' + (t.pickupPoints.length - 1) + ' more' : 'See time' }}
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                        </span>
+                      </div>
+                    } @else {
+                      <div><span class="tdfact-l">{{ f.label }}</span><b>{{ f.value }}</b></div>
+                    }
                   </div>
                 }
               </div>
             }
           </section>
+
+          @if (showPickups()) {
+            <div class="modal-backdrop" (click)="showPickups.set(false)">
+              <div class="modal pkmodal" role="dialog" aria-modal="true" aria-labelledby="pk-title" (click)="$event.stopPropagation()">
+                <div class="pkmodal-head">
+                  <span class="pkmodal-ic" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                  </span>
+                  <div>
+                    <h4 id="pk-title">Pickup points</h4>
+                    <p>{{ t.pickupPoints.length }} {{ t.pickupPoints.length === 1 ? 'stop' : 'stops' }} on the way — choose yours while booking.</p>
+                  </div>
+                  <button type="button" class="pkmodal-x" aria-label="Close" (click)="showPickups.set(false)">×</button>
+                </div>
+                <ol class="pklist">
+                  @for (p of t.pickupPoints; track p.pickupPointId; let i = $index; let last = $last) {
+                    <li [class.last]="last">
+                      <span class="pklist-n">{{ i + 1 }}</span>
+                      <div class="pklist-body">
+                        <b>{{ p.location }}</b>
+                        <a class="pklist-map" target="_blank" rel="noopener" [href]="'https://www.google.com/maps/search/?api=1&query=' + encode(p.location + ', Odisha')">View on map ↗</a>
+                      </div>
+                      <time class="pklist-time">{{ p.time }}</time>
+                    </li>
+                  }
+                </ol>
+                <p class="pkmodal-note">Please reach your pickup point 10 minutes early. Times may shift slightly with traffic.</p>
+              </div>
+            </div>
+          }
 
           @if (includedItems().length > 0) {
             <section class="tdsec">
@@ -202,9 +246,26 @@
           @if (t.itineraryDays.length > 0) {
             <section class="tdsec">
               <div class="tdsec-head"><div><h2><span class="up-g">Day-wise </span><span class="up-o">itinerary</span></h2><p>{{ t.itineraryDays.length }} day{{ t.itineraryDays.length === 1 ? '' : 's' }} · timings may shift slightly with weather and traffic.</p></div></div>
-              <div class="daytabs" #dayTabsEl>
-                @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index) {
-                  <button #dayTab class="daytab" [class.on]="i === selectedDayIndex()" (click)="selectDay(i)">Day {{ d.dayNumber }}</button>
+              <!-- Day strip: each tab shows the day and its title; with many days it scrolls, with ‹ › and faded edges. -->
+              <div class="dayrail" [class.fade-l]="dayRailPrev()" [class.fade-r]="dayRailNext()">
+                @if (dayRailPrev()) {
+                  <button type="button" class="dayrail-nav prev" aria-label="Earlier days" (click)="scrollDays(-1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+                  </button>
+                }
+                <div class="daytabs" #dayTabsEl role="tablist" aria-label="Itinerary days" (scroll)="updateDayRail()">
+                  @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index) {
+                    <button #dayTab type="button" role="tab" class="daytab" [class.on]="i === selectedDayIndex()" [class.done]="i < selectedDayIndex()"
+                      [attr.aria-selected]="i === selectedDayIndex()" (click)="selectDay(i)">
+                      <span class="daytab-n">Day {{ d.dayNumber }}</span>
+                      <span class="daytab-t">{{ d.title }}</span>
+                    </button>
+                  }
+                </div>
+                @if (dayRailNext()) {
+                  <button type="button" class="dayrail-nav next" aria-label="Later days" (click)="scrollDays(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                  </button>
                 }
               </div>
 
@@ -213,7 +274,15 @@
                   <div class="tdday-head">
                     <span class="tdday-n">Day {{ day.dayNumber }}</span>
                     <b>{{ day.title }}</b>
+                    @if (t.itineraryDays.length > 1) {
+                      <span class="tdday-of">{{ selectedDayIndex() + 1 }} of {{ t.itineraryDays.length }}</span>
+                    }
                   </div>
+                  @if (t.itineraryDays.length > 1) {
+                    <div class="tdday-progress" aria-hidden="true">
+                      <span [style.width.%]="((selectedDayIndex() + 1) / t.itineraryDays.length) * 100"></span>
+                    </div>
+                  }
                   @if (day.description) {
                     <p class="tdday-desc">{{ day.description }}</p>
                   }
@@ -241,6 +310,26 @@
                         </li>
                       }
                     </ol>
+                  }
+
+                  <!-- Step through the days without scrolling back up to the tabs. -->
+                  @if (t.itineraryDays.length > 1) {
+                    @let prevDay = t.itineraryDays[selectedDayIndex() - 1];
+                    @let nextDay = t.itineraryDays[selectedDayIndex() + 1];
+                    <nav class="tdday-nav" aria-label="Previous and next day">
+                      @if (prevDay) {
+                        <button type="button" class="tdday-step prev" (click)="stepDay(-1)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+                          <span><small>Day {{ prevDay.dayNumber }}</small><b>{{ prevDay.title }}</b></span>
+                        </button>
+                      } @else { <span></span> }
+                      @if (nextDay) {
+                        <button type="button" class="tdday-step next" (click)="stepDay(1)">
+                          <span><small>Next · Day {{ nextDay.dayNumber }}</small><b>{{ nextDay.title }}</b></span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                        </button>
+                      }
+                    </nav>
                   }
                 </div>
               }
@@ -291,7 +380,7 @@
         </div>
 
         <aside class="aside">
-          @if (bookingResult() && (paymentConfirmed() || skippedPayment())) {
+          @if (bookingResult() && paymentConfirmed()) {
             <ng-container [ngTemplateOutlet]="afterBookingSteps"></ng-container>
           } @else {
             <div class="card pad bookpanel">
@@ -376,7 +465,7 @@
       </div>
     </div>
 
-    @if (!paymentConfirmed() && !skippedPayment() && selectedSlot(); as slot) {
+    @if (!paymentConfirmed() && selectedSlot(); as slot) {
       <div class="stickycta">
         <div class="price"><b>₹{{ perSeatAdvance }}</b><small>per seat · {{ slot.startDate | date:'d MMM' }}</small></div>
         <button class="btn" [disabled]="submitting()" (click)="openBookingModal()">CONTINUE</button>
@@ -437,13 +526,24 @@
                 </div>
 
                 @for (s of visibleSlots(); track s.tripDateSlotId) {
-                  <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut" [disabled]="s.isSoldOut" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
-                    <span class="depseats" [class.bad]="s.isSoldOut">
-                      @if (s.isSoldOut) {
-                        Sold out
+                  <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut || s.isBookingClosed" [disabled]="s.isSoldOut || s.isBookingClosed" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
+                    <!-- Who's going, not how many seats are left: gents / ladies booked so far (1:1 mix). -->
+                    <span class="depseats" [class.bad]="s.isSoldOut || s.isBookingClosed">
+                      @if (s.isSoldOut || s.isBookingClosed) {
+                        Seats filled
+                      } @else if (s.gentsBooked + s.ladiesBooked === 0) {
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z"></path></svg>
+                        Be the first to join
                       } @else {
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="7" r="4"></circle><path d="M1 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1z"></path><circle cx="17" cy="8" r="3"></circle><path d="M19 13.2A6 6 0 0 1 23 19v2h-4.5v-1a8.5 8.5 0 0 0-2.3-5.8 6 6 0 0 1 2.8-1z"></path></svg>
-                        {{ s.availableSeats }} {{ s.availableSeats === 1 ? 'Seat' : 'Seats' }} Available
+                        <span class="depg" [class.full]="s.gentsLeft === 0">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M5 22v-6a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v6z"></path></svg>
+                          {{ s.gentsLeft === 0 ? 'Gents full' : s.gentsBooked + (s.gentsBooked === 1 ? ' Gent' : ' Gents') }}
+                        </span>
+                        <span class="depg lady" [class.full]="s.ladiesLeft === 0">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="6" r="4"></circle><path d="M12 11l-7 11h14z"></path></svg>
+                          {{ s.ladiesLeft === 0 ? 'Ladies full' : s.ladiesBooked + (s.ladiesBooked === 1 ? ' Lady' : ' Ladies') }}
+                        </span>
+                        <span class="depg-note">booked</span>
                       }
                     </span>
                     <span class="depradio" aria-hidden="true"></span>
@@ -526,7 +626,7 @@
             <a class="btn ghost" style="flex:1" routerLink="/my-bookings">View my bookings</a>
           </div>
         </div>
-      } @else if (bookingResult() && !skippedPayment()) {
+      } @else if (bookingResult()) {
         @let b = bookingResult()!.booking;
         <app-payment-panel
           heading=""
@@ -535,7 +635,6 @@
           (couponChange)="coupon.set($event)"
           [booking]="b"
           (confirmed)="onPaymentConfirmed()"
-          (skip)="skippedPayment.set(true)"
         >
           <div panelIntro class="bksum">
             <div class="bksum-top">
@@ -558,25 +657,6 @@
             </div>
           </div>
         </app-payment-panel>
-      } @else if (bookingResult(); as result) {
-        <div class="successcard">
-          <div class="tick">✓</div>
-          <h2 style="font-size:20px;margin-bottom:6px">Booking request submitted</h2>
-          <p style="font-size:13.5px;color:#2A4F45;line-height:1.6;margin-bottom:16px">Our Ghumo Odisha team will contact you to collect the advance and confirm your seats.</p>
-          <div class="card pad" style="background:#fff">
-            <div class="kv">
-              <span class="k">Trip</span><b>{{ result.booking.tripTitle }}</b>
-              <span class="k">Date</span><b>{{ result.booking.startDate | date:'d MMM y' }} → {{ result.booking.endDate | date:'d MMM y' }}</b>
-              <span class="k">Seats</span><b>{{ result.booking.numberOfSeats }}</b>
-              <span class="k">Total</span><b>₹{{ result.booking.totalAmount | number:'1.0-0' }}</b>
-              <span class="k">Status</span><span><span class="badge wait">Requested</span></span>
-            </div>
-          </div>
-          <p class="note" style="margin-top:14px">Seats are held only after the team confirms your booking.</p>
-          <div class="row" style="gap:10px;margin-top:16px">
-            <a class="btn" style="flex:1" routerLink="/my-bookings">View my bookings</a>
-          </div>
-        </div>
       }
     </ng-template>
 
@@ -628,9 +708,31 @@
               <button type="button" class="bklink" (click)="backToDate()">Change</button>
             </div>
 
-            <div class="bkseats">
-              <div><b>Travellers</b><small>{{ slot.availableSeats }} {{ slot.availableSeats === 1 ? 'seat' : 'seats' }} available on this date</small></div>
-              <app-seat-selector [(value)]="seats" [max]="slot.availableSeats"></app-seat-selector>
+            <!-- Gents and ladies chosen separately: each departure keeps an equal mix (half the seats each). -->
+            <div class="bkgender">
+              <div class="bkgender-row">
+                <span class="bkgender-ic" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="4"></circle><path d="M5 22v-6a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v6z"></path></svg>
+                </span>
+                <div>
+                  <b>Gents</b>
+                  <small>{{ slot.gentsLeft === 0 ? 'Gents’ places are full on this date' : slot.gentsBooked + ' already booked' }}</small>
+                </div>
+                <app-seat-selector label="gents" [(value)]="gents" [min]="0" [max]="gentsMax()"></app-seat-selector>
+              </div>
+              <div class="bkgender-row lady">
+                <span class="bkgender-ic" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="4"></circle><path d="M12 11l-7 11h14z"></path></svg>
+                </span>
+                <div>
+                  <b>Ladies</b>
+                  <small>{{ slot.ladiesLeft === 0 ? 'Ladies’ places are full on this date' : slot.ladiesBooked + ' already booked' }}</small>
+                </div>
+                <app-seat-selector label="ladies" [(value)]="ladies" [min]="0" [max]="ladiesMax()"></app-seat-selector>
+              </div>
+              <p class="bkgender-note">
+                <b>{{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</b> · Every departure keeps an equal mix of gents and ladies.
+              </p>
             </div>
 
             @if (t.inclusions.stay) {
@@ -672,7 +774,7 @@
 
             <div class="bkactions two">
               <button type="button" class="btn ghost" (click)="backToDate()">Back</button>
-              <button type="button" class="btn" (click)="confirmSeats()">
+              <button type="button" class="btn" [disabled]="seats() < 1" (click)="confirmSeats()">
                 Continue
               </button>
             </div>

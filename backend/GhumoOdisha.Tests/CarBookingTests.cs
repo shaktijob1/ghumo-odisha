@@ -116,7 +116,7 @@ public class CarBookingTests : IDisposable
         var customer = await CustomerAsync(db);
 
         // 24 h from 10:00 spans one night; 180 km → base ₹300 + 180 × 15 + 1 × 400.
-        var quote = await Catalog(db).QuoteAsync(carId, new CarQuoteRequest(PickupDate, TenAm, 24, 180));
+        var quote = await Catalog(db).QuoteAsync(carId, new CarQuoteRequest(PickupDate, TenAm, 24, CarTestData.Pickup, CarTestData.DropForTotal(180)));
         Assert.Equal(300m + 2700m + 400m, quote.EstimatedTotal);
         Assert.Equal(99m, quote.BookingAmount);
         Assert.Equal(quote.EstimatedTotal - 99m, quote.RemainingAmount);
@@ -126,7 +126,7 @@ public class CarBookingTests : IDisposable
         Assert.Equal(1, booking.Estimate.Nights);
 
         // No minimum km: a short trip pays its own km plus the (higher) short-distance base fare.
-        var shortQuote = await Catalog(db).QuoteAsync(carId, new CarQuoteRequest(PickupDate.AddDays(3), TenAm, 12, 20));
+        var shortQuote = await Catalog(db).QuoteAsync(carId, new CarQuoteRequest(PickupDate.AddDays(3), TenAm, 12, CarTestData.Pickup, CarTestData.DropForTotal(20)));
         Assert.Equal(500m + 20 * 15m, shortQuote.EstimatedTotal);
 
         // A later price change doesn't touch the existing booking's estimate.
@@ -281,7 +281,6 @@ public class CarBookingTests : IDisposable
         Assert.Contains(tooSoon.Errors, e => e.Contains("at least 2 hours"));
 
         await Assert.ThrowsAsync<ValidationAppException>(() => Bookings(db).CreateAsync(customer, Request(carId, date: PickupDate.AddDays(400))));
-        await Assert.ThrowsAsync<ValidationAppException>(() => Bookings(db).CreateAsync(customer, Request(carId, km: 0)));
     }
 
     public void Dispose()

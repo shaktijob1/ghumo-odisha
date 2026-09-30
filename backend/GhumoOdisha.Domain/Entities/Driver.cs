@@ -18,6 +18,11 @@ public class Driver
     public string? GoogleSubject { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
+    /// <summary>Where the driver starts from (home / stand). The km from here to the customer's pickup are
+    /// added to the fare. A car can't be quoted until its driver has one.</summary>
+    public double? BaseLatitude { get; set; }
+    public double? BaseLongitude { get; set; }
+    public string? BaseLocationLabel { get; set; }
     public string? DrivingLicenceNumber { get; set; }
     public DateOnly? LicenceExpiryDate { get; set; }
     public int? ExperienceYears { get; set; }

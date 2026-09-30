@@ -18,6 +18,7 @@ import {
 } from '../models/admin-car.model';
 import { CarBookingStatus, CarBookingSummary, CarPaymentStatus, CarPhotoKind } from '../models/car.model';
 import { DriverCar, SaveCarRequest, SubmitPricingRequest } from '../models/driver.model';
+import { GeoPoint, PickupCheck, SaveServiceAreaRequest, ServiceArea, TripPlace } from '../models/location.model';
 import { PaymentMethod } from '../models/enums.model';
 import { compressImage } from '../../shared/utils/compress-image';
 
@@ -170,6 +171,35 @@ export class AdminCarService {
 
   correctFare(id: number, request: AdminCorrectFareRequest): Observable<AdminCarBookingDetail> {
     return this.post<AdminCarBookingDetail>(`/car-bookings/${id}/correct-fare`, request);
+  }
+
+  // ---------- Pickup areas & driver starting points ----------
+
+  serviceAreas(): Observable<ServiceArea[]> {
+    return this.get<ServiceArea[]>('/service-areas');
+  }
+
+  saveServiceArea(id: number | null, request: SaveServiceAreaRequest): Observable<ServiceArea> {
+    return id === null
+      ? this.post<ServiceArea>('/service-areas', request)
+      : this.http.put<ApiResponse<ServiceArea>>(`${this.base}/service-areas/${id}`, request, { context: quiet() }).pipe(map((r) => r.data!));
+  }
+
+  deleteServiceArea(id: number): Observable<void> {
+    return this.http.delete<ApiResponse<unknown>>(`${this.base}/service-areas/${id}`, { context: quiet() }).pipe(map(() => undefined));
+  }
+
+  setDriverBaseLocation(driverId: number, place: TripPlace): Observable<AdminDriverDetail> {
+    return this.http
+      .put<ApiResponse<AdminDriverDetail>>(`${this.base}/drivers/${driverId}/base-location`, place, { context: quiet() })
+      .pipe(map((r) => r.data!));
+  }
+
+  /** Same check the booking page makes — lets the admin test a spot against the saved areas. */
+  checkPickup(point: GeoPoint): Observable<PickupCheck> {
+    return this.http
+      .post<ApiResponse<PickupCheck>>(`${environment.apiUrl}/cars/pickup-check`, point, { context: quiet() })
+      .pipe(map((r) => r.data!));
   }
 
   private get<T>(path: string, params?: HttpParams): Observable<T> {

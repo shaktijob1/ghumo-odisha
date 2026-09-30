@@ -49,6 +49,8 @@ public class CarBookingConfiguration : IEntityTypeConfiguration<CarBooking>
 
         builder.Property(b => b.PickupCity).IsRequired().HasMaxLength(100);
         builder.Property(b => b.PickupAddress).HasMaxLength(500);
+        builder.Property(b => b.PickupLocation).HasMaxLength(300);
+        builder.Property(b => b.DropLocation).HasMaxLength(300);
         builder.Property(b => b.AdditionalChargesNote).HasMaxLength(300);
         builder.Property(b => b.RazorpayOrderId).HasMaxLength(64);
         builder.Property(b => b.RazorpayPaymentId).HasMaxLength(64);

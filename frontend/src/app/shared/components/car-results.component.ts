@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
-import { CarSearchResult, CarWindow } from '../../core/models/car.model';
+import { Subscription } from 'rxjs';
+import { CarWithFare } from '../../core/models/car.model';
 import { CarService } from '../../core/services/car.service';
 import { CarCardComponent } from './car-card.component';
 import { StatePanelComponent } from './state-panel.component';
 import { apiErrorMessage } from '../utils/api-error';
-import { durationLabel, timeLabel, windowDateLabel } from '../utils/car-format';
+import { VehicleSearch } from '../utils/vehicle-search';
 
 /**
- * "Available Cars" for a search: seat filters (from the API's seat categories), and car cards with
- * loading / empty / error states. Only approved cars ever come back from the API.
+ * "Available Vehicles" for a search: each vehicle with the fare the server worked out for this exact
+ * pickup, drop and time, seat filters, and loading / empty / error / outside-area states.
  */
 @Component({
   selector: 'app-car-results',
@@ -21,15 +22,14 @@ import { durationLabel, timeLabel, windowDateLabel } from '../utils/car-format';
         <div class="crpanel">
           <div class="crhead">
             <div class="crhead-text">
-              <h2><span class="up-g">Available </span><span class="up-o">Cars</span></h2>
-              <p class="sub">{{ summary() }}</p>
+              <h2><span class="up-g">Available </span><span class="up-o">Vehicles</span></h2>
             </div>
             @if (state() === 'ready') {
-              <span class="sechead-meta crcount sec-count"><b>{{ visible().length }}</b> {{ visible().length === 1 ? 'car' : 'cars' }}</span>
+              <span class="sechead-meta crcount sec-count"><b>{{ visible().length }}</b> {{ visible().length === 1 ? 'vehicle' : 'vehicles' }}</span>
             }
           </div>
 
-          @if (seatOptions().length > 1) {
+          @if (state() === 'ready' && seatOptions().length > 1) {
             <div class="locfilters crfilters" role="group" aria-label="Filter by seats">
               <button type="button" class="locbtn" [class.on]="seatFilter() === null" [attr.aria-pressed]="seatFilter() === null" (click)="seatFilter.set(null)">All</button>
               @for (s of seatOptions(); track s) {
@@ -40,7 +40,7 @@ import { durationLabel, timeLabel, windowDateLabel } from '../utils/car-format';
 
           @switch (state()) {
             @case ('loading') {
-              <app-state-panel kind="loading" message="Finding cars…"></app-state-panel>
+              <app-state-panel kind="loading" message="Working out fares…"></app-state-panel>
             }
             @case ('error') {
               <div class="state-panel">
@@ -48,17 +48,20 @@ import { durationLabel, timeLabel, windowDateLabel } from '../utils/car-format';
                 <button type="button" class="btn ghost sm" style="margin-top:12px" (click)="load()">Try again</button>
               </div>
             }
+            @case ('outside') {
+              <app-state-panel kind="empty" [message]="errorMessage() + ' Please choose a pickup inside our area.'"></app-state-panel>
+            }
             @default {
               @if (visible().length === 0) {
                 <app-state-panel kind="empty"
-                  [message]="cars().length === 0 ? 'No cars at this pickup location yet. Try another location, or message us on WhatsApp.' : 'No cars with this many seats. Try another option.'"></app-state-panel>
+                  [message]="items().length === 0 ? 'No vehicles for this time yet. Try another time, or message us on WhatsApp.' : 'No vehicles with this many seats. Try another option.'"></app-state-panel>
               } @else {
                 <div class="crgrid">
-                  @for (c of visible(); track c.carId; let i = $index) {
-                    <app-car-card [car]="c" [window]="window()" [index]="i"></app-car-card>
+                  @for (i of visible(); track i.car.carId) {
+                    <app-car-card [item]="i" [search]="search()"></app-car-card>
                   }
                 </div>
-                <p class="note crnote">Every car comes with its driver. Fares are estimates — the final fare uses the actual km driven.</p>
+                <p class="note crnote">Every vehicle comes with its driver. Fares are estimates from Google Maps road distances — the final fare uses the actual km driven.</p>
               }
             }
           }
@@ -70,53 +73,47 @@ import { durationLabel, timeLabel, windowDateLabel } from '../utils/car-format';
 export class CarResultsComponent {
   private readonly carService = inject(CarService);
 
-  readonly city = input<string | null>(null);
-  readonly window = input<CarWindow | null>(null);
+  readonly search = input.required<VehicleSearch>();
 
-  readonly state = signal<'loading' | 'ready' | 'error'>('loading');
-  readonly errorMessage = signal('Could not load cars. Please check your connection.');
-  readonly cars = signal<CarSearchResult[]>([]);
+  readonly state = signal<'loading' | 'ready' | 'error' | 'outside'>('loading');
+  readonly errorMessage = signal('Could not load vehicles. Please check your connection.');
+  readonly items = signal<CarWithFare[]>([]);
   readonly seatFilter = signal<number | null>(null);
 
-  /** Only seat categories that actually have cars in these results. */
-  readonly seatOptions = computed(() => [...new Set(this.cars().map((c) => c.seatCapacity))].sort((a, b) => a - b));
+  /** Only seat categories that actually have vehicles in these results. */
+  readonly seatOptions = computed(() => [...new Set(this.items().map((i) => i.car.seatCapacity))].sort((a, b) => a - b));
   readonly visible = computed(() => {
     const s = this.seatFilter();
-    return s === null ? this.cars() : this.cars().filter((c) => c.seatCapacity === s);
+    return s === null ? this.items() : this.items().filter((i) => i.car.seatCapacity === s);
   });
 
-  readonly summary = computed(() => {
-    const w = this.window();
-    return [
-      this.city() ? `Pickup from ${this.city()}` : 'All pickup locations',
-      w ? `${windowDateLabel(w.date)}, ${timeLabel(w.time)}` : null,
-      w ? durationLabel(w.hours) : null,
-    ]
-      .filter(Boolean)
-      .join(' · ');
-  });
+  private sub?: Subscription;
 
   constructor() {
     effect(() => {
-      this.city();
-      this.window();
+      this.search();
       this.load();
     });
   }
 
   load(): void {
+    this.sub?.unsubscribe();
     this.state.set('loading');
     this.seatFilter.set(null);
-    this.carService.search({ city: this.city(), window: this.window() }).subscribe({
+    this.sub = this.carService.fares(this.search()).subscribe({
       next: (r) => {
-        this.cars.set(r.cars);
+        this.items.set(r.cars);
+        if (!r.isServiceable) {
+          this.errorMessage.set(r.message ?? 'Vehicles don’t pick up from there yet.');
+          this.state.set('outside');
+          return;
+        }
         this.state.set('ready');
       },
       error: (e: unknown) => {
-        this.errorMessage.set(apiErrorMessage(e, 'Could not load cars. Please try again.'));
+        this.errorMessage.set(apiErrorMessage(e, 'Could not load vehicles. Please try again.'));
         this.state.set('error');
       },
     });
   }
 }
-

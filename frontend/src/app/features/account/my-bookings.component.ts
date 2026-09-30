@@ -6,7 +6,6 @@ import { BookingResponse } from '../../core/models/booking.model';
 import { BookingStatus, BookingStatusLabels, PaymentMethod, PaymentMethodLabels, PaymentStatus, PaymentStatusLabels, RefundStatus, bookingStatusBadgeClass } from '../../core/models/enums.model';
 import { BookingTimelineComponent } from '../../shared/components/booking-timeline.component';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
-import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
 import { downloadFile } from '../../shared/utils/download-file';
 import { MyCarBookingsComponent } from '../cars/my-car-bookings.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
@@ -16,7 +15,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-my-bookings',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatePanelComponent, PaymentPanelComponent, ImageUrlPipe, BookingTimelineComponent, MyCarBookingsComponent],
+  imports: [CommonModule, RouterLink, StatePanelComponent, ImageUrlPipe, BookingTimelineComponent, MyCarBookingsComponent],
   templateUrl: './my-bookings.component.html',
 })
 export class MyBookingsComponent implements OnInit {
@@ -24,7 +23,8 @@ export class MyBookingsComponent implements OnInit {
 
   readonly state = signal<LoadState>('loading');
   readonly bookings = signal<BookingResponse[]>([]);
-  readonly filter = signal<BookingStatus | null>(null);
+  // Always opens on Confirmed: the upcoming trips people come here to check.
+  readonly filter = signal<BookingStatus | null>(BookingStatus.Confirmed);
   readonly selected = signal<BookingResponse | null>(null);
   readonly downloadingInvoiceId = signal<number | null>(null);
   readonly confirmingCancelId = signal<number | null>(null);
@@ -44,11 +44,10 @@ export class MyBookingsComponent implements OnInit {
   });
 
   readonly filters: { label: string; value: BookingStatus | null }[] = [
-    { label: 'All', value: null },
-    { label: 'Requested', value: BookingStatus.Requested },
     { label: 'Confirmed', value: BookingStatus.Confirmed },
-    { label: 'Cancelled', value: BookingStatus.Cancelled },
     { label: 'Completed', value: BookingStatus.Completed },
+    { label: 'Cancelled', value: BookingStatus.Cancelled },
+    { label: 'All', value: null },
   ];
 
   ngOnInit(): void {
@@ -79,31 +78,7 @@ export class MyBookingsComponent implements OnInit {
   }
 
   canCancel(booking: BookingResponse): boolean {
-    return booking.isOwner && (booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Requested);
-  }
-
-  // A Requested booking never held seats (only an admin CONFIRM deducts them), so other bookings
-  // can fill the date slot out from under a still-pending request. Once that happens, this
-  // specific request can no longer be honoured as asked — shown to the customer as cancelled.
-  isSlotFull(booking: BookingResponse): boolean {
-    return booking.bookingStatus === BookingStatus.Requested && booking.slotAvailableSeats < booking.numberOfSeats;
-  }
-
-  displayStatusLabel(booking: BookingResponse): string {
-    return this.isSlotFull(booking) ? 'Cancelled' : this.BookingStatusLabels[booking.bookingStatus];
-  }
-
-  displayStatusBadgeClass(booking: BookingResponse): string {
-    return this.isSlotFull(booking) ? 'bad' : this.bookingStatusBadgeClass(booking.bookingStatus);
-  }
-
-  seatsRemainingLabel(booking: BookingResponse): string | null {
-    if (booking.bookingStatus !== BookingStatus.Requested || this.isSlotFull(booking)) return null;
-    return `${booking.slotAvailableSeats} seat${booking.slotAvailableSeats === 1 ? '' : 's'} left`;
-  }
-
-  canPayNow(booking: BookingResponse): boolean {
-    return booking.isOwner && booking.bookingStatus === BookingStatus.Requested && !this.isSlotFull(booking);
+    return booking.isOwner && booking.bookingStatus === BookingStatus.Confirmed;
   }
 
   openDetails(booking: BookingResponse): void {
@@ -144,18 +119,6 @@ export class MyBookingsComponent implements OnInit {
           tone: 'ok',
         };
     }
-  }
-
-  onPaymentConfirmed(booking: BookingResponse): void {
-    // Refetch so the card/modal show the real server-confirmed amounts and status.
-    this.bookingService.getMyBooking(booking.bookingId).subscribe({
-      next: (updated) => {
-        this.bookings.update((list) => list.map((b) => (b.bookingId === updated.bookingId ? updated : b)));
-        if (this.selected()?.bookingId === updated.bookingId) {
-          this.selected.set(updated);
-        }
-      },
-    });
   }
 
   requestCancelConfirmation(booking: BookingResponse): void {

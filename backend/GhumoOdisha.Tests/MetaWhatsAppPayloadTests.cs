@@ -74,6 +74,6 @@ public class MetaWhatsAppPayloadTests
 
         await service.SendOtpAsync("9876543210", "Priya", "482913");
 
-        Assert.Equal(["Priya", "482913"], BodyParameters(handler.LastBody!));
+        Assert.Equal(["Priya", "OTP 482913"], BodyParameters(handler.LastBody!));
     }
 }

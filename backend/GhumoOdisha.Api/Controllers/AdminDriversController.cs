@@ -44,6 +44,11 @@ public class AdminDriversController(IAdminCarService adminCarService, IDriverSer
     public async Task<ActionResult<ApiResponse<AdminDriverDetailDto>>> Suspend(int id, AdminDecisionRequest request, CancellationToken cancellationToken) =>
         Ok(ApiResponse<AdminDriverDetailDto>.Ok(await adminCarService.SuspendDriverAsync(User.GetAdminId(), id, request.Reason, cancellationToken), "Driver suspended."));
 
+    /// <summary>The driver's starting point — km from here to each pickup are added to the fare.</summary>
+    [HttpPut("{id:int}/base-location")]
+    public async Task<ActionResult<ApiResponse<AdminDriverDetailDto>>> SetBaseLocation(int id, SetBaseLocationRequest request, CancellationToken cancellationToken) =>
+        Ok(ApiResponse<AdminDriverDetailDto>.Ok(await adminCarService.SetDriverBaseLocationAsync(User.GetAdminId(), id, request, cancellationToken), "Starting point saved."));
+
     /// <summary>Any driver's verification document (licence, RC, insurance) — admins only.</summary>
     [HttpGet("documents/{documentId:int}/file")]
     public async Task<IActionResult> Document(int documentId, CancellationToken cancellationToken)

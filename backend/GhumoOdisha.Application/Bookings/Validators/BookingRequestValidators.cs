@@ -11,6 +11,10 @@ public class CreateBookingRequestValidator : AbstractValidator<CreateBookingRequ
         RuleFor(x => x.TripId).GreaterThan(0);
         RuleFor(x => x.TripDateSlotId).GreaterThan(0);
         RuleFor(x => x.NumberOfSeats).GreaterThan(0);
+        RuleFor(x => x.MaleCount).NotNull().WithMessage("Choose how many gents are travelling.").GreaterThanOrEqualTo(0);
+        RuleFor(x => x.FemaleCount).NotNull().WithMessage("Choose how many ladies are travelling.").GreaterThanOrEqualTo(0);
+        RuleFor(x => x).Must(x => (x.MaleCount ?? 0) + (x.FemaleCount ?? 0) == x.NumberOfSeats)
+            .WithMessage("Gents + ladies must add up to the number of seats.");
         RuleFor(x => x.CustomerNotes).MaximumLength(1000);
     }
 }
@@ -120,10 +124,10 @@ public class CreateManualBookingRequestValidator : AbstractValidator<CreateManua
         RuleFor(x => x.TripId).GreaterThan(0);
         RuleFor(x => x.TripDateSlotId).GreaterThan(0);
         RuleFor(x => x.NumberOfSeats).GreaterThan(0);
-        RuleFor(x => x.AdvanceAmount).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.InitialStatus)
-            .Must(s => s is BookingStatus.Requested or BookingStatus.Pending)
-            .WithMessage("A booking can only be created as Requested or Pending — confirming requires the confirm action.");
+        RuleFor(x => x.AmountPaid).GreaterThan(0)
+            .WithMessage("Enter the amount the customer has paid — a booking is only created once it's paid.");
+        RuleFor(x => x.PaymentMethod).IsInEnum();
+        RuleFor(x => x.PaymentReference).MaximumLength(100);
         RuleFor(x => x.AdminNotes).MaximumLength(1000);
     }
 }

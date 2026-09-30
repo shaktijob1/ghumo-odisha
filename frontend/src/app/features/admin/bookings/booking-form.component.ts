@@ -8,7 +8,7 @@ import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminCustomerService } from '../../../core/services/admin-customer.service';
 import { AdminTripListItem, DateSlot } from '../../../core/models/trip.model';
 import { AdminCustomerListItem } from '../../../core/models/customer.model';
-import { BookingSource, BookingStatus } from '../../../core/models/enums.model';
+import { BookingSource, OfflinePaymentMethods, PaymentMethod, PaymentMethodLabels } from '../../../core/models/enums.model';
 import { ApiResponse } from '../../../core/models/api-response.model';
 import { ToastService } from '../../../core/services/toast.service';
 import { isUpcomingSlot } from '../../../shared/utils/date-key';
@@ -27,6 +27,8 @@ export class BookingFormComponent implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly BookingSource = BookingSource;
+  readonly paymentMethods = OfflinePaymentMethods;
+  readonly PaymentMethodLabels = PaymentMethodLabels;
 
   readonly trips = signal<AdminTripListItem[]>([]);
   readonly slots = signal<DateSlot[]>([]);
@@ -45,9 +47,10 @@ export class BookingFormComponent implements OnInit {
   selectedTripId: number | null = null;
   selectedSlotId: number | null = null;
   numberOfSeats = 1;
-  advanceAmount = 0;
+  amountPaid: number | null = null;
+  paymentMethod: PaymentMethod = PaymentMethod.Upi;
+  paymentReference = '';
   bookingSource: BookingSource = BookingSource.Phone;
-  initialStatus: BookingStatus = BookingStatus.Requested;
   adminNotes = '';
 
   ngOnInit(): void {
@@ -86,7 +89,7 @@ export class BookingFormComponent implements OnInit {
   }
 
   get remaining(): number {
-    return Math.max(0, this.totalAmount - this.advanceAmount);
+    return Math.max(0, this.totalAmount - (this.amountPaid ?? 0));
   }
 
   submit(): void {
@@ -107,6 +110,17 @@ export class BookingFormComponent implements OnInit {
       return;
     }
 
+    const paid = this.amountPaid ?? 0;
+    if (paid <= 0) {
+      this.errorMessage.set('Enter the amount the customer has paid. A booking is only created once it is paid.');
+      return;
+    }
+
+    if (paid > this.totalAmount) {
+      this.errorMessage.set('Amount paid cannot be more than the trip total.');
+      return;
+    }
+
     this.submitting.set(true);
 
     this.bookingService
@@ -118,15 +132,16 @@ export class BookingFormComponent implements OnInit {
         tripId: this.selectedTripId,
         tripDateSlotId: this.selectedSlotId,
         numberOfSeats: this.numberOfSeats,
-        advanceAmount: this.advanceAmount,
+        amountPaid: paid,
+        paymentMethod: this.paymentMethod,
+        paymentReference: this.paymentReference.trim() || null,
         bookingSource: this.bookingSource,
-        initialStatus: this.initialStatus,
         adminNotes: this.adminNotes || null,
       })
       .subscribe({
         next: (res) => {
           this.submitting.set(false);
-          this.toast.success('Booking created.');
+          this.toast.success('Booking confirmed and payment recorded.');
           this.router.navigate(['/admin/bookings', res.bookingId]);
         },
         error: (err: HttpErrorResponse) => {

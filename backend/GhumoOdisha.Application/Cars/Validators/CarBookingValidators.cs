@@ -11,7 +11,8 @@ public class CarQuoteRequestValidator : AbstractValidator<CarQuoteRequest>
     public CarQuoteRequestValidator()
     {
         RuleFor(x => x.DurationHours).GreaterThan(0).WithMessage("Choose a duration.");
-        RuleFor(x => x.EstimatedKm).GreaterThan(0).WithMessage("Enter an approximate distance.");
+        RuleFor(x => x.Pickup).NotNull().WithMessage("Choose a pickup location.").SetValidator(new TripPlaceRequestValidator());
+        RuleFor(x => x.Drop).NotNull().WithMessage("Choose your drop location.").SetValidator(new TripPlaceRequestValidator());
     }
 }
 
@@ -21,8 +22,12 @@ public class CreateCarBookingRequestValidator : AbstractValidator<CreateCarBooki
     {
         RuleFor(x => x.CarId).GreaterThan(0);
         RuleFor(x => x.DurationHours).GreaterThan(0).WithMessage("Choose a duration.");
-        RuleFor(x => x.EstimatedKm).GreaterThan(0).WithMessage("Enter an approximate distance.");
-        RuleFor(x => x.PickupAddress).MaximumLength(500);
+        RuleFor(x => x.Pickup).NotNull().WithMessage("Choose a pickup location.").SetValidator(new TripPlaceRequestValidator());
+        RuleFor(x => x.Drop).NotNull().WithMessage("Choose your drop location.").SetValidator(new TripPlaceRequestValidator());
+        RuleFor(x => x.PickupAddress)
+            .NotEmpty().WithMessage("Enter your full pickup address.")
+            .Must(a => a is null || a.Trim().Length >= 10).WithMessage("Enter your full pickup address — house / hotel, street and landmark.")
+            .MaximumLength(500);
         RuleFor(x => x.CustomerNotes).MaximumLength(1000);
     }
 }
@@ -50,5 +55,15 @@ public class RecordCarManualRefundRequestValidator : AbstractValidator<RecordCar
         RuleFor(x => x.Amount).GreaterThan(0).WithMessage("Enter the refund amount.").PrecisionScale(10, 2, true);
         RuleFor(x => x.Method).IsInEnum();
         RuleFor(x => x.Reference).MaximumLength(120);
+    }
+}
+
+public class CarFareSearchRequestValidator : AbstractValidator<CarFareSearchRequest>
+{
+    public CarFareSearchRequestValidator()
+    {
+        RuleFor(x => x.DurationHours).GreaterThan(0).WithMessage("Choose a duration.");
+        RuleFor(x => x.Pickup).NotNull().WithMessage("Choose a pickup location.").SetValidator(new TripPlaceRequestValidator());
+        RuleFor(x => x.Drop).NotNull().WithMessage("Choose your drop location.").SetValidator(new TripPlaceRequestValidator());
     }
 }

@@ -15,10 +15,9 @@ import { loadRazorpay, razorpayReady } from '../utils/razorpay-loader';
 declare const Razorpay: any;
 
 /**
- * Reserves a Requested booking's seat(s) online for ₹99/seat (with an optional coupon knocking
- * money off the cash balance) via Razorpay. Used right after a booking is created (trip-detail)
- * and later from My Bookings for anyone who skipped payment the first time — same component,
- * same verified logic, in both places.
+ * Confirms a new booking by reserving its seat(s) online for ₹99/seat (with an optional coupon knocking
+ * money off the cash balance) via Razorpay, right after the booking is created (trip-detail).
+ * There is no pay-later: a booking only becomes real (Confirmed) once this payment is verified.
  */
 @Component({
   selector: 'app-payment-panel',
@@ -28,14 +27,12 @@ declare const Razorpay: any;
 })
 export class PaymentPanelComponent implements OnInit {
   @Input({ required: true }) booking!: BookingResponse;
-  @Input() showSkip = true;
   @Input() heading = 'Secure your seats';
   @Input() subheading = 'Your booking is requested. Pay now to lock it in instantly.';
   /** Coupon picked earlier (e.g. in the trip page sidebar, possibly before sign-in) — re-checked on open. */
   @Input() coupon: CouponSelection | null = null;
   @Output() couponChange = new EventEmitter<CouponSelection | null>();
   @Output() confirmed = new EventEmitter<void>();
-  @Output() skip = new EventEmitter<void>();
 
   private readonly paymentService = inject(PaymentService);
   private readonly auth = inject(CustomerAuthService);
@@ -111,10 +108,6 @@ export class PaymentPanelComponent implements OnInit {
         this.setSelection(null);
       },
     });
-  }
-
-  payLater(): void {
-    this.skip.emit();
   }
 
   onCouponChange(selection: CouponSelection | null): void {

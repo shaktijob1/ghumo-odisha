@@ -62,7 +62,7 @@ public class RefundService(
         r.Booking.Customer.PhoneNumber,
         r.Booking.Customer.Email,
         r.Booking.Trip.Title,
-        r.Booking.TripDateSlot.StartDate,
+        r.Booking.TripDateSlot!.StartDate,
         r.Booking.NumberOfSeats,
         r.Booking.CancellationReason,
         r.Booking.CancelledAt);

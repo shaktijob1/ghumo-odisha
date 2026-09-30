@@ -86,7 +86,9 @@ interface Step {
                   <div class="kv">
                     <span class="k">Car</span><b>{{ b.carDisplayName }} · {{ b.category }} · {{ fuel() }} · {{ b.hasAc ? 'AC' : 'Non-AC' }}</b>
                     @if (b.registrationNumber) { <span class="k">Number plate</span><b>{{ b.registrationNumber }}</b> }
-                    <span class="k">Pickup</span><b>{{ b.pickupCity }}@if (b.pickupAddress) { — {{ b.pickupAddress }} }</b>
+                    <span class="k">Pickup</span><b>{{ b.pickupAddress || b.pickupCity }}</b>
+                    @if (b.pickupLocation) { <span class="k">Pickup area</span><b>{{ b.pickupLocation }}</b> }
+                    @if (b.dropLocation) { <span class="k">Where to</span><b>{{ b.dropLocation }} · {{ b.roundTrip ? 'round trip' : 'one way' }}</b> }
                     <span class="k">Date</span><b>{{ date(b.pickupAt) }}</b>
                     <span class="k">Time</span><b>{{ time(b.pickupAt) }}</b>
                     <span class="k">Duration</span><b>{{ duration(b.durationHours) }}</b>

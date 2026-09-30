@@ -9,7 +9,7 @@ namespace GhumoOdisha.Application.Customers;
 public class CustomerService(IGhumoOdishaDbContext db) : ICustomerService
 {
     private static readonly List<BookingStatus> FinanciallyActiveStatuses =
-        [BookingStatus.Requested, BookingStatus.Pending, BookingStatus.Confirmed, BookingStatus.Completed];
+        [BookingStatus.Confirmed, BookingStatus.Completed];
 
     public async Task<CustomerProfileDto> GetProfileAsync(int customerId, CancellationToken cancellationToken = default)
     {

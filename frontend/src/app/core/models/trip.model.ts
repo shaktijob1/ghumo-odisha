@@ -70,6 +70,14 @@ export interface DateSlot {
   totalSeats: number;
   availableSeats: number;
   isSoldOut: boolean;
+  /** Gents / ladies already booked on this date — shown instead of seats left. */
+  gentsBooked: number;
+  ladiesBooked: number;
+  /** Places still open for each side under the 1:1 rule (half the seats each, rounded up). */
+  gentsLeft: number;
+  ladiesLeft: number;
+  /** Online booking has closed (trip day and the 2 days before) — customers see "Seats filled". */
+  isBookingClosed: boolean;
 }
 
 export interface TripSummary {

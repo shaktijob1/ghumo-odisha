@@ -6,7 +6,7 @@ public record DashboardCountersDto(
     int TotalTrips,
     int ActiveTrips,
     int TotalCustomers,
-    int BookingRequests,
+    int CompletedBookings,
     int ConfirmedBookings,
     int UpcomingTripsCount,
     decimal ConfirmedRevenue,
@@ -17,5 +17,4 @@ public record DashboardUpcomingTripDto(int TripId, string TripTitle, DateOnly St
 public record DashboardDto(
     DashboardCountersDto Counters,
     IReadOnlyList<DashboardUpcomingTripDto> UpcomingTrips,
-    IReadOnlyList<AdminBookingListItemDto> RecentRequests,
     IReadOnlyList<AdminBookingListItemDto> RecentlyConfirmed);

@@ -35,7 +35,7 @@
             <div>
               <div class="row" style="gap:8px;margin-bottom:5px;flex-wrap:wrap">
                 <b style="font-size:14.5px">{{ b.tripTitle }}</b>
-                <span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
+                <span class="badge" [class]="bookingStatusBadgeClass(b.bookingStatus)">{{ BookingStatusLabels[b.bookingStatus] }}</span>
                 <span class="badge">{{ PaymentStatusLabels[b.paymentStatus] }}</span>
                 @if (!b.isOwner) { <span class="badge info" title="Ghumo Odisha added you as a traveller on this booking">Added by organizer</span> }
               </div>
@@ -47,13 +47,7 @@
               </div>
             </div>
             <div class="act" style="display:flex;flex-direction:column;gap:8px">
-              @if (seatsRemainingLabel(b); as label) {
-                <span class="seatsleft-badge">{{ label }}</span>
-              }
               <button class="btn sm soft" (click)="openDetails(b)">View details</button>
-              @if (canPayNow(b)) {
-                <button class="btn sm" (click)="openDetails(b)">Pay now</button>
-              }
               @if (canDownloadInvoice(b)) {
                 <button class="btn sm" [disabled]="downloadingInvoiceId() === b.bookingId" (click)="downloadInvoice(b)">
                   @if (downloadingInvoiceId() === b.bookingId) { <span class="spin"></span> } @else { Download Invoice }
@@ -69,7 +63,7 @@
 
 @if (selected(); as b) {
   <div class="modal-backdrop" (click)="selected.set(null)">
-    <div class="modal bkdetail" [class.has-pay]="canPayNow(b)" (click)="$event.stopPropagation()">
+    <div class="modal bkdetail" (click)="$event.stopPropagation()">
       <h4>{{ b.tripTitle }}</h4>
       <div class="kv">
         <span class="k">Booking ID</span><b>{{ b.bookingReference }}</b>
@@ -83,7 +77,7 @@
         <span class="k">Total</span><b>₹{{ b.totalAmount | number:'1.0-0' }}</b>
         <span class="k">Paid</span><b>₹{{ b.advanceAmount | number:'1.0-0' }}</b>
         <span class="k">Remaining</span><b [style.color]="b.remainingAmount > 0 ? 'var(--wait)' : null">₹{{ b.remainingAmount | number:'1.0-0' }}</b>
-        <span class="k">Status</span><span class="badge" [class]="displayStatusBadgeClass(b)">{{ displayStatusLabel(b) }}</span>
+        <span class="k">Status</span><span class="badge" [class]="bookingStatusBadgeClass(b.bookingStatus)">{{ BookingStatusLabels[b.bookingStatus] }}</span>
         <span class="k">Payment</span>
         <b>{{ PaymentStatusLabels[b.paymentStatus] }}</b>
       </div>
@@ -114,36 +108,22 @@
         <app-booking-timeline [events]="b.timeline"></app-booking-timeline>
       }
 
-      @if (isSlotFull(b)) {
-        <div class="hr"></div>
-        <div class="errorbox">This date is now fully booked, so this request can no longer be confirmed. Contact us if you'd like to move to a different date.</div>
-      }
-
-      @if (canPayNow(b)) {
-        <div class="hr"></div>
-        <app-payment-panel [booking]="b" [showSkip]="false" (confirmed)="onPaymentConfirmed(b)"></app-payment-panel>
-      }
-
       @if (canCancel(b)) {
         <div class="hr"></div>
         @if (confirmingCancelId() === b.bookingId) {
-          @if (b.bookingStatus === BookingStatus.Confirmed) {
-            <p class="note" style="margin-bottom:10px">Cancel this booking? Cancellations are only allowed up to 72 hours before the trip starts. Your refund will be processed by our team and you can track it here.</p>
-          } @else {
-            <p class="note" style="margin-bottom:10px">Cancel this trip? Nothing has been charged, so there's nothing to refund.</p>
-          }
+          <p class="note" style="margin-bottom:10px">Cancel this booking? Cancellations are only allowed up to 72 hours before the trip starts. Your refund will be processed by our team and you can track it here.</p>
           @if (cancelError()) {
             <div class="errorbox" style="margin-bottom:10px">{{ cancelError() }}</div>
           }
           <div class="row" style="gap:10px">
             <button class="btn" style="flex:1;background:var(--danger)" [disabled]="cancellingId() === b.bookingId" (click)="confirmCancel(b)">
-              @if (cancellingId() === b.bookingId) { <span class="spin"></span> } @else if (b.bookingStatus === BookingStatus.Confirmed) { Yes, cancel booking } @else { Yes, cancel trip }
+              @if (cancellingId() === b.bookingId) { <span class="spin"></span> } @else { Yes, cancel booking }
             </button>
             <button class="btn ghost" style="flex:1" (click)="cancelCancelConfirmation()">Never mind</button>
           </div>
         } @else {
           <button class="btn sm dang" style="width:100%" (click)="requestCancelConfirmation(b)">
-            {{ b.bookingStatus === BookingStatus.Confirmed ? 'Cancel booking' : 'Cancel trip' }}
+            Cancel booking
           </button>
         }
       }

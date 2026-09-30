@@ -1,5 +1,6 @@
 using GhumoOdisha.Application.Cars;
 using GhumoOdisha.Application.Cars.Dtos;
+using GhumoOdisha.Application.Maps;
 using GhumoOdisha.Application.Payments;
 using GhumoOdisha.Application.Payments.Dtos;
 using GhumoOdisha.Domain.Entities;
@@ -26,13 +27,37 @@ public sealed class CarTestData : IDisposable
     public static TimeOnly TenAm { get; } = new(10, 0);
 
     public static CarBookingService Bookings(GhumoOdishaDbContext db, FakeRazorpayService? razorpay = null) =>
-        new(db, razorpay ?? new FakeRazorpayService(), Options.Create(Options_), NullLogger<CarBookingService>.Instance);
+        new(db, razorpay ?? new FakeRazorpayService(), Routes(db), Options.Create(Options_), NullLogger<CarBookingService>.Instance);
 
     public static CarBookingPaymentService Payments(GhumoOdishaDbContext db, FakeRazorpayService razorpay) =>
         new(db, razorpay, Bookings(db, razorpay), Options.Create(new RazorpayOptions { KeyId = "rzp_test" }), Options.Create(Options_),
             NullLogger<CarBookingPaymentService>.Instance);
 
-    public static CarCatalogService Catalog(GhumoOdishaDbContext db) => new(db, Options.Create(Options_));
+    public static CarCatalogService Catalog(GhumoOdishaDbContext db, FakeMapsService? maps = null) => new(db, Routes(db, maps), Options.Create(Options_));
+
+    // Test geography (see FakeMapsService: 0.01° = 1 km). The driver starts 10 km from the pickup;
+    // the pickup sits inside the fixture's own service area.
+    public static readonly GeoPoint DriverBase = new(21.00, 80.00);
+    public static readonly GeoPoint PickupPoint = new(21.10, 80.00);
+    public const int ApproachKm = 10;
+
+    public static TripPlaceRequest Pickup => new(PickupPoint.Latitude, PickupPoint.Longitude, "Hotel Mayfair");
+
+    /// <summary>A drop <paramref name="km"/> km beyond the pickup (away from the driver's base), so the billed
+    /// km are 10 (base → pickup) + km (pickup → drop) + 10 + km (drop → base).</summary>
+    public static TripPlaceRequest DropAt(int km) =>
+        new(PickupPoint.Latitude + km / 100.0, PickupPoint.Longitude, $"{km} km away");
+
+    /// <summary>A drop whose billed km are exactly <paramref name="totalKm"/> (even, at least 20).</summary>
+    public static TripPlaceRequest DropForTotal(int totalKm) => DropAt(Math.Max(totalKm - 2 * ApproachKm, 0) / 2);
+
+    public static ServiceAreaService ServiceAreas(GhumoOdishaDbContext db, FakeMapsService? maps = null) => new(db, maps ?? new FakeMapsService());
+
+    public static CarRoutePlanner Routes(GhumoOdishaDbContext db, FakeMapsService? maps = null)
+    {
+        maps ??= new FakeMapsService();
+        return new CarRoutePlanner(ServiceAreas(db, maps), maps, Options.Create(Options_));
+    }
 
     public static CarTripService Trips(GhumoOdishaDbContext db) => new(db, Bookings(db), Options.Create(Options_));
 
@@ -40,7 +65,12 @@ public sealed class CarTestData : IDisposable
     public async Task<(int CarId, int DriverId)> ListedCarAsync(GhumoOdishaDbContext db, CarStatus carStatus = CarStatus.Approved, DriverStatus driverStatus = DriverStatus.Approved)
     {
         var now = DateTime.UtcNow;
-        var driver = new Driver { Name = "Suresh Kumar", PhoneNumber = TestDb.RandomPhoneNumber(), Status = driverStatus, CreatedAt = now, UpdatedAt = now };
+        await EnsureServiceAreaAsync(db);
+        var driver = new Driver
+        {
+            Name = "Suresh Kumar", PhoneNumber = TestDb.RandomPhoneNumber(), Status = driverStatus, CreatedAt = now, UpdatedAt = now,
+            BaseLatitude = DriverBase.Latitude, BaseLongitude = DriverBase.Longitude, BaseLocationLabel = "Driver home"
+        };
         db.Drivers.Add(driver);
         await db.SaveChangesAsync();
         _driverIds.Add(driver.DriverId);
@@ -79,7 +109,24 @@ public sealed class CarTestData : IDisposable
     }
 
     public static CreateCarBookingRequest Request(int carId, TimeOnly? time = null, int hours = 12, int km = 180, DateOnly? date = null) =>
-        new(carId, date ?? PickupDate, time ?? TenAm, hours, km, "Hotel Mayfair, Bhubaneswar", null, Guid.NewGuid());
+        new(carId, date ?? PickupDate, time ?? TenAm, hours, Pickup, DropForTotal(km), false, "Hotel Mayfair, Janpath, Bhubaneswar", null, Guid.NewGuid());
+
+    /// <summary>
+    /// The dev database may already hold the admin's real service areas; add one covering the test pickup so
+    /// car tests pass whatever is configured. Removed again on Dispose.
+    /// </summary>
+    private async Task EnsureServiceAreaAsync(GhumoOdishaDbContext db)
+    {
+        if (_serviceAreaId is not null)
+        {
+            return;
+        }
+        var area = await ServiceAreas(db).CreateAsync(new SaveServiceAreaRequest($"Test zone {City}", true,
+            [new(21.05, 79.95), new(21.05, 80.05), new(21.15, 80.05), new(21.15, 79.95)], null));
+        _serviceAreaId = area.ServiceAreaId;
+    }
+
+    private int? _serviceAreaId;
 
     public static VerifyPaymentRequest Verify(string orderId) => new(orderId, "pay_" + Guid.NewGuid().ToString("N")[..14], "sig");
 
@@ -104,5 +151,9 @@ public sealed class CarTestData : IDisposable
         db.Cars.Where(c => carIds.Contains(c.CarId)).ExecuteDelete();
         db.Drivers.Where(d => _driverIds.Contains(d.DriverId)).ExecuteDelete();
         db.Customers.Where(c => _customerIds.Contains(c.CustomerId)).ExecuteDelete();
+        if (_serviceAreaId is not null)
+        {
+            db.ServiceAreas.Where(a => a.ServiceAreaId == _serviceAreaId).ExecuteDelete();
+        }
     }
 }

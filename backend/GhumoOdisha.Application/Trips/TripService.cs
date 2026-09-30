@@ -1,3 +1,4 @@
+using GhumoOdisha.Application.Bookings;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Exceptions;
 using GhumoOdisha.Application.Trips.Dtos;
@@ -107,7 +108,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             throw new NotFoundException("Trip not found.");
         }
 
-        return MapToDetail(trip);
+        return MapToDetail(trip, await GenderCountsAsync(trip, cancellationToken));
     }
 
     public async Task<IReadOnlyList<DateSlotDto>> GetActiveDateSlotsAsync(int tripId, CancellationToken cancellationToken = default)
@@ -118,7 +119,8 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             .OrderBy(s => s.StartDate)
             .ToListAsync(cancellationToken);
 
-        return slots.Select(MapToDateSlot).ToList();
+        var counts = await SlotGenderRules.BookedAsync(db, slots.Select(s => s.TripDateSlotId).ToList(), cancellationToken: cancellationToken);
+        return slots.Select(s => MapToDateSlot(s, counts)).ToList();
     }
 
     // ---------- Admin: trips ----------
@@ -164,7 +166,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         var trip = await LoadFullTripAsync(tripId, cancellationToken)
             ?? throw new NotFoundException("Trip not found.");
 
-        return MapToAdminDetail(trip);
+        return MapToAdminDetail(trip, await GenderCountsAsync(trip, cancellationToken));
     }
 
     public async Task<int> CreateTripAsync(CreateTripRequest request, CancellationToken cancellationToken = default)
@@ -429,10 +431,31 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         var slot = await db.TripDateSlots.FirstOrDefaultAsync(s => s.TripDateSlotId == dateSlotId, cancellationToken)
             ?? throw new NotFoundException("Date slot not found.");
 
-        var hasBookings = await db.Bookings.AnyAsync(b => b.TripDateSlotId == dateSlotId, cancellationToken);
-        if (hasBookings)
+        var bookings = await db.Bookings.Where(b => b.TripDateSlotId == dateSlotId).ToListAsync(cancellationToken);
+
+        // Anything that was ever confirmed took seats and money, so it keeps the departure alive.
+        var confirmed = bookings.Count(b => b.ConfirmedAt != null || b.BookingStatus is BookingStatus.Confirmed or BookingStatus.Completed);
+        if (confirmed > 0)
         {
-            throw new ConflictException("Cannot delete a date slot that has bookings.");
+            throw new ConflictException($"Cannot delete this date — it has {confirmed} confirmed (or paid-then-cancelled) booking(s).");
+        }
+
+        // What's left was never paid (an unpaid checkout, expired, rejected, withdrawn): no seats were
+        // taken and nothing was paid. Unlink them, keeping the dates so their history still reads right.
+        var now = DateTime.UtcNow;
+        foreach (var booking in bookings)
+        {
+            booking.RemovedSlotStartDate = slot.StartDate;
+            booking.RemovedSlotEndDate = slot.EndDate;
+            booking.TripDateSlotId = null;
+            booking.UpdatedAt = now;
+            // Close a checkout still open, so a payment arriving for it later is refunded automatically.
+            if (booking.BookingStatus is BookingStatus.AwaitingPayment or BookingStatus.Pending)
+            {
+                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.CancellationReason = "Departure date removed before payment";
+                booking.CancelledAt = now;
+            }
         }
 
         db.TripDateSlots.Remove(slot);
@@ -790,13 +813,14 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             nextSlot is null ? null : FormatDuration(nextSlot.StartDate, nextSlot.EndDate),
             nextSlot?.StartDate,
             nextSlot?.EndDate,
-            nextSlot?.AvailableSeats,
+            nextSlot is null ? null : SlotBookingRules.IsClosedOnline(nextSlot.StartDate) ? 0 : nextSlot.AvailableSeats,
             nextSlot?.TotalSeats,
             MapInclusions(trip),
             trip.TripHighlights.OrderBy(h => h.DisplayOrder).Select(h => h.PlaceName).ToList(),
             MapPhotos(trip),
             trip.Destinations.OrderBy(d => d.Name).Select(d => d.Name).ToList(),
-            upcoming.Take(MaxUpcomingSlotsOnCard).Select(s => new UpcomingSlotDto(s.StartDate, s.AvailableSeats)).ToList());
+            // Dates inside the online cutoff read as full on the card, like a sold-out date.
+            upcoming.Take(MaxUpcomingSlotsOnCard).Select(s => new UpcomingSlotDto(s.StartDate, SlotBookingRules.IsClosedOnline(s.StartDate) ? 0 : s.AvailableSeats)).ToList());
     }
 
     // Feeds the trip card's departure dates — information only, never used for booking.
@@ -831,7 +855,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             confirmedBookingCount);
     }
 
-    private static TripDetailDto MapToDetail(Trip trip) => new(
+    private static TripDetailDto MapToDetail(Trip trip, Dictionary<int, SlotGenderCount> genders) => new(
         trip.TripId,
         trip.Title,
         trip.Description,
@@ -845,10 +869,10 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         MapPickupPoints(trip),
         // Departed dates are never offered to customers — not just hidden by the UI.
         trip.TripDateSlots.Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= TripCalendar.Today())
-            .OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
+            .OrderBy(s => s.StartDate).Select(s => MapToDateSlot(s, genders)).ToList(),
         trip.ItineraryPdfUrl);
 
-    private static AdminTripDetailDto MapToAdminDetail(Trip trip) => new(
+    private static AdminTripDetailDto MapToAdminDetail(Trip trip, Dictionary<int, SlotGenderCount> genders) => new(
         trip.TripId,
         trip.Title,
         trip.Description,
@@ -863,7 +887,7 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
         MapRoomPhotos(trip),
         MapVehiclePhotos(trip),
         MapPickupPoints(trip),
-        trip.TripDateSlots.OrderBy(s => s.StartDate).Select(MapToDateSlot).ToList(),
+        trip.TripDateSlots.OrderBy(s => s.StartDate).Select(s => MapToDateSlot(s, genders)).ToList(),
         trip.Destinations.Select(d => d.DestinationId).ToList(),
         trip.Destinations.Select(d => d.Name).ToList(),
         trip.ItineraryPdfUrl,
@@ -912,8 +936,20 @@ public class TripService(IGhumoOdishaDbContext db, IImageStorage imageStorage) :
             d.ItineraryPoints.OrderBy(p => p.DisplayOrder).Select(p => new ItineraryPointDto(p.ItineraryPointId, p.Time, p.Description, p.DisplayOrder)).ToList()))
         .ToList();
 
-    private static DateSlotDto MapToDateSlot(TripDateSlot slot) => new(
-        slot.TripDateSlotId, slot.StartDate, slot.EndDate, slot.TotalSeats, slot.AvailableSeats, slot.AvailableSeats <= 0);
+    private async Task<Dictionary<int, SlotGenderCount>> GenderCountsAsync(Trip trip, CancellationToken cancellationToken) =>
+        await SlotGenderRules.BookedAsync(db, trip.TripDateSlots.Select(s => s.TripDateSlotId).ToList(), cancellationToken: cancellationToken);
+
+    private static DateSlotDto MapToDateSlot(TripDateSlot slot, Dictionary<int, SlotGenderCount> genders)
+    {
+        var booked = genders.GetValueOrDefault(slot.TripDateSlotId);
+        var cap = SlotGenderRules.CapPerSide(slot.TotalSeats);
+        // Never more open places on a side than seats actually left.
+        var gentsLeft = Math.Min(Math.Max(cap - booked.Gents, 0), slot.AvailableSeats);
+        var ladiesLeft = Math.Min(Math.Max(cap - booked.Ladies, 0), slot.AvailableSeats);
+        return new DateSlotDto(slot.TripDateSlotId, slot.StartDate, slot.EndDate, slot.TotalSeats, slot.AvailableSeats,
+            slot.AvailableSeats <= 0 || gentsLeft + ladiesLeft == 0, booked.Gents, booked.Ladies, gentsLeft, ladiesLeft,
+            SlotBookingRules.IsClosedOnline(slot.StartDate));
+    }
 
     private static string FormatDuration(DateOnly start, DateOnly end)
     {

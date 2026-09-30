@@ -21,6 +21,7 @@ import {
   TripFarePreview,
   UpdateDriverProfileRequest,
 } from '../models/driver.model';
+import { TripPlace } from '../models/location.model';
 import { compressImage } from '../../shared/utils/compress-image';
 
 /** Errors on driver screens are shown inline next to what failed, not as a toast. */
@@ -40,6 +41,10 @@ export class DriverService {
 
   updateProfile(request: UpdateDriverProfileRequest): Observable<DriverProfile> {
     return this.put<DriverProfile>('/profile', request);
+  }
+
+  setBaseLocation(place: TripPlace): Observable<DriverProfile> {
+    return this.put<DriverProfile>('/profile/base-location', place);
   }
 
   setProfilePhoto(file: File): Observable<DriverProfile> {

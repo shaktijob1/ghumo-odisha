@@ -9,7 +9,8 @@ public record BookingConfirmedWhatsAppMessage(
     string CustomerName,
     string TripTitle,
     string TravelDate,
-    string PassengerName,
+    /// <summary>"2 Gents, 1 Lady" — or the seat count when the booking has no gents / ladies split.</summary>
+    string Passengers,
     string Seats,
     string AmountPaid,
     string BookingReference,
@@ -17,5 +18,5 @@ public record BookingConfirmedWhatsAppMessage(
     string ReportingTime)
 {
     public IReadOnlyList<string> ToTemplateVariables() =>
-        [CustomerName, TripTitle, TravelDate, PassengerName, Seats, AmountPaid, BookingReference, PickupPoint, ReportingTime];
+        [CustomerName, TripTitle, TravelDate, Passengers, Seats, AmountPaid, BookingReference, PickupPoint, ReportingTime];
 }

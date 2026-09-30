@@ -181,6 +181,7 @@ public class DriverCarTests : IDisposable
 
         await service.UpdateProfileAsync(driver.DriverId,
             new UpdateDriverProfileRequest("Ramesh Driver", null, "Plot 12, Saheed Nagar", "bhubaneswar", "od02 20190012345", null, 8));
+        await service.SetBaseLocationAsync(driver.DriverId, new SetBaseLocationRequest(20.29, 85.84, "Saheed Nagar"));
         await service.SetProfilePhotoAsync(driver.DriverId, Jpeg());
         var licence = await service.UploadDocumentAsync(driver.DriverId, DriverDocumentType.DrivingLicence, null, Jpeg());
 

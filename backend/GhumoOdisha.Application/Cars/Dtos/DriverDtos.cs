@@ -19,6 +19,9 @@ public record DriverProfileDto(
     string? Email,
     string? Address,
     string? City,
+    /// <summary>Where the driver starts from; km from here to each pickup are added to the fare. Null until set.</summary>
+    GeoPointDto? BaseLocation,
+    string? BaseLocationLabel,
     string? DrivingLicenceNumber,
     DateOnly? LicenceExpiryDate,
     int? ExperienceYears,

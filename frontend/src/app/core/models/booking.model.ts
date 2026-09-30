@@ -10,7 +10,8 @@ export interface AdminBookingListItem {
   customerPhone: string | null;
   tripId: number;
   tripTitle: string;
-  tripDateSlotId: number;
+  /** Null once the departure was deleted (only ever for bookings that were never confirmed). */
+  tripDateSlotId: number | null;
   startDate: string;
   endDate: string;
   numberOfSeats: number;
@@ -32,7 +33,7 @@ export interface AdminBookingDetail {
   customerBookingCount: number;
   tripId: number;
   tripTitle: string;
-  tripDateSlotId: number;
+  tripDateSlotId: number | null;
   startDate: string;
   endDate: string;
   slotAvailableSeats: number;
@@ -127,16 +128,6 @@ export interface AdminBookingFilter {
   search?: string | null;
 }
 
-export interface ConfirmBookingRequest {
-  advanceAmount: number;
-  method?: PaymentMethod | null;
-  paymentReference?: string | null;
-}
-
-export interface RejectBookingRequest {
-  adminNotes?: string | null;
-}
-
 export interface CancelBookingRequest {
   adminNotes?: string | null;
   waiveRefund?: boolean;
@@ -151,9 +142,11 @@ export interface CreateManualBookingRequest {
   tripId: number;
   tripDateSlotId: number;
   numberOfSeats: number;
-  advanceAmount: number;
+  /** What the customer has already paid — a manual booking is created confirmed, so this is required. */
+  amountPaid: number;
+  paymentMethod: PaymentMethod;
+  paymentReference?: string | null;
   bookingSource: BookingSource;
-  initialStatus: BookingStatus;
   adminNotes?: string | null;
 }
 
@@ -165,6 +158,9 @@ export interface CreateBookingRequest {
   clientRequestId?: string | null;
   pickupPointId?: number | null;
   agreedToTerms: boolean;
+  /** Gents and ladies travelling — they must add up to numberOfSeats. */
+  maleCount: number;
+  femaleCount: number;
 }
 
 export interface CreateBookingResult {
@@ -179,7 +175,7 @@ export interface BookingResponse {
   tripId: number;
   tripTitle: string;
   tripCoverImageUrl: string | null;
-  tripDateSlotId: number;
+  tripDateSlotId: number | null;
   startDate: string;
   endDate: string;
   pickupPointLocation: string | null;

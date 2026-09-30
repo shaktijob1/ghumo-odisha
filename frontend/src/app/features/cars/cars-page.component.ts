@@ -3,31 +3,35 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
-import { CarWindow } from '../../core/models/car.model';
 import { CarService } from '../../core/services/car.service';
 import { CarResultsComponent } from '../../shared/components/car-results.component';
-import { CarWindowFormComponent } from '../../shared/components/car-window-form.component';
-import { defaultWindow, windowFromParams, windowToParams } from '../../shared/utils/car-format';
+import { VehicleSearchFormComponent } from '../../shared/components/vehicle-search-form.component';
+import { VehicleSearch, searchFromParams, searchToParams } from '../../shared/utils/vehicle-search';
 
 /**
- * /cars — search cars and Tempo Travellers by pickup location, date, time and duration. The search
- * lives in the URL (?city=&date=&time=&hours=), so results, details and the booking page all keep it.
+ * /cars — search vehicles by date, pickup, drop, time and duration (the same form as the
+ * home page's Vehicles tab). The search lives in the URL, so the results and the booking page share it
+ * and "Cancel" on the booking page comes back to exactly these results.
  */
 @Component({
   selector: 'app-cars-page',
   standalone: true,
-  imports: [CommonModule, CarWindowFormComponent, CarResultsComponent],
+  imports: [CommonModule, VehicleSearchFormComponent, CarResultsComponent],
   template: `
     <section class="cz-hero">
       <div class="container">
-        <h1><span class="up-g">Book </span><span class="up-o">Cars</span></h1>
+        <h1><span class="up-g">Book </span><span class="up-o">Vehicles</span></h1>
         <p class="sub">Cars and Tempo Travellers with a driver@if (bookingAmount(); as amount) { — pay just ₹{{ amount }} to confirm, the rest after your trip}.</p>
-        <div class="cz-searchcard">
-          <app-car-window-form [initial]="window()" [initialCity]="city()" [locations]="locations()" (search)="onSearch($event)"></app-car-window-form>
+        <div class="hx-card cz-vcard">
+          <div class="hx-panel">
+            <app-vehicle-search-form [initial]="search()" (search)="onSearch($event)"></app-vehicle-search-form>
+          </div>
         </div>
       </div>
     </section>
-    <app-car-results [city]="city()" [window]="window()"></app-car-results>
+    @if (search(); as s) {
+      <app-car-results [search]="s"></app-car-results>
+    }
   `,
 })
 export class CarsPageComponent implements OnInit {
@@ -35,18 +39,14 @@ export class CarsPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly carService = inject(CarService);
 
-  readonly window = toSignal(this.route.queryParamMap.pipe(map((p) => windowFromParams(p) ?? defaultWindow())), { requireSync: true });
-  readonly city = toSignal(this.route.queryParamMap.pipe(map((p) => p.get('city'))), { requireSync: true });
-
-  readonly locations = signal<string[]>([]);
+  readonly search = toSignal(this.route.queryParamMap.pipe(map((p) => searchFromParams(p))), { requireSync: true });
   readonly bookingAmount = signal<number | null>(null);
 
   ngOnInit(): void {
-    this.carService.search({}).subscribe({ next: (r) => this.locations.set(r.locations), error: () => undefined });
     this.carService.settings().subscribe({ next: (s) => this.bookingAmount.set(s.bookingAmount), error: () => undefined });
   }
 
-  onSearch(e: { window: CarWindow; city: string | null }): void {
-    this.router.navigate(['/cars'], { queryParams: windowToParams(e.window, { city: e.city }) });
+  onSearch(search: VehicleSearch): void {
+    this.router.navigate(['/cars'], { queryParams: searchToParams(search) });
   }
 }

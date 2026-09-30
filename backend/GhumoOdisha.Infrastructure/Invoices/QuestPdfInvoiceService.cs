@@ -72,7 +72,8 @@ public class QuestPdfInvoiceService(IGhumoOdishaDbContext db, IOptions<CompanyOp
 
     private sealed record InvoiceModel(Booking Booking, string? CouponCode)
     {
-        public TripDateSlot Slot => Booking.TripDateSlot;
+        // Only confirmed/completed bookings get an invoice, and those always keep their slot.
+        public TripDateSlot Slot => Booking.TripDateSlot!;
         public Trip Trip => Booking.Trip;
         public decimal Subtotal => Booking.AmountPerPerson * Booking.NumberOfSeats;
         public IReadOnlyList<BookingPayment> Payments => Booking.Payments.OrderBy(p => p.PaidAt).ThenBy(p => p.BookingPaymentId).ToList();

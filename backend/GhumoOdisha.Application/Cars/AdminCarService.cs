@@ -17,6 +17,7 @@ public interface IAdminCarService
     Task<AdminDriverDetailDto> ApproveDriverAsync(int adminId, int driverId, string? note, CancellationToken cancellationToken = default);
     Task<AdminDriverDetailDto> RejectDriverAsync(int adminId, int driverId, string? reason, CancellationToken cancellationToken = default);
     Task<AdminDriverDetailDto> SuspendDriverAsync(int adminId, int driverId, string? reason, CancellationToken cancellationToken = default);
+    Task<AdminDriverDetailDto> SetDriverBaseLocationAsync(int adminId, int driverId, SetBaseLocationRequest request, CancellationToken cancellationToken = default);
 
     Task<PagedResult<AdminCarListItemDto>> ListCarsAsync(AdminCarFilter filter, string? search, int page, int pageSize, CancellationToken cancellationToken = default);
     Task<AdminCarDetailDto> GetCarAsync(int carId, CancellationToken cancellationToken = default);
@@ -178,6 +179,14 @@ public class AdminCarService(IGhumoOdishaDbContext db) : IAdminCarService
         driver.UpdatedAt = DateTime.UtcNow;
         CarAudit.Record(db, CarAuditEntity.Driver, driverId, "DriverRejected", "Driver rejected", CarActor.Admin(adminId),
             nameof(DriverStatus.Pending), nameof(DriverStatus.Rejected), why);
+        await db.SaveChangesAsync(cancellationToken);
+        return await GetDriverAsync(driverId, cancellationToken);
+    }
+
+    public async Task<AdminDriverDetailDto> SetDriverBaseLocationAsync(int adminId, int driverId, SetBaseLocationRequest request, CancellationToken cancellationToken = default)
+    {
+        var driver = await LoadDriverAsync(driverId, cancellationToken);
+        DriverService.ApplyBaseLocation(db, driver, request, CarActor.Admin(adminId));
         await db.SaveChangesAsync(cancellationToken);
         return await GetDriverAsync(driverId, cancellationToken);
     }

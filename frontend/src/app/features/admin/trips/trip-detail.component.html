@@ -46,12 +46,15 @@
           <div>
             <b style="font-size:14px">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b>
             @if (s.isSoldOut) { <span class="badge bad">Sold out</span> } @else { <span class="badge ok">Open</span> }
+            @if (s.isBookingClosed && !s.isSoldOut) { <span class="badge wait" title="Customers see “Seats filled”; you can still add bookings from Bookings → Add booking.">Online booking closed</span> }
           </div>
         </div>
         <div class="slotstats">
           <div><div class="k">Total seats</div><div class="v">{{ s.totalSeats }}</div></div>
           <div><div class="k">Available</div><div class="v">{{ s.availableSeats }}</div></div>
           <div><div class="k">Booked</div><div class="v">{{ bookingsForSlot(s.tripDateSlotId).length }}</div></div>
+          <div><div class="k">Gents</div><div class="v">{{ s.gentsBooked }} <small class="mut">/ {{ s.gentsBooked + s.gentsLeft }}</small></div></div>
+          <div><div class="k">Ladies</div><div class="v">{{ s.ladiesBooked }} <small class="mut">/ {{ s.ladiesBooked + s.ladiesLeft }}</small></div></div>
         </div>
         @if (bookingsForSlot(s.tripDateSlotId).length > 0) {
           <div class="tblwrap">

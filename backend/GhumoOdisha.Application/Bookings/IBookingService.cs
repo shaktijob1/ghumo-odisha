@@ -41,4 +41,8 @@ public interface IBookingService
     Task CancelBookingAsync(int bookingId, CancelBookingRequest request, CancellationToken cancellationToken = default);
 
     Task<int> PromoteCompletedBookingsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Cancels website requests still unpaid <see cref="BookingService.UnpaidRequestExpiryHours"/>
+    /// hours after they were made. Seats were never taken, so nothing is restored.</summary>
+    Task<int> ExpireUnpaidRequestsAsync(CancellationToken cancellationToken = default);
 }

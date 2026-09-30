@@ -1,7 +1,7 @@
 <div class="ahead">
   <div>
     <h2>Create booking</h2>
-    <div class="sub">For customers who called or walked in</div>
+    <div class="sub">For customers who called or walked in and have already paid</div>
   </div>
   <a class="btn sm ghost" routerLink="/admin/bookings">Cancel</a>
 </div>
@@ -43,7 +43,7 @@
 
 <div class="formsec" style="max-width:720px">
   <h4>Trip and date</h4>
-  <div class="sub">Seats are checked against the slot when you confirm</div>
+  <div class="sub">Seats are deducted as soon as you save</div>
 
   <div class="f2">
     <div class="fld">
@@ -69,10 +69,6 @@
       <input class="inp" type="number" min="1" [(ngModel)]="numberOfSeats" />
     </div>
     <div class="fld">
-      <span class="lbl">Advance collected (₹)</span>
-      <input class="inp" type="number" min="0" [(ngModel)]="advanceAmount" />
-    </div>
-    <div class="fld">
       <span class="lbl">Booking source</span>
       <select class="inp" [(ngModel)]="bookingSource">
         <option [ngValue]="BookingSource.Phone">Phone</option>
@@ -83,6 +79,30 @@
     </div>
   </div>
 
+  <h4 style="margin-top:6px">Payment received</h4>
+  <div class="sub">The booking is confirmed with this payment recorded</div>
+  <div class="f3" style="margin-bottom:14px">
+    <div class="fld" style="margin:0">
+      <span class="lbl">Amount paid (₹)</span>
+      <input class="inp" type="number" min="1" [(ngModel)]="amountPaid" placeholder="0" />
+      @if (totalAmount > 0) {
+        <button type="button" class="linkbtn" style="padding:0;margin-top:6px" (click)="amountPaid = totalAmount">Paid in full (₹{{ totalAmount | number:'1.0-0' }})</button>
+      }
+    </div>
+    <div class="fld" style="margin:0">
+      <span class="lbl">Paid via</span>
+      <select class="inp" [(ngModel)]="paymentMethod">
+        @for (m of paymentMethods; track m) {
+          <option [ngValue]="m">{{ PaymentMethodLabels[m] }}</option>
+        }
+      </select>
+    </div>
+    <div class="fld" style="margin:0">
+      <span class="lbl">Reference (optional)</span>
+      <input class="inp" maxlength="100" [(ngModel)]="paymentReference" placeholder="UPI ref / receipt no." />
+    </div>
+  </div>
+
   <div class="fld">
     <span class="lbl">Admin notes</span>
     <textarea class="inp" rows="2" [(ngModel)]="adminNotes" placeholder="Called on the office line, wants window seats"></textarea>
@@ -90,9 +110,9 @@
 
   <div class="card pad" style="background:var(--canvas)">
     <div class="row sp" style="padding:6px 0"><span class="mut">₹{{ selectedTripPrice | number:'1.0-0' }} × {{ numberOfSeats }} seat(s)</span><span>₹{{ totalAmount | number:'1.0-0' }}</span></div>
-    <div class="row sp" style="padding:6px 0"><span class="mut">Advance</span><span>₹{{ advanceAmount | number:'1.0-0' }}</span></div>
+    <div class="row sp" style="padding:6px 0"><span class="mut">Paid</span><span>₹{{ (amountPaid ?? 0) | number:'1.0-0' }}</span></div>
     <div class="row sp" style="font-size:15px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:12px"><span>Remaining</span><span>₹{{ remaining | number:'1.0-0' }}</span></div>
-    <p class="note" style="margin-top:10px">This is a preview. The server recalculates from the stored trip price, and seats are only deducted once you confirm the booking afterward.</p>
+    <p class="note" style="margin-top:10px">This is a preview. The server recalculates the total from the stored trip price. Saving confirms the booking and deducts the seats straight away.</p>
   </div>
 
   @if (errorMessage()) {
@@ -100,6 +120,6 @@
   }
 
   <button class="btn" style="margin-top:14px" [disabled]="submitting()" (click)="submit()">
-    @if (submitting()) { <span class="spin"></span> } @else { Create booking }
+    @if (submitting()) { <span class="spin"></span> } @else { Mark as paid &amp; confirm }
   </button>
 </div>

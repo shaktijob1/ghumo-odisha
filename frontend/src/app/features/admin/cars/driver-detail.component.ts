@@ -1,10 +1,12 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminDecision, AdminDriverDetail } from '../../../core/models/admin-car.model';
 import { ApprovalLabels, CarStatus, DriverStatus, approvalBadgeClass } from '../../../core/models/car.model';
 import { AdminCarService } from '../../../core/services/admin-car.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { PickedPlace } from '../../../core/services/google-maps.service';
+import { BaseLocationPanelComponent } from '../../../shared/components/base-location-panel.component';
 import { ImageUrlPipe } from '../../../shared/pipes/image-url.pipe';
 import { StatePanelComponent } from '../../../shared/components/state-panel.component';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
@@ -19,7 +21,16 @@ type DriverDecision = Exclude<AdminDecision, 'deactivate'>;
 @Component({
   selector: 'app-admin-driver-detail',
   standalone: true,
-  imports: [DatePipe, RouterLink, ImageUrlPipe, StatePanelComponent, AdminDocumentsComponent, AuditHistoryComponent, DecisionDialogComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    ImageUrlPipe,
+    StatePanelComponent,
+    AdminDocumentsComponent,
+    AuditHistoryComponent,
+    DecisionDialogComponent,
+    BaseLocationPanelComponent,
+  ],
   template: `
     <a class="aback" routerLink="/admin/drivers">← Drivers</a>
     @switch (state()) {
@@ -93,6 +104,14 @@ type DriverDecision = Exclude<AdminDecision, 'deactivate'>;
           </div>
         </div>
 
+        <app-base-location-panel
+          [point]="p.baseLocation"
+          [label]="p.baseLocationLabel"
+          [saving]="savingBase()"
+          [error]="baseError()"
+          (save)="saveBaseLocation($event)"
+        ></app-base-location-panel>
+
         <div class="panel" style="margin-bottom:14px">
           <h4>Cars</h4>
           @if (d.cars.length === 0) {
@@ -155,6 +174,9 @@ export class AdminDriverDetailComponent implements OnInit {
   readonly decision = signal<DriverDecision | null>(null);
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
+  readonly savingBase = signal(false);
+  readonly baseError = signal<string | null>(null);
+  private readonly basePanel = viewChild(BaseLocationPanelComponent);
 
   private readonly profile = computed(() => this.detail()?.profile ?? null);
   /** Car documents (RC, insurance) are shown on the car's own page. */
@@ -184,6 +206,23 @@ export class AdminDriverDetailComponent implements OnInit {
         this.state.set('ready');
       },
       error: () => this.state.set('error'),
+    });
+  }
+
+  saveBaseLocation(place: PickedPlace): void {
+    this.savingBase.set(true);
+    this.baseError.set(null);
+    this.cars.setDriverBaseLocation(this.id, place).subscribe({
+      next: (d) => {
+        this.detail.set(d);
+        this.savingBase.set(false);
+        this.basePanel()?.done();
+        this.toast.success('Starting point saved.');
+      },
+      error: (err) => {
+        this.savingBase.set(false);
+        this.baseError.set(apiErrorMessage(err, 'Could not save the starting point.'));
+      },
     });
   }
 

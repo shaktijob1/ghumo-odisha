@@ -17,6 +17,7 @@ import { AdminCarService } from '../../../core/services/admin-car.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { StatePanelComponent } from '../../../shared/components/state-panel.component';
 import { apiErrorMessage } from '../../../shared/utils/api-error';
+import { directionsLink, kmBreakdown } from '../../../shared/utils/maps-link';
 import { durationLabel, istDateTime } from '../../../shared/utils/car-format';
 import { AuditHistoryComponent } from './audit-history.component';
 import { carPaymentBadgeClass } from './car-booking-list.component';
@@ -102,6 +103,12 @@ type Dialog = 'cancel' | 'razorpay' | 'manual' | 'settle' | 'fare';
               <span class="k">Duration</span><b>{{ duration(b.durationHours) }} (till {{ when(b.endsAt) }})</b>
               <span class="k">City</span><b>{{ b.pickupCity }}</b>
               <span class="k">Pickup address</span><b>{{ b.pickupAddress || '—' }}</b>
+              @if (b.pickupLocation) {
+                <span class="k">Pickup on map</span>
+                <span>{{ b.pickupLocation }}@if (b.pickupPoint) { · <a class="note" target="_blank" rel="noopener" [href]="directions(b.pickupPoint)">Directions ↗</a> }</span>
+              }
+              @if (b.dropLocation) { <span class="k">Where to</span><b>{{ b.dropLocation }} · {{ b.roundTrip ? 'round trip' : 'one way' }}</b> }
+              @if (kmText(b); as k) { <span class="k">Distance</span><b>{{ k }}</b> }
               <span class="k">Car</span>
               <span><a [routerLink]="['/admin/cars', b.carId]"><b>{{ b.carDisplayName }}</b></a> <span class="note">· {{ b.category }} · {{ fuel[b.fuelType] }}{{ b.hasAc ? ' · AC' : '' }}</span></span>
               <span class="k">Number plate</span><b class="mono">{{ b.registrationNumber || '—' }}</b>
@@ -309,6 +316,8 @@ export class AdminCarBookingDetailComponent implements OnInit {
   readonly offlineMethods = OfflinePaymentMethods;
   readonly fuel = FuelTypeLabels;
   readonly when = istDateTime;
+  readonly directions = directionsLink;
+  readonly kmText = kmBreakdown;
   readonly duration = durationLabel;
   readonly submitLabels: Record<Dialog, string> = {
     cancel: 'Cancel booking',

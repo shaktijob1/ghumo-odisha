@@ -9,6 +9,7 @@
       Refunds
       @if (refunds.pendingCount() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px">{{ refunds.pendingCount() }}</span> }
     </a>
+    <a routerLink="/admin/collections" routerLinkActive="on">Collections</a>
     <a routerLink="/admin/customers" routerLinkActive="on">Customers</a>
     <a routerLink="/admin/coupons" routerLinkActive="on">Coupons</a>
     <a routerLink="/admin/logs" routerLinkActive="on">Logs</a>
@@ -22,6 +23,7 @@
       @if (cars.pendingApprovals() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px" title="Drivers, cars and pricing waiting for approval">{{ cars.pendingApprovals() }}</span> }
     </a>
     <a routerLink="/admin/drivers" routerLinkActive="on">Drivers</a>
+    <a routerLink="/admin/service-areas" routerLinkActive="on">Pickup areas</a>
     <div class="who">
       Signed in as <b style="color:var(--ink)">{{ auth.currentAdmin()?.username }}</b><br />
       Administrator

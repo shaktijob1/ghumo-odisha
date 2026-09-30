@@ -1,6 +1,7 @@
 using GhumoOdisha.Application.Cars.Dtos;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Exceptions;
+using GhumoOdisha.Application.Maps;
 using GhumoOdisha.Application.Trips.Dtos;
 using GhumoOdisha.Domain.Entities;
 using GhumoOdisha.Domain.Enums;
@@ -12,6 +13,7 @@ public interface IDriverService
 {
     Task<DriverProfileDto> GetProfileAsync(int driverId, CancellationToken cancellationToken = default);
     Task<DriverProfileDto> UpdateProfileAsync(int driverId, UpdateDriverProfileRequest request, CancellationToken cancellationToken = default);
+    Task<DriverProfileDto> SetBaseLocationAsync(int driverId, SetBaseLocationRequest request, CancellationToken cancellationToken = default);
     Task<DriverProfileDto> SetProfilePhotoAsync(int driverId, UploadedImage image, CancellationToken cancellationToken = default);
     Task<DriverProfileDto> SubmitForReviewAsync(int driverId, CancellationToken cancellationToken = default);
     Task<DriverDocumentDto> UploadDocumentAsync(int driverId, DriverDocumentType type, int? carId, UploadedImage file, CancellationToken cancellationToken = default);
@@ -73,6 +75,31 @@ public class DriverService(IGhumoOdishaDbContext db, IImageStorage storage) : ID
 
         await db.SaveChangesAsync(cancellationToken);
         return ToDto(driver);
+    }
+
+    public async Task<DriverProfileDto> SetBaseLocationAsync(int driverId, SetBaseLocationRequest request, CancellationToken cancellationToken = default)
+    {
+        var driver = await LoadAsync(driverId, cancellationToken);
+        ApplyBaseLocation(db, driver, request, CarActor.Driver(driverId));
+        await db.SaveChangesAsync(cancellationToken);
+        return ToDto(driver);
+    }
+
+    /// <summary>Shared by the driver's own profile and the admin driver page. Changes future quotes only — booked fares are frozen.</summary>
+    internal static void ApplyBaseLocation(IGhumoOdishaDbContext db, Driver driver, SetBaseLocationRequest request, CarActor actor)
+    {
+        if (!new GeoPoint(request.Latitude, request.Longitude).IsValid)
+        {
+            throw new ValidationAppException(["Choose the starting point on the map."]);
+        }
+
+        var label = request.Label.Trim();
+        CarAudit.Record(db, CarAuditEntity.Driver, driver.DriverId, "DriverBaseLocationChanged", "Starting point changed", actor,
+            driver.BaseLocationLabel, label);
+        driver.BaseLatitude = Math.Round(request.Latitude, 6);
+        driver.BaseLongitude = Math.Round(request.Longitude, 6);
+        driver.BaseLocationLabel = label.Length > 300 ? label[..300] : label;
+        driver.UpdatedAt = DateTime.UtcNow;
     }
 
     public async Task<DriverProfileDto> SetProfilePhotoAsync(int driverId, UploadedImage image, CancellationToken cancellationToken = default)
@@ -210,6 +237,8 @@ public class DriverService(IGhumoOdishaDbContext db, IImageStorage storage) : ID
         driver.Email,
         driver.Address,
         driver.City,
+        driver.BaseLatitude is { } lat && driver.BaseLongitude is { } lng ? new GeoPointDto(lat, lng) : null,
+        driver.BaseLocationLabel,
         driver.DrivingLicenceNumber,
         driver.LicenceExpiryDate,
         driver.ExperienceYears,

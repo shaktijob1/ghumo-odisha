@@ -11,15 +11,11 @@
     <div class="ahead">
       <div>
         <h2>Booking {{ b.bookingReference }}</h2>
-        <div class="sub">Requested {{ b.requestedAt | date:'d MMM y, h:mm a' }}</div>
+        <div class="sub">Booked {{ b.requestedAt | date:'d MMM y, h:mm a' }}</div>
       </div>
       <div class="row" style="gap:8px;flex-wrap:wrap">
         @if (canChangeSeats) {
           <button class="btn sm ghost" (click)="openSeatsModal()">Change seats</button>
-        }
-        @if (b.bookingStatus === BookingStatus.Requested || b.bookingStatus === BookingStatus.Pending) {
-          <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="showRejectModal.set(true)">Reject</button>
-          <button class="btn sm" (click)="openConfirmModal()">Confirm booking</button>
         }
         @if (canTakePayments) {
           <button class="btn sm ghost" [disabled]="downloadingInvoice()" (click)="downloadInvoice()">
@@ -55,7 +51,7 @@
           <span class="k">Balance due</span><b [style.color]="b.remainingAmount > 0 ? 'var(--wait)' : 'var(--ok)'">₹{{ b.remainingAmount | number:'1.0-0' }}</b>
           <span class="k">Booking status</span><span><app-status-badge kind="booking" [value]="b.bookingStatus"></app-status-badge></span>
           <span class="k">Payment status</span><span><app-status-badge kind="payment" [value]="b.paymentStatus"></app-status-badge></span>
-          <span class="k">Requested at</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
+          <span class="k">Booked at</span><b>{{ b.requestedAt | date:'d MMM y, h:mm a' }}</b>
           <span class="k">Confirmed at</span><b class="mut">{{ b.confirmedAt ? (b.confirmedAt | date:'d MMM y, h:mm a') : '—' }}</b>
           <span class="k">Cancelled at</span><b class="mut">{{ b.cancelledAt ? (b.cancelledAt | date:'d MMM y, h:mm a') : '—' }}</b>
           @if (b.bookingStatus === BookingStatus.Cancelled && (b.cancellationReason || b.refundWaived)) {
@@ -396,52 +392,4 @@
   [destructive]="true"
   (confirm)="confirmRemovePayment()"
   (cancel)="paymentToRemove.set(null)"
-></app-confirm-dialog>
-
-<!-- Confirm modal -->
-@if (showConfirmModal()) {
-  <div class="modal-backdrop" (click)="showConfirmModal.set(false)">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h4>Confirm booking</h4>
-      <div class="fld">
-        <span class="lbl">Advance collected offline (₹)</span>
-        <input class="inp" type="number" [(ngModel)]="advanceAmount" min="0" [max]="booking()?.totalAmount ?? null" />
-      </div>
-      @if (advanceAmount > 0) {
-        <div class="row" style="gap:10px">
-          <div class="fld" style="flex:1">
-            <span class="lbl">Received via</span>
-            <select class="inp" [(ngModel)]="confirmMethod">
-              @for (m of offlineMethods; track m) { <option [ngValue]="m">{{ PaymentMethodLabels[m] }}</option> }
-            </select>
-          </div>
-          <div class="fld" style="flex:1">
-            <span class="lbl">Reference — optional</span>
-            <input class="inp" maxlength="100" [(ngModel)]="confirmReference" />
-          </div>
-        </div>
-      }
-      <div class="row sp" style="font-size:14px;font-weight:700;margin-bottom:14px">
-        <span>Remaining</span><span>₹{{ remaining | number:'1.0-0' }}</span>
-      </div>
-      <div class="warnbox">Confirming deducts {{ booking()?.numberOfSeats }} seat(s) from this date slot. This cannot be undone except by cancelling the booking.</div>
-      @if (actionError()) {
-        <div class="errorbox">{{ actionError() }}</div>
-      }
-      <div class="row" style="gap:8px">
-        <button class="btn ghost" style="flex:1" (click)="showConfirmModal.set(false)">Cancel</button>
-        <button class="btn" style="flex:1" [disabled]="submitting()" (click)="submitConfirm()">Confirm booking</button>
-      </div>
-    </div>
-  </div>
-}
-
-<app-confirm-dialog
-  [open]="showRejectModal()"
-  title="Reject booking?"
-  message="This booking will be marked Rejected. No seats have been deducted."
-  confirmLabel="Reject booking"
-  [destructive]="true"
-  (confirm)="submitReject()"
-  (cancel)="showRejectModal.set(false)"
 ></app-confirm-dialog>

@@ -28,7 +28,8 @@ public class MetaWhatsAppService(HttpClient httpClient, IOptions<WhatsAppOptions
         {
             WhatsAppOtpTemplateCategory.Authentication => new object[] { Body([otp]), CopyCodeButton(otp) },
             WhatsAppOtpTemplateCategory.SingleVariable => [Body([OtpSentence(otp)])],
-            _ => [Body([customerName, otp])],
+            // Utility ("Hello {{1}}, This is your {{2}} for Ghumo Odisha Booking."): {{2}} reads "OTP 482913".
+            _ => [Body([customerName, $"OTP {otp}"])],
         };
 
         return SendAsync(phoneNumber, _options.OtpTemplateName, _options.OtpTemplateLanguage, components, "OTP", cancellationToken);

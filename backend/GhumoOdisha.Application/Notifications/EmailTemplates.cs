@@ -107,6 +107,90 @@ public static class EmailTemplates
         return (Layout("Your refund has been processed", body), text);
     }
 
+    private static string DetailRow(string label, string value) =>
+        $"""<tr><td style="padding:9px 0;color:{Muted};border-bottom:1px solid {Line}">{E(label)}</td><td style="padding:9px 0;text-align:right;font-weight:600;border-bottom:1px solid {Line}">{E(value)}</td></tr>""";
+
+    private static string MyBookingsButton(string url) => $"""
+            <div style="text-align:center;margin:22px 0 4px">
+              <a href="{E(url)}" style="display:inline-block;background:{Accent};color:#FFFFFF;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">View my bookings</a>
+            </div>
+            """;
+
+    public record BookingCancelledModel(
+        string CustomerName,
+        string BookingReference,
+        string TripTitle,
+        string TravelDates,
+        int Seats,
+        string? Reason,
+        string RefundLine,
+        string MyBookingsUrl);
+
+    public static (string Html, string Text) BookingCancelled(BookingCancelledModel m)
+    {
+        var rows = new StringBuilder()
+            .Append(DetailRow("Booking ID", m.BookingReference))
+            .Append(DetailRow("Trip", m.TripTitle))
+            .Append(DetailRow("Dates", m.TravelDates))
+            .Append(DetailRow("Seats", m.Seats.ToString()))
+            .Append(string.IsNullOrWhiteSpace(m.Reason) ? "" : DetailRow("Reason", m.Reason))
+            .ToString();
+
+        var body = $"""
+            <p style="margin:0 0 6px">Hi {E(m.CustomerName)},</p>
+            <p style="margin:0 0 14px">Your booking <b>{E(m.BookingReference)}</b> has been <b style="color:#C0483A">cancelled</b> and the seats have been released.</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse">{rows}</table>
+            <p style="margin:18px 0 0">{E(m.RefundLine)}</p>
+            <p style="margin:10px 0 0;color:{Muted};font-size:13px">If you didn't expect this, just reply to this email or message us on WhatsApp.</p>
+            {MyBookingsButton(m.MyBookingsUrl)}
+            """;
+
+        var text = $"Hi {m.CustomerName}, your booking {m.BookingReference} ({m.TripTitle}, {m.TravelDates}, {m.Seats} seat(s)) has been cancelled." +
+                   (string.IsNullOrWhiteSpace(m.Reason) ? "" : $" Reason: {m.Reason}.") +
+                   $" {m.RefundLine} {m.MyBookingsUrl}";
+        return (Layout($"Booking {m.BookingReference} cancelled", body), text);
+    }
+
+    public record PaymentReceivedModel(
+        string CustomerName,
+        string BookingReference,
+        string TripTitle,
+        string TravelDates,
+        string AmountReceived,
+        string MethodLabel,
+        string TotalAmount,
+        string TotalPaid,
+        string Balance,
+        string MyBookingsUrl,
+        bool InvoiceAttached);
+
+    public static (string Html, string Text) PaymentReceived(PaymentReceivedModel m)
+    {
+        var fullyPaid = m.Balance is "0" or "0.00";
+        var rows = new StringBuilder()
+            .Append(DetailRow("Booking ID", m.BookingReference))
+            .Append(DetailRow("Trip", m.TripTitle))
+            .Append(DetailRow("Dates", m.TravelDates))
+            .Append(DetailRow("This payment", $"₹{m.AmountReceived} · {m.MethodLabel}"))
+            .Append(DetailRow("Total", "₹" + m.TotalAmount))
+            .Append(DetailRow("Paid so far", "₹" + m.TotalPaid))
+            .Append(DetailRow("Balance", fullyPaid ? "Fully paid ✓" : "₹" + m.Balance))
+            .ToString();
+
+        var invoiceNote = m.InvoiceAttached ? "Your updated invoice is attached." : "";
+        var body = $"""
+            <p style="margin:0 0 6px">Hi {E(m.CustomerName)},</p>
+            <p style="margin:0 0 16px">We've received <b style="color:{Accent}">₹{E(m.AmountReceived)}</b> for your booking <b>{E(m.BookingReference)}</b>. Thank you! {invoiceNote}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse">{rows}</table>
+            {MyBookingsButton(m.MyBookingsUrl)}
+            """;
+
+        var text = $"Hi {m.CustomerName}, we've received Rs {m.AmountReceived} ({m.MethodLabel}) for booking {m.BookingReference} ({m.TripTitle}, {m.TravelDates}). " +
+                   $"Total: Rs {m.TotalAmount} | Paid so far: Rs {m.TotalPaid} | " + (fullyPaid ? "Fully paid." : $"Balance: Rs {m.Balance}.") +
+                   $" {invoiceNote} {m.MyBookingsUrl}";
+        return (Layout($"Payment received · {m.BookingReference}", body), text);
+    }
+
     public record InvoiceModel(
         string CustomerName,
         string BookingReference,

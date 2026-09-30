@@ -212,7 +212,7 @@ public class CouponService(IGhumoOdishaDbContext db) : ICouponService
             {
                 r.RedeemedAt,
                 TripTitle = r.Booking.Trip.Title,
-                TravelDate = r.Booking.TripDateSlot.StartDate,
+                TravelDate = r.Booking.TripDateSlot!.StartDate,
                 r.NumberOfSeats,
                 r.CommissionAmount,
                 Counts = r.Booking.BookingStatus != BookingStatus.Cancelled && r.Booking.BookingStatus != BookingStatus.Rejected
@@ -277,7 +277,7 @@ public class CouponService(IGhumoOdishaDbContext db) : ICouponService
                 r.Customer.PhoneNumber,
                 r.IsNewCustomer,
                 r.Booking.Trip.Title,
-                r.Booking.TripDateSlot.StartDate,
+                r.Booking.TripDateSlot!.StartDate,
                 r.NumberOfSeats,
                 r.Booking.TotalAmount,
                 r.DiscountAmount,

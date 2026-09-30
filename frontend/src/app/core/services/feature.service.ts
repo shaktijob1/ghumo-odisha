@@ -7,7 +7,12 @@ import { ApiResponse } from '../models/api-response.model';
 export interface SiteFeatures {
   /** Customers see Trips only: no Cars / Holidays tabs, and the customer Cars pages redirect home. */
   hideCarsAndHolidays: boolean;
+  /** Browser key for Google Maps / Places, from the API's GoogleMaps config. Null when not set up. */
+  googleMapsApiKey: string | null;
+  googleMapsMapId: string;
 }
+
+const FALLBACK: SiteFeatures = { hideCarsAndHolidays: true, googleMapsApiKey: null, googleMapsMapId: 'DEMO_MAP_ID' };
 
 /**
  * Site switches from the API's appsettings "Features" section, read once per visit. Until they load
@@ -22,8 +27,8 @@ export class FeatureService {
   private readonly features$: Observable<SiteFeatures> = this.http
     .get<ApiResponse<SiteFeatures>>(`${environment.apiUrl}/features`)
     .pipe(
-      map((r) => r.data ?? { hideCarsAndHolidays: true }),
-      catchError(() => of({ hideCarsAndHolidays: true })),
+      map((r) => ({ ...FALLBACK, ...(r.data ?? {}) })),
+      catchError(() => of(FALLBACK)),
       tap((f) => this.hideCarsAndHolidays.set(f.hideCarsAndHolidays)),
       shareReplay(1),
     );

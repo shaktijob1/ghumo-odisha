@@ -9,7 +9,8 @@ export enum TripDateSlotStatus {
 }
 
 export enum BookingStatus {
-  Requested = 0,
+  // Internal only (an unpaid checkout) — never listed to customers or the admin.
+  AwaitingPayment = 0,
   Pending = 1,
   Confirmed = 2,
   Rejected = 3,
@@ -119,7 +120,7 @@ export enum PaymentPlan {
 }
 
 export const BookingStatusLabels: Record<BookingStatus, string> = {
-  [BookingStatus.Requested]: 'Requested',
+  [BookingStatus.AwaitingPayment]: 'Awaiting payment',
   [BookingStatus.Pending]: 'Pending',
   [BookingStatus.Confirmed]: 'Confirmed',
   [BookingStatus.Rejected]: 'Rejected',
@@ -147,7 +148,7 @@ export function bookingStatusBadgeClass(status: BookingStatus): string {
     case BookingStatus.Confirmed:
     case BookingStatus.Completed:
       return 'ok';
-    case BookingStatus.Requested:
+    case BookingStatus.AwaitingPayment:
     case BookingStatus.Pending:
       return 'wait';
     case BookingStatus.Rejected:

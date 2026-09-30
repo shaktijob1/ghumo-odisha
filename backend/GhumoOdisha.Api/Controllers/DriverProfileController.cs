@@ -26,6 +26,10 @@ public class DriverProfileController(IDriverService driverService, IDriverAuthSe
     public async Task<ActionResult<ApiResponse<DriverProfileDto>>> Update(UpdateDriverProfileRequest request, CancellationToken cancellationToken) =>
         Ok(ApiResponse<DriverProfileDto>.Ok(await driverService.UpdateProfileAsync(User.GetDriverId(), request, cancellationToken), "Profile saved."));
 
+    [HttpPut("profile/base-location")]
+    public async Task<ActionResult<ApiResponse<DriverProfileDto>>> SetBaseLocation(SetBaseLocationRequest request, CancellationToken cancellationToken) =>
+        Ok(ApiResponse<DriverProfileDto>.Ok(await driverService.SetBaseLocationAsync(User.GetDriverId(), request, cancellationToken), "Starting point saved."));
+
     [HttpPost("profile/photo")]
     public async Task<ActionResult<ApiResponse<DriverProfileDto>>> SetPhoto(IFormFile? file, CancellationToken cancellationToken) =>
         Ok(ApiResponse<DriverProfileDto>.Ok(await driverService.SetProfilePhotoAsync(User.GetDriverId(), ToUpload(file), cancellationToken), "Photo updated."));

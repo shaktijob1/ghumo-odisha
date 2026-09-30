@@ -45,6 +45,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe],
   templateUrl: './trip-detail.component.html',
+  styleUrl: './trip-detail.component.css',
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -64,7 +65,10 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   readonly heroIndex = signal(0);
   readonly selectedSlotId = signal<number | null>(null);
-  readonly seats = signal(1);
+  /** Travellers are chosen as gents + ladies (the trip keeps a 1:1 mix); seats are their total. */
+  readonly gents = signal(1);
+  readonly ladies = signal(0);
+  readonly seats = computed(() => this.gents() + this.ladies());
   // Chosen in the sidebar; carried into the payment step, where it is (re)validated for this customer.
   readonly coupon = signal<CouponSelection | null>(null);
   // A coupon's amount is per seat (₹200 × 4 seats = ₹800 off) — same as BookingPaymentService server-side.
@@ -76,7 +80,6 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   readonly paymentConfirmed = signal(false);
   readonly confirmedBooking = signal<BookingResponse | null>(null);
-  readonly skippedPayment = signal(false);
   readonly downloadingInvoice = signal(false);
 
   readonly selectedPickupPointId = signal<number | null>(null);
@@ -132,9 +135,9 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   tripId!: number;
   private clientRequestId: string | null = null;
   // The date/seats/pickup the current booking request was created with.
-  private lastRequest: { slotId: number; seats: number; pickupId: number | null } | null = null;
+  private lastRequest: { slotId: number; seats: number; gents: number; pickupId: number | null } | null = null;
   // An unpaid request set aside when the popup was closed or "Edit details" was used.
-  private draft: { result: CreateBookingResult; slotId: number; seats: number; pickupId: number | null } | null = null;
+  private draft: { result: CreateBookingResult; slotId: number; seats: number; gents: number; pickupId: number | null } | null = null;
   private justAuthenticated = false;
 
   readonly selectedSlot = computed<DateSlot | null>(() => {
@@ -236,7 +239,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       next: (t) => {
         this.trip.set(t);
         this.applySeo(t);
-        const firstOpenSlot = this.upcomingSlots().find((s) => !s.isSoldOut);
+        const firstOpenSlot = this.upcomingSlots().find((s) => !s.isSoldOut && !s.isBookingClosed);
         this.selectedSlotId.set(firstOpenSlot?.tripDateSlotId ?? null);
         // Open on the month holding the next bookable departure (e.g. October if September is
         // empty or sold out), falling back to the first month that has any departure at all.
@@ -312,6 +315,38 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     return 'spot';
   }
 
+  /** ‹ › on the day strip: shown only while there are more days off-screen that way. */
+  private readonly reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  readonly dayRailPrev = signal(false);
+  readonly dayRailNext = signal(false);
+
+  updateDayRail(): void {
+    const el = this.dayTabsEl()?.nativeElement;
+    if (!el) return;
+    this.dayRailPrev.set(el.scrollLeft > 4);
+    this.dayRailNext.set(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }
+
+  /** Pages the day strip by most of its visible width. */
+  scrollDays(direction: -1 | 1): void {
+    const el = this.dayTabsEl()?.nativeElement;
+    if (!el) return;
+    el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: this.reducedMotion ? 'auto' : 'smooth' });
+  }
+
+  /** Previous / next day buttons under the day's plan; the page stays on the itinerary. */
+  stepDay(direction: -1 | 1): void {
+    const days = this.trip()?.itineraryDays.length ?? 0;
+    const next = this.selectedDayIndex() + direction;
+    if (next < 0 || next >= days) return;
+    this.selectDay(next);
+    const section = this.dayTabsEl()?.nativeElement.closest('.tdsec') as HTMLElement | null;
+    // Bring the day's heading back into view when the visitor was reading further down.
+    if (section && section.getBoundingClientRect().top < 0) {
+      window.scrollTo({ top: window.scrollY + section.getBoundingClientRect().top - 72, behavior: this.reducedMotion ? 'auto' : 'smooth' });
+    }
+  }
+
   /** Shows the chosen day and scrolls its tab into view within the tab strip. */
   selectDay(index: number): void {
     this.selectedDayIndex.set(index);
@@ -347,10 +382,27 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   }
 
   selectSlot(slot: DateSlot): void {
-    if (slot.isSoldOut) return;
+    if (slot.isSoldOut || slot.isBookingClosed) return;
     this.selectedSlotId.set(slot.tripDateSlotId);
-    this.seats.set(1);
+    this.resetTravellers(slot);
   }
+
+  /** One traveller to start with — a gent, or a lady when the gents' places on this date are full. */
+  private resetTravellers(slot: DateSlot | null): void {
+    const gentsOpen = !slot || slot.gentsLeft > 0;
+    this.gents.set(gentsOpen ? 1 : 0);
+    this.ladies.set(gentsOpen ? 0 : 1);
+  }
+
+  /** Most gents / ladies this booking can add: their own open places, and never past the seats left. */
+  readonly gentsMax = computed(() => {
+    const s = this.selectedSlot();
+    return s ? Math.max(0, Math.min(s.gentsLeft, s.availableSeats - this.ladies())) : 0;
+  });
+  readonly ladiesMax = computed(() => {
+    const s = this.selectedSlot();
+    return s ? Math.max(0, Math.min(s.ladiesLeft, s.availableSeats - this.gents())) : 0;
+  });
 
   private nextHero(): void {
     const total = this.trip()?.photos.length ?? 0;
@@ -383,13 +435,20 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   // ---------- "About this trip" key facts (all from the trip's own data) ----------
 
+  /** "Pickup from … +3 more" opens the full list of pickup points. */
+  readonly showPickups = signal(false);
+
+  encode(value: string): string {
+    return encodeURIComponent(value);
+  }
+
   readonly tripFacts = computed(() => {
     const t = this.trip();
     if (!t) return [];
     const facts: { icon: 'clock' | 'calendar' | 'pin' | 'tag'; label: string; value: string }[] = [];
     const today = new Date().toISOString().slice(0, 10);
     const next = [...t.dateSlots]
-      .filter((s) => !s.isSoldOut && s.startDate >= today)
+      .filter((s) => !s.isSoldOut && !s.isBookingClosed && s.startDate >= today)
       .sort((a, b) => a.startDate.localeCompare(b.startDate))[0] ?? t.dateSlots[0];
     if (next) {
       const days = Math.round((Date.parse(next.endDate) - Date.parse(next.startDate)) / 86_400_000) + 1;
@@ -442,6 +501,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   private updateAllRows(): void {
     (['hl', 'stay', 'travel'] as const).forEach((r) => this.updateRow(r));
+    this.updateDayRail();
   }
 
   /** Moves a row by one card. */
@@ -473,6 +533,10 @@ export class TripDetailComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   onViewerKeydown(event: KeyboardEvent): void {
+    if (this.showPickups() && event.key === 'Escape') {
+      this.showPickups.set(false);
+      return;
+    }
     if (this.photoViewer()) {
       if (event.key === 'Escape') this.closePhotos();
       else if (event.key === 'ArrowRight') this.stepPhoto(1);
@@ -565,14 +629,14 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     // Reopening starts fresh: 1 seat, pickup to choose again (a matching draft is still reused).
     if (!this.bookingResult()) {
       this.resetPickup();
-      this.seats.set(1);
+      this.resetTravellers(this.selectedSlot());
     }
     this.bookingStep.set('date');
   }
 
   private setAsideBooking(): void {
     const result = this.bookingResult();
-    if (!result || this.paymentConfirmed() || this.skippedPayment()) return;
+    if (!result || this.paymentConfirmed()) return;
     this.draft = { result, ...this.lastRequest! };
     this.bookingResult.set(null);
   }
@@ -610,12 +674,13 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     const params = {
       slotId: this.selectedSlot()!.tripDateSlotId,
       seats: this.seats(),
+      gents: this.gents(),
       pickupId: this.selectedPickupPointId(),
     };
 
     // Same date, seats and pickup as the request set aside earlier → reuse it as is.
     const draft = this.draft;
-    if (draft && draft.slotId === params.slotId && draft.seats === params.seats && draft.pickupId === params.pickupId) {
+    if (draft && draft.slotId === params.slotId && draft.seats === params.seats && draft.gents === params.gents && draft.pickupId === params.pickupId) {
       this.draft = null;
       this.lastRequest = params;
       this.bookingResult.set(draft.result);
@@ -639,7 +704,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.createRequest(params);
   }
 
-  private createRequest(params: { slotId: number; seats: number; pickupId: number | null }): void {
+  private createRequest(params: { slotId: number; seats: number; gents: number; pickupId: number | null }): void {
     // One id per booking attempt — reused on any retry (network error, double-click) so the
     // backend can safely no-op a duplicate instead of creating a second booking.
     this.clientRequestId ??= crypto.randomUUID();
@@ -649,6 +714,8 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         tripId: this.tripId,
         tripDateSlotId: params.slotId,
         numberOfSeats: params.seats,
+        maleCount: params.gents,
+        femaleCount: params.seats - params.gents,
         customerNotes: null,
         clientRequestId: this.clientRequestId,
         pickupPointId: params.pickupId,

@@ -460,10 +460,6 @@ body.customer { background: #fff; }
 .galscroll .gitem { flex: 0 0 220px; height: 150px; border-radius: 12px; overflow: hidden; background: var(--canvas); scroll-snap-align: start; }
 .galscroll .gitem img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .35s ease; }
 .galscroll .gitem:hover img { transform: scale(1.12); }
-.daytabs { display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; margin-bottom: 16px; overflow-x: auto; }
-.daytab { flex: 1 1 0; border: 1px solid var(--line); background: #fff; color: var(--muted); font-weight: 600; font-size: 12.5px; padding: 11px 14px; min-width: 58px; text-align: center; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: background-color .15s ease, color .15s ease, border-color .15s ease, transform .15s ease; }
-.daytab:hover { border-color: var(--accent); color: var(--accent); }
-.daytab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .dayarrow { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; box-shadow: 0 2px 6px rgba(15,111,92,.2); }
 .dayarrow svg { display: block; }
 .day { border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
@@ -495,6 +491,12 @@ body.customer { background: #fff; }
 .depcard.out { opacity: .6; cursor: not-allowed; }
 .depseats { position: absolute; top: -11px; right: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border: 1px solid #8FB2EC; border-radius: 999px; background: #F3F7FE; color: #1F5BC4; font-size: 11.5px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
 .depseats.bad { border-color: #E3B3AD; background: #FBEFED; color: var(--danger); }
+/* "4 Gents · 3 Ladies booked" on each departure. */
+.depg { display: inline-flex; align-items: center; gap: 4px; color: #2F5B86; }
+.depg.lady { color: #A33D72; }
+.depg + .depg { padding-left: 7px; margin-left: 1px; border-left: 1px solid #C9D8EE; }
+.depg.full { color: var(--danger); }
+.depg-note { color: var(--muted); font-weight: 500; }
 .depradio { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #B9C0C3; background: #fff; }
 .depcard.on .depradio { border: 2px solid var(--accent); box-shadow: inset 0 0 0 3px #fff; background: var(--accent); }
 .depdate { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -599,18 +601,6 @@ body.customer { background: #fff; }
 /* Grey "Close"-style button (neutral, not the accent or the danger colour). */
 .btn.neutral { background: #EEF1F2; color: var(--ink); border: 1px solid #DCE1E3; }
 .btn.neutral:hover { background: #E4E8E9; }
-
-/* My Bookings → View details: "Pay ₹… securely" stays pinned to the bottom of the popup (like the
-   trip booking popup). The payment panel's wrappers are flattened here so its Pay bar becomes a
-   direct item of the popup and can be moved last and pinned from the moment the popup opens. */
-.bkdetail.has-pay { display: flex; flex-direction: column; }
-.bkdetail.has-pay > *, .bkdetail.has-pay .bookpanel > * { flex-shrink: 0; }
-.bkdetail app-payment-panel, .bkdetail .bookpanel { display: contents; }
-.bkdetail .bp-cta-bar {
-  order: 99; position: sticky; bottom: -20px; z-index: 3;
-  margin: 14px -20px -20px; padding: 12px 20px 20px;
-  background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -8px 20px rgba(15,20,22,.06);
-}
 
 .money { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .money b { display: block; color: var(--ink); font-size: 13.5px; }
@@ -1206,7 +1196,43 @@ body.customer { background: #fff; }
 }
 
 /* Day-wise itinerary */
-.tdsec .daytabs { margin-bottom: 14px; }
+/* Day strip: tabs keep a readable size (day + title) and the strip scrolls when there are many days,
+   with ‹ › buttons and faded edges only on the side that has more. Fewer days stretch to fill the row. */
+.dayrail { position: relative; margin-bottom: 14px; }
+.daytabs { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity; scroll-behavior: smooth; scrollbar-width: none; padding: 2px; }
+.daytabs::-webkit-scrollbar { display: none; }
+.dayrail.fade-l .daytabs { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 56px); mask-image: linear-gradient(90deg, transparent 0, #000 56px); }
+.dayrail.fade-r .daytabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent 100%); }
+.dayrail.fade-l.fade-r .daytabs { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); }
+.daytab { flex: 1 0 156px; max-width: 240px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 9px 14px; border: 1px solid var(--line); border-radius: var(--radius-control); background: #fff; font: inherit; text-align: left; cursor: pointer; scroll-snap-align: start; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.daytab:hover { border-color: #BFDDD4; }
+.daytab-n { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
+.daytab-t { max-width: 100%; font-size: 12.5px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.daytab.done { background: #F6FAF8; }
+.daytab.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 8px 18px rgba(15,111,92,.22); }
+.daytab.on .daytab-n { color: rgba(255,255,255,.85); }
+.daytab.on .daytab-t { color: #fff; }
+.dayrail-nav { position: absolute; top: 50%; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -17px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 6px 16px rgba(15,20,22,.14); cursor: pointer; }
+.dayrail-nav:hover { color: var(--accent); border-color: #BFDDD4; }
+.dayrail-nav.prev { left: -6px; }
+.dayrail-nav.next { right: -6px; }
+.tdday-of { margin-left: auto; flex-shrink: 0; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.tdday-progress { height: 3px; margin: 2px 0 14px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.tdday-progress span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .25s ease; }
+/* Previous / next day under the plan. */
+.tdday-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.tdday-step { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); background: #fff; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.tdday-step:hover { border-color: #BFDDD4; background: var(--accent-soft); }
+.tdday-step svg { flex-shrink: 0; color: var(--accent); }
+.tdday-step span { display: grid; min-width: 0; }
+.tdday-step small { font-size: 11px; color: var(--muted); }
+.tdday-step b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tdday-step.next { grid-column: 2; justify-content: flex-end; text-align: right; }
+@media (max-width: 640px) {
+  .daytab { flex-basis: 112px; padding: 8px 12px; }
+  .dayrail-nav { display: none; }
+  .tdday-step { padding: 9px 10px; }
+}
 .tdday { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 18px 20px; background: linear-gradient(180deg, #F3F9F6 0%, #FFFFFF 55%); }
 .tdday-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .tdday-n { flex-shrink: 0; background: var(--accent); color: #fff; border-radius: var(--radius-pill); padding: 4px 11px; font-size: 11.5px; font-weight: 700; }
@@ -1421,6 +1447,16 @@ body.customer { background: #fff; }
 
 .bkseats { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 2px; border-bottom: 1px solid var(--line); }
 .bkseats b { display: block; font-size: 14px; }
+/* Gents / ladies steppers in the booking popup. */
+.bkgender { display: grid; gap: 10px; padding: 12px 0 14px; border-bottom: 1px solid var(--line); }
+.bkgender-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid #D8E4F1; border-radius: var(--radius-control); background: #F3F7FC; }
+.bkgender-row.lady { border-color: #F1D6E4; background: #FCF3F8; }
+.bkgender-row b { display: block; font-size: 14px; }
+.bkgender-row small { display: block; font-size: 11px; color: var(--muted); }
+.bkgender-ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #DCE7F5; color: #2F5B86; }
+.bkgender-row.lady .bkgender-ic { background: #F6DCE9; color: #A33D72; }
+.bkgender-note { margin: 2px 2px 0; font-size: 12px; color: var(--muted); }
+.bkgender-note b { color: var(--ink); }
 
 .bkrooms { margin-top: 14px; border: 1px solid #D3EBE2; border-radius: var(--radius-card); background: linear-gradient(180deg, #EEF7F3, #F7FBF9); padding: 14px; }
 .bkrooms-head { display: flex; align-items: center; gap: 11px; }
@@ -1767,8 +1803,11 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
   .hx-tab-text b { font-size: 15.5px; }
   .hx-tab-text small { display: none; }
   .hx-tab.on::after { bottom: -8px; border-width: 9px; border-bottom: 0; }
-  .hx-panel { flex-direction: column; align-items: stretch; gap: 16px; padding: 22px 16px 16px; }
+  /* nowrap: a wrapping column sizes its line to the widest field's content (the input's default
+     ~20-character width), which pushed the fields past the card on phones narrower than ~335px. */
+  .hx-panel { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 16px; padding: 22px 16px 16px; }
   .hx-field { flex: none; }
+  .hx-input { width: 0; }
   .hx-lbl { margin-bottom: 8px; font-size: 14.5px; }
   .hx-box { height: 52px; }
   .hx-val, .hx-input { font-size: 16px; }
@@ -1966,14 +2005,14 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
   #upcoming-trips .depchips-lbl { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   /* Up to four chips always share the full row; fewer chips are wider and spell out month + weekday. */
   #upcoming-trips .depchips-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
-  #upcoming-trips .dchip { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #fff; text-align: center; }
+  #upcoming-trips .dchip { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
   #upcoming-trips .dchip .m-long, #upcoming-trips .dchip-wd { display: none; }
   #upcoming-trips .depchips-row:not([data-count="4"]) .dchip .m-short { display: none; }
   #upcoming-trips .depchips-row:not([data-count="4"]) .dchip .m-long { display: inline; }
   #upcoming-trips .depchips-row:not([data-count="4"]) .dchip-day { padding-bottom: 2px; }
-  #upcoming-trips .depchips-row:not([data-count="4"]) .dchip-wd { display: block; padding: 0 4px 7px; font-size: 11.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #upcoming-trips .dchip-mon { display: block; padding: 3px 0; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
-  #upcoming-trips .dchip-day { display: block; padding: 6px 0 7px; font-size: 20px; font-weight: 700; line-height: 1; color: var(--ink); }
+  #upcoming-trips .depchips-row:not([data-count="4"]) .dchip-wd { display: block; padding: 0 4px 10px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #upcoming-trips .dchip-mon { display: block; border-radius: 11px 11px 0 0; padding: 6px 0; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; }
+  #upcoming-trips .dchip-day { display: block; padding: 10px 0 8px; font-size: 28px; font-weight: 700; line-height: 1; color: var(--ink); }
   #upcoming-trips .dchip.full { opacity: .45; }
 
   /* Price row: bigger orange Book Now. */
@@ -2081,18 +2120,33 @@ app-customer-layout .btn.bp-cta { box-shadow: 0 10px 22px rgba(238,106,42,.26); 
 :is(#upcoming-trips, #dest-trips) .tcard.dash .titlerow, :is(#upcoming-trips, #dest-trips) .tcard.dash .metaline { padding: 0 14px; }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .titlerow { padding-top: 12px; }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .dealbanner { margin: 10px 14px 0; }
+/* Seats left per date: red star pinned over the chip's top-right corner, blinking. The row gets
+   top padding so the star isn't clipped by the card. */
+.depchips-row { padding-top: 0; }
+.dchip-seats { position: absolute; top: -15px; right: -8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 7px; border: 1.5px solid #fff; border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; box-shadow: 0 3px 10px rgba(192,72,58,.45); pointer-events: none; animation: dchip-blink 1s ease-in-out infinite; }
+.dchip-seats svg { width: 14px; height: 14px; flex-shrink: 0; fill: #FFD84D; }
+.dchip-seats b { font-size: 13px; font-weight: 700; }
+/* Four dates to a row leaves no room for the word "seats": the tag reads "10 left". */
+.depchips-row[data-count="4"] .dchip-seats-w { display: none; }
+.depchips-row[data-count="4"] .dchip-seats { right: -4px; padding: 4px 8px 4px 6px; font-size: 11px; }
+/* Hidden for now at the owner's request — delete this rule to show the seats-left tag again. */
+.dchip-seats { display: none; }
+@keyframes dchip-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.88); }
+}
 :is(#upcoming-trips, #dest-trips) .tcard .depchips { display: block; margin-top: 10px; padding: 10px 12px 12px; background: #fff; border-top: 1px solid var(--tc-line); border-bottom: 1px solid var(--tc-line); }
 :is(#upcoming-trips, #dest-trips) .depchips-lbl { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 :is(#upcoming-trips, #dest-trips) .depchips-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
-:is(#upcoming-trips, #dest-trips) .dchip { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #fff; text-align: center; }
-:is(#upcoming-trips, #dest-trips) .dchip-mon { display: block; padding: 3px 0; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
-:is(#upcoming-trips, #dest-trips) .dchip-day { display: block; padding: 6px 0 7px; font-size: 20px; font-weight: 700; line-height: 1; color: var(--ink); }
+:is(#upcoming-trips, #dest-trips) .dchip { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
+:is(#upcoming-trips, #dest-trips) .dchip-mon { display: block; border-radius: 11px 11px 0 0; padding: 6px 0; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; }
+:is(#upcoming-trips, #dest-trips) .dchip-day { display: block; padding: 10px 0 8px; font-size: 28px; font-weight: 700; line-height: 1; color: var(--ink); }
 :is(#upcoming-trips, #dest-trips) .dchip.full { opacity: .45; }
 :is(#upcoming-trips, #dest-trips) .dchip .m-long, :is(#upcoming-trips, #dest-trips) .dchip-wd { display: none; }
 :is(#upcoming-trips, #dest-trips) .depchips-row:not([data-count="4"]) .dchip .m-short { display: none; }
 :is(#upcoming-trips, #dest-trips) .depchips-row:not([data-count="4"]) .dchip .m-long { display: inline; }
 :is(#upcoming-trips, #dest-trips) .depchips-row:not([data-count="4"]) .dchip-day { padding-bottom: 2px; }
-:is(#upcoming-trips, #dest-trips) .depchips-row:not([data-count="4"]) .dchip-wd { display: block; padding: 0 4px 7px; font-size: 11.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(#upcoming-trips, #dest-trips) .depchips-row:not([data-count="4"]) .dchip-wd { display: block; padding: 0 4px 10px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 :is(#upcoming-trips, #dest-trips) .tcard.dash .pricerow { margin: 0; padding: 12px 14px; background: var(--tc-a); }
 :is(#upcoming-trips, #dest-trips) .tcard .pricerow .btn.sm { padding: 12px 20px; border-radius: 12px; background: var(--orange); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 8px 18px rgba(238,106,42,.28); }
 
@@ -2437,3 +2491,106 @@ button.pe-x:hover { background: var(--danger-bg); color: var(--danger); }
 .acar-results button:hover { background: var(--accent-soft); }
 .acar-ph { position: relative; }
 .acar-ph .pe-x { position: absolute; top: 6px; right: 6px; background: rgba(15,20,22,.6); color: #fff; }
+
+/* ============ Car booking page (/cars/:id/book) — trip-details look, one column ============ */
+/* Home / Vehicles / name */
+.cb-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+.cb-crumbs a { color: var(--accent); font-weight: 600; }
+.cb-crumbs a:hover { text-decoration: underline; }
+.cb-crumbs [aria-current] { color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+/* Phones: one big photo with the name (the desktop mosaic takes over from 641px). */
+/* Its own stack at 0 (not the home hero's 10), so the sticky price bar and fare sheet stay on top of it. */
+.cb-hero { margin-top: 0; cursor: pointer; z-index: 0; }
+.cb-hero:not(:has(img)) { cursor: default; }
+.cb-hero-n { position: absolute; top: 12px; right: 12px; z-index: 1; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.95); color: var(--ink); font-size: 11.5px; font-weight: 600; }
+/* Key facts as coloured chips (same four tones as the trip page's fact tiles). */
+.cb-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 18px; }
+.cb-chips span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border: 1px solid #D3EBE2; border-radius: var(--radius-pill); background: #EEF7F3; color: var(--accent); font-size: 13px; font-weight: 600; }
+.cb-chips span[data-tone="1"] { border-color: #F5E4C4; background: #FFF7EA; color: #8A5A0B; }
+.cb-chips span[data-tone="2"] { border-color: #D8E4F1; background: #EFF4FA; color: #2F5B86; }
+.cb-chips span[data-tone="3"] { border-color: #E4DAF0; background: #F5F0FA; color: #5E3F8C; }
+
+.cb-when { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cb-when .tdfact b { font-size: 15px; }
+.cb-when .tdfact small { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+.cb-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.cb-fields .inp { width: 100%; }
+.cb-notes { margin: 2px 0 16px; }
+.cb-notes summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.cb-notes .inp { width: 100%; }
+.cb-fare { border-top: 1px solid var(--line); padding-top: 12px; }
+.cb-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.cb-split > div { display: grid; gap: 3px; padding: 11px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--canvas); }
+.cb-split > div:first-child { border-color: #BFDDD4; background: var(--accent-soft); }
+.cb-split span { font-size: 11.5px; color: var(--muted); }
+.cb-split b { font-size: 17px; }
+.cb-split > div:first-child b { color: var(--accent); }
+
+/* Similar cars: side-scrolling row of cards. */
+.cb-similar { display: flex; gap: 12px; margin: 0 -4px; padding: 2px 4px 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.cb-sim { flex: 0 0 230px; display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--line); border-radius: var(--radius-card); overflow: hidden; background: #fff; color: inherit; text-decoration: none; scroll-snap-align: start; transition: box-shadow .15s ease, border-color .15s ease; }
+.cb-sim:hover { border-color: #BFDDD4; box-shadow: 0 8px 22px rgba(15,20,22,.1); }
+.cb-sim-shot { position: relative; display: grid; place-items: center; height: 136px; background: var(--canvas); }
+.cb-sim-shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cb-sim-tag { position: absolute; left: 8px; top: 8px; padding: 3px 8px; border-radius: 999px; background: #fff; color: var(--danger); font-size: 11px; font-weight: 600; }
+.cb-sim-body { display: grid; gap: 3px; padding: 11px 12px 13px; font-size: 12px; }
+.cb-sim-body > b { font-size: 14px; }
+.cb-sim-price { margin-top: 4px; font-size: 12.5px; }
+.cb-sim-price b { color: var(--accent); font-size: 15px; }
+
+/* Cancel / Pay now: pinned to the bottom of the screen while the page scrolls. */
+.cb-actions { position: sticky; bottom: 0; z-index: 5; display: grid; gap: 8px; margin: 4px -16px 0; padding: 12px 16px 14px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -8px 20px rgba(15,20,22,.06); }
+.cb-actions .note, .cb-actions .errorbox { margin: 0; }
+.cb-terms { text-align: center; font-size: 11.5px; margin: 0 0 10px; }
+/* Cancel (left) · fare with an arrow that opens the breakdown (middle) · Book (right). */
+.cb-bar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.cb-bar .btn { height: 48px; justify-content: center; font-size: 15px; }
+.cb-book { min-width: 150px; background: var(--orange); border-color: var(--orange); box-shadow: 0 10px 20px rgba(238,106,42,.26); }
+.cb-book:hover:not(:disabled) { background: var(--orange-hover); box-shadow: 0 12px 24px rgba(238,106,42,.32); }
+.cb-price { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 4px 10px; border: none; border-radius: 12px; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer; justify-self: start; }
+.cb-price:hover:not(:disabled) { background: var(--canvas); }
+.cb-price:disabled { cursor: default; }
+.cb-price-amt { display: inline-flex; align-items: center; gap: 6px; font-size: 21px; font-weight: 800; line-height: 1.1; }
+.cb-price small { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.cb-price-chev { color: var(--accent); transition: transform .18s ease; }
+.cb-price-chev.up { transform: rotate(180deg); }
+/* The breakdown slides up above the bar. */
+.cb-sheet { padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: var(--radius-card); background: #fff; box-shadow: 0 -10px 30px rgba(15,20,22,.1); animation: cb-sheet-in .18s ease-out; max-height: 60vh; overflow-y: auto; }
+@keyframes cb-sheet-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.cb-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+.cb-sheet-x { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 16px; line-height: 1; cursor: pointer; color: var(--ink); }
+.cb-km { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.cb-km .sumrow span { color: var(--muted); }
+.cb-bad { border-color: var(--danger); }
+/* Pickup → going to → drop, one coloured tile each. */
+.cb-route { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 10px 0 0; padding: 0; }
+.cb-route li { display: grid; gap: 2px; min-width: 0; padding: 11px 13px; border: 1px solid #D3EBE2; border-radius: var(--radius-control); background: #EEF7F3; }
+.cb-route li[data-tone="1"] { border-color: #F5E4C4; background: #FFF7EA; }
+.cb-route li[data-tone="2"] { border-color: #D8E4F1; background: #EFF4FA; }
+.cb-route-l { font-size: 11px; color: var(--muted); }
+.cb-route b { font-size: 14px; overflow-wrap: anywhere; }
+.cb-route small { font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cb-editcard, .cz-vcard { margin-top: 4px; }
+.cz-vcard { margin-top: 18px; }
+@media (min-width: 641px) {
+  .cb-actions { margin: 4px 0 0; border: 1px solid var(--line); border-radius: var(--radius-card); padding: 14px 18px; }
+}
+@media (max-width: 640px) {
+  .cb-fields { grid-template-columns: 1fr; }
+  .cb-sim { flex-basis: 72%; }
+  .cb-route { grid-template-columns: 1fr; }
+  .cb-bar { gap: 8px; }
+  .cb-book { min-width: 0; padding: 0 22px; }
+  .cb-price { padding: 2px 4px; }
+  .cb-price-amt { font-size: 19px; }
+  .cb-price small { font-size: 10.5px; }
+}
+
+/* Vehicle card in search results: the trip card (.tcard) plus a few extras. */
+.crgrid .tcard { max-width: none; }
+.vcard .fi-label b { font-size: 11.5px; }
+.vcard .pricerow .price small { display: block; margin: 1px 0 0; }
+.vcard-off .shot img { filter: grayscale(.6); opacity: .8; }
+.vcard .vcard-na { background: #EEF1F2; color: var(--muted); border-color: #DCE1E3; box-shadow: none; }
+.vcard-why { margin: 8px 0 0; font-size: 11.5px; color: var(--danger); }

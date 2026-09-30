@@ -1,0 +1,234 @@
+<div class="ahead">
+  <div>
+    <h2>Collections</h2>
+    <div class="sub">Pick a trip to see every confirmed traveller, what they've paid and what's still due. Mark it paid once you've collected.</div>
+  </div>
+  <button class="btn sm" [disabled]="!qrLoaded()" (click)="showQr()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+    Show payment QR
+  </button>
+</div>
+
+@switch (tripsState()) {
+  @case ('loading') {
+    <app-state-panel kind="loading"></app-state-panel>
+  }
+  @case ('error') {
+    <div class="panel">
+      <app-state-panel kind="error" message="Could not load trips."></app-state-panel>
+      <div style="text-align:center"><button class="btn sm ghost" (click)="loadTrips()">Try again</button></div>
+    </div>
+  }
+  @case ('ready') {
+    @if (trips().length === 0) {
+      <div class="panel"><app-state-panel kind="empty" message="No confirmed bookings yet. Trips appear here once a booking is confirmed."></app-state-panel></div>
+    } @else {
+      <div class="colpick">
+        <label class="fld">
+          <span class="lbl">Trip</span>
+          <select class="inp" [ngModel]="tripId()" (ngModelChange)="onTripChange($event)">
+            @for (t of trips(); track t.tripId) {
+              <option [ngValue]="t.tripId">{{ t.title }} · {{ t.bookings }} booking{{ t.bookings === 1 ? '' : 's' }}{{ t.remaining > 0 ? ' · ₹' + (t.remaining | number:'1.0-0') + ' due' : '' }}</option>
+            }
+          </select>
+        </label>
+        @if (selectedTrip(); as t) {
+          <label class="fld">
+            <span class="lbl">Departure</span>
+            <select class="inp" [ngModel]="slotId()" (ngModelChange)="onSlotChange($event)">
+              <option [ngValue]="null">All departures ({{ t.departures.length }})</option>
+              @for (d of t.departures; track d.tripDateSlotId) {
+                <option [ngValue]="d.tripDateSlotId">{{ d.startDate | date:'d MMM y' }} → {{ d.endDate | date:'d MMM' }} · {{ d.bookings }} booking{{ d.bookings === 1 ? '' : 's' }}</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+
+      @switch (sheetState()) {
+        @case ('loading') {
+          <app-state-panel kind="loading"></app-state-panel>
+        }
+        @case ('error') {
+          <div class="panel">
+            <app-state-panel kind="error" message="Could not load this trip's bookings."></app-state-panel>
+            <div style="text-align:center"><button class="btn sm ghost" (click)="loadSheet()">Try again</button></div>
+          </div>
+        }
+        @case ('ready') {
+          @if (sheet(); as s) {
+            <div class="kpis colkpis">
+              <div class="kpi"><div class="k">Confirmed bookings</div><div class="v">{{ s.totals.bookings }}</div><div class="note">{{ s.totals.seats }} seat{{ s.totals.seats === 1 ? '' : 's' }}</div></div>
+              <div class="kpi"><div class="k">Total amount</div><div class="v">₹{{ s.totals.totalAmount | number:'1.0-0' }}</div></div>
+              <div class="kpi paid"><div class="k">Total paid</div><div class="v">₹{{ s.totals.paid | number:'1.0-0' }}</div></div>
+              <div class="kpi due" [class.zero]="s.totals.remaining <= 0"><div class="k">Total remaining</div><div class="v">₹{{ s.totals.remaining | number:'1.0-0' }}</div><div class="note">{{ dueCount() }} to collect</div></div>
+            </div>
+
+            <div class="filters">
+              <input class="sel srch" type="search" placeholder="Search name, phone or booking ID…" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+              <div class="colchips" role="group" aria-label="Show">
+                <button type="button" [class.on]="show() === 'all'" (click)="show.set('all')">All · {{ s.items.length }}</button>
+                <button type="button" [class.on]="show() === 'due'" (click)="show.set('due')">Balance due · {{ dueCount() }}</button>
+                <button type="button" [class.on]="show() === 'paid'" (click)="show.set('paid')">Fully paid · {{ s.items.length - dueCount() }}</button>
+              </div>
+            </div>
+
+            @if (s.items.length === 0) {
+              <div class="panel"><app-state-panel kind="empty" message="No confirmed bookings on this departure yet."></app-state-panel></div>
+            } @else if (visibleItems().length === 0) {
+              <div class="panel"><app-state-panel kind="empty" message="No bookings match this search or filter."></app-state-panel></div>
+            } @else {
+              <div class="panel collist">
+                <div class="colrow colhead" aria-hidden="true">
+                  <span>Customer</span><span>Seats</span><span class="num">Total</span><span class="num">Paid</span><span class="num">Remaining</span><span></span>
+                </div>
+                @for (i of visibleItems(); track i.bookingId) {
+                  <div class="colrow">
+                    <div class="who">
+                      <b>{{ i.customerName || 'Customer' }}</b>
+                      <div class="note">
+                        @if (i.customerPhone) { <a [href]="'tel:+91' + i.customerPhone">+91 {{ i.customerPhone }}</a> · }
+                        <a [routerLink]="['/admin/bookings', i.bookingId]">{{ i.bookingReference }}</a>
+                        @if (showDepartureColumn()) { · {{ i.startDate | date:'d MMM' }} }
+                        <span class="mseats"> · {{ i.numberOfSeats }} seat{{ i.numberOfSeats === 1 ? '' : 's' }}</span>
+                      </div>
+                    </div>
+                    <div class="cell"><span class="ml">Seats</span>{{ i.numberOfSeats }}</div>
+                    <div class="cell num"><span class="ml">Total</span>₹{{ i.totalAmount | number:'1.0-0' }}</div>
+                    <div class="cell num paid"><span class="ml">Paid</span>₹{{ i.paid | number:'1.0-0' }}</div>
+                    <div class="cell num rem" [class.zero]="i.remaining <= 0"><span class="ml">Remaining</span>₹{{ i.remaining | number:'1.0-0' }}</div>
+                    <div class="act">
+                      @if (i.remaining > 0) {
+                        <button class="btn sm" (click)="openPay(i)">Mark paid</button>
+                      } @else {
+                        <span class="badge ok">Fully paid</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+<!-- Payment QR settings -->
+<div class="panel qrpanel">
+  <div class="row sp" style="align-items:flex-start;flex-wrap:wrap;gap:12px">
+    <div>
+      <h4>Payment QR</h4>
+      <div class="sub" style="margin-bottom:0">Your UPI QR code. Tap “Show payment QR” to open it full-screen for a traveller to scan.</div>
+    </div>
+    @if (!qrEditing()) {
+      <div class="row" style="gap:8px">
+        <button class="btn sm ghost" (click)="startQrEdit()">{{ qr() ? 'Replace' : 'Upload QR' }}</button>
+        @if (qr()) { <button class="btn sm dang" (click)="qrConfirmRemove.set(true)">Remove</button> }
+      </div>
+    }
+  </div>
+
+  @if (qrEditing()) {
+    <div class="qredit">
+      <div class="qrthumb">
+        @if (qrPreview) { <img [src]="qrPreview" alt="New QR preview" /> }
+        @else if (qr(); as q) { <img [src]="q.imageUrl | imageUrl" alt="Current payment QR" /> }
+        @else { <span class="note">No image yet</span> }
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="fld">
+          <span class="lbl">QR code image (PNG, JPG or WebP · up to 5 MB)</span>
+          <input class="inp" type="file" accept="image/png,image/jpeg,image/webp" (change)="onQrFile($event)" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Caption — optional</span>
+          <input class="inp" maxlength="200" placeholder="e.g. Ghumo Odisha · ghumoodisha@upi" [(ngModel)]="qrCaption" />
+        </div>
+        <div class="row" style="gap:8px;justify-content:flex-end">
+          <button class="btn sm ghost" (click)="cancelQrEdit()">Cancel</button>
+          <button class="btn sm" [disabled]="qrSaving() || !qrFile" (click)="saveQr()">@if (qrSaving()) { <span class="spin"></span> } @else { Save QR }</button>
+        </div>
+      </div>
+    </div>
+  } @else if (qr(); as q) {
+    <div class="qredit">
+      <button type="button" class="qrthumb" (click)="showQr()" title="Show full-screen"><img [src]="q.imageUrl | imageUrl" alt="Payment QR" /></button>
+      <div class="note">
+        @if (q.caption) { <b style="color:var(--ink)">{{ q.caption }}</b><br /> }
+        Updated {{ q.updatedAt | date:'d MMM y, h:mm a' }}
+      </div>
+    </div>
+  } @else if (qrLoaded()) {
+    <p class="note" style="margin-top:10px">No QR uploaded yet.</p>
+  }
+</div>
+
+<!-- Mark paid -->
+@if (paying(); as p) {
+  <div class="modal-backdrop" (click)="paying.set(null)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pay-title" (click)="$event.stopPropagation()">
+      <h4 id="pay-title">Mark paid · {{ p.customerName }}</h4>
+      <div class="paysum">
+        <span>Total<b>₹{{ p.totalAmount | number:'1.0-0' }}</b></span>
+        <span>Paid<b>₹{{ p.paid | number:'1.0-0' }}</b></span>
+        <span class="due">Remaining<b>₹{{ p.remaining | number:'1.0-0' }}</b></span>
+      </div>
+      <div class="fld">
+        <span class="lbl">Amount collected (₹)</span>
+        <input class="inp" type="number" inputmode="decimal" min="1" [max]="p.remaining" [(ngModel)]="payAmount" />
+      </div>
+      <div class="fld">
+        <span class="lbl">Paid by</span>
+        <div class="colchips wide" role="radiogroup" aria-label="Paid by">
+          @for (m of offlineMethods; track m) {
+            <button type="button" role="radio" [attr.aria-checked]="payMethod === m" [class.on]="payMethod === m" (click)="payMethod = m">{{ PaymentMethodLabels[m] }}</button>
+          }
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Reference (UPI UTR / receipt no.) — optional</span>
+        <input class="inp" maxlength="100" [(ngModel)]="payReference" />
+      </div>
+      @if (payError()) { <div class="errorbox">{{ payError() }}</div> }
+      <div class="payacts">
+        <button class="btn sm ghost" (click)="showQr(p)">Show QR to pay</button>
+        <span style="flex:1"></span>
+        <button class="btn sm ghost" (click)="paying.set(null)">Cancel</button>
+        <button class="btn sm" [disabled]="submitting()" (click)="submitPay()">@if (submitting()) { <span class="spin"></span> } @else { Record ₹{{ payAmount | number:'1.0-0' }} }</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Full-screen QR the coordinator shows the traveller -->
+@if (qrOpen(); as o) {
+  @if (qr(); as q) {
+    <div class="qrfull" role="dialog" aria-modal="true" aria-label="Payment QR code" (click)="qrOpen.set(null)">
+      <div class="qrfull-inner" (click)="$event.stopPropagation()">
+        <div class="qrfull-brand">Ghumo <em>Odisha</em></div>
+        @if (o.forBooking; as b) {
+          <div class="qrfull-for">{{ b.customerName }} · {{ b.bookingReference }}</div>
+          <div class="qrfull-amt">₹{{ b.remaining | number:'1.0-0' }}</div>
+          <div class="qrfull-lbl">amount due</div>
+        } @else {
+          <div class="qrfull-for">Scan to pay with any UPI app</div>
+        }
+        <img class="qrfull-img" [src]="q.imageUrl | imageUrl" alt="Payment QR code" />
+        @if (q.caption) { <div class="qrfull-cap">{{ q.caption }}</div> }
+        <button class="btn block ghost" style="margin-top:16px" (click)="qrOpen.set(null)">Done</button>
+      </div>
+    </div>
+  }
+}
+
+<app-confirm-dialog
+  [open]="qrConfirmRemove()"
+  title="Remove payment QR?"
+  message="Coordinators won't be able to show it to travellers until a new one is uploaded."
+  confirmLabel="Remove"
+  [destructive]="true"
+  (confirm)="removeQr()"
+  (cancel)="qrConfirmRemove.set(false)">
+</app-confirm-dialog>

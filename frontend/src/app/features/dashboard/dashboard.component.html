@@ -110,91 +110,9 @@
           }
 
           @case ('cars') {
-            <!-- Live car search: results (approved cars only) appear below the card. -->
-            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carPickup'">
-              <label class="hx-lbl" for="hx-car-pickup">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-                Pickup Location
-              </label>
-              <button type="button" id="hx-car-pickup" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carPickup'" (click)="toggleDropdown('carPickup')">
-                <span class="hx-val" [class.ph]="!carPickup()">{{ carPickup() || 'Any location' }}</span>
-                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-              </button>
-              @if (openDropdown() === 'carPickup') {
-                <div class="hs-pop hs-places" role="listbox" aria-label="Pickup location">
-                  <button type="button" role="option" [class.on]="!carPickup()" [attr.aria-selected]="!carPickup()" (click)="carPickup.set(''); openDropdown.set(null)">Any location</button>
-                  @for (o of carPickups(); track o) {
-                    <button type="button" role="option" [class.on]="carPickup() === o" [attr.aria-selected]="carPickup() === o" (click)="carPickup.set(o); openDropdown.set(null)">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-                      {{ o }}
-                    </button>
-                  }
-                </div>
-              }
-            </div>
-            <span class="hx-sep" aria-hidden="true"></span>
-            <div class="hx-field">
-              <span class="hx-lbl">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
-                Date
-              </span>
-              <!-- The site's own calendar picker; its button fills the whole box. -->
-              <div class="hx-datebox">
-                <app-date-picker [value]="carDate()" (valueChange)="carDate.set($event)" placeholder="Tomorrow" [min]="todayIso"></app-date-picker>
-                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-              </div>
-            </div>
-            <span class="hx-sep" aria-hidden="true"></span>
-            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carTime'">
-              <label class="hx-lbl" for="hx-car-time">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
-                Pickup Time
-              </label>
-              <button type="button" id="hx-car-time" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carTime'" (click)="toggleDropdown('carTime')">
-                <span class="hx-val">{{ carTimeLabel() }}</span>
-                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-              </button>
-              @if (openDropdown() === 'carTime') {
-                <div class="hs-pop hs-places hx-timelist" role="listbox" aria-label="Pickup time">
-                  @for (t of carTimes; track t.value) {
-                    <button type="button" role="option" [class.on]="carTime() === t.value" [attr.aria-selected]="carTime() === t.value" (click)="carTime.set(t.value); openDropdown.set(null)">{{ t.label }}</button>
-                  }
-                </div>
-              }
-            </div>
-            <span class="hx-sep" aria-hidden="true"></span>
-            <div class="hx-field hx-dd" [class.open]="openDropdown() === 'carDuration'">
-              <label class="hx-lbl" for="hx-car-duration">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"></path></svg>
-                Duration
-              </label>
-              <button type="button" id="hx-car-duration" class="hx-box" aria-haspopup="listbox" [attr.aria-expanded]="openDropdown() === 'carDuration'" (click)="toggleDropdown('carDuration')">
-                <span class="hx-val">{{ carDurationLabel() }}</span>
-                <svg class="hx-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-              </button>
-              @if (openDropdown() === 'carDuration') {
-                <div class="hs-pop hs-places" role="listbox" aria-label="Duration">
-                  @for (d of carDurationPresets; track d.hours) {
-                    <button type="button" role="option" [class.on]="!carCustom() && carHours() === d.hours" [attr.aria-selected]="!carCustom() && carHours() === d.hours" (click)="pickCarDuration(d.hours)">{{ d.label }}</button>
-                  }
-                  <button type="button" role="option" [class.on]="carCustom()" [attr.aria-selected]="carCustom()" (click)="carCustom.set(true)">Custom duration…</button>
-                  @if (carCustom()) {
-                    <div class="hx-custom">
-                      <input class="inp" type="number" min="1" inputmode="numeric" aria-label="How long" [ngModel]="carCustomValue()" (ngModelChange)="carCustomValue.set(+$event)" />
-                      <select class="inp" aria-label="Unit" [ngModel]="carCustomUnit()" (ngModelChange)="carCustomUnit.set($event)">
-                        <option value="hours">Hours</option>
-                        <option value="days">Days</option>
-                      </select>
-                      <button type="button" class="btn sm" (click)="applyCustomDuration()">Done</button>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-            <button type="button" class="hx-go hx-go-cars" (click)="searchCars()">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-              Search Cars
-            </button>
+            <!-- Vehicles: date, pickup (map / current location, served areas only), where to, time, duration,
+                 drop; results with each vehicle's calculated fare appear below the card. -->
+            <app-vehicle-search-form [initial]="carSearch()" (search)="searchCars($event)"></app-vehicle-search-form>
           }
 
           @case ('holidays') {
@@ -272,7 +190,7 @@
 
 <!-- Cars search results (while the Cars tab is open, after Search Cars). -->
 @if (searchTab() === 'cars' && carSearch(); as q) {
-  <app-car-results [city]="q.city" [window]="q.window"></app-car-results>
+  <app-car-results [search]="q"></app-car-results>
 }
 
 <!-- Everything below is trip content; while the Cars tab is open only car results show. -->

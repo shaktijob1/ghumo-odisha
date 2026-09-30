@@ -10,7 +10,12 @@ public class Booking
     public string Reference => $"GO-{BookingNumber}";
     public int CustomerId { get; set; }
     public int TripId { get; set; }
-    public int TripDateSlotId { get; set; }
+    /// <summary>Null only once the departure was deleted — which is allowed when every booking on it
+    /// ended without ever being confirmed (rejected / expired / withdrawn). Those keep the dates they
+    /// were for in <see cref="RemovedSlotStartDate"/> / <see cref="RemovedSlotEndDate"/>.</summary>
+    public int? TripDateSlotId { get; set; }
+    public DateOnly? RemovedSlotStartDate { get; set; }
+    public DateOnly? RemovedSlotEndDate { get; set; }
     public int? PickupPointId { get; set; }
     public int NumberOfSeats { get; set; }
     public Guid? ClientRequestId { get; set; }
@@ -56,8 +61,12 @@ public class Booking
 
     public Customer Customer { get; set; } = null!;
     public Trip Trip { get; set; } = null!;
-    public TripDateSlot TripDateSlot { get; set; } = null!;
+    public TripDateSlot? TripDateSlot { get; set; }
     public PickupPoint? PickupPoint { get; set; }
+
+    /// <summary>Departure dates — from the loaded slot, or the kept copy once that slot was deleted.</summary>
+    public DateOnly StartDate => TripDateSlot?.StartDate ?? RemovedSlotStartDate ?? default;
+    public DateOnly EndDate => TripDateSlot?.EndDate ?? RemovedSlotEndDate ?? default;
     public ICollection<BookingPayment> Payments { get; set; } = new List<BookingPayment>();
     public ICollection<BookingTraveller> Travellers { get; set; } = new List<BookingTraveller>();
     public ICollection<BookingEvent> Events { get; set; } = new List<BookingEvent>();

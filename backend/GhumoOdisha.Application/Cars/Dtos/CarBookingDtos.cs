@@ -42,7 +42,8 @@ public record CarPublicDetailDto(
     IReadOnlyList<CarPricingTierDto> BaseFareTiers,
     PublicDriverDto Driver);
 
-public record CarQuoteRequest(DateOnly PickupDate, TimeOnly PickupTime, int DurationHours, int EstimatedKm);
+/// <summary>Pickup and "where to" (Drop) as picked on the map, one way or round trip — the server measures every km itself.</summary>
+public record CarQuoteRequest(DateOnly PickupDate, TimeOnly PickupTime, int DurationHours, TripPlaceRequest Pickup, TripPlaceRequest Drop, bool RoundTrip = false);
 
 /// <summary>Server-calculated estimate for a window + distance — the booking page shows exactly this.</summary>
 public record CarFareQuoteDto(
@@ -50,6 +51,16 @@ public record CarFareQuoteDto(
     DateTime PickupAt,
     DateTime EndsAt,
     int DurationHours,
+    bool RoundTrip,
+    /// <summary>Road km from the driver's base to the pickup.</summary>
+    int DriverApproachKm,
+    /// <summary>Road km pickup → "where to".</summary>
+    int PickupToDropKm,
+    /// <summary>Round trip only (0 one way): road km "where to" → pickup.</summary>
+    int DropToPickupKm,
+    /// <summary>Road km back to the driver's base (from "where to" one way, from the pickup round trip).</summary>
+    int ReturnToBaseKm,
+    /// <summary>Billed km: the sum of the legs.</summary>
     int EstimatedKm,
     decimal PricePerKm,
     decimal BaseFare,
@@ -63,6 +74,24 @@ public record CarFareQuoteDto(
     bool IsAvailable,
     string? UnavailableReason);
 
+/// <summary>Search with a route: every listed vehicle of the window with its own fare (driver km differ per vehicle).</summary>
+public record CarFareSearchRequest(
+    DateOnly PickupDate,
+    TimeOnly PickupTime,
+    int DurationHours,
+    TripPlaceRequest Pickup,
+    TripPlaceRequest Drop,
+    bool RoundTrip,
+    int? Seats);
+
+public record CarWithFareDto(CarSearchResultDto Car, CarFareQuoteDto? Fare);
+
+public record CarFareSearchResultsDto(
+    /// <summary>False when the pickup is outside every service area — no vehicles are listed then.</summary>
+    bool IsServiceable,
+    string? Message,
+    IReadOnlyList<CarWithFareDto> Cars);
+
 // ---------- Customer booking ----------
 
 public record CreateCarBookingRequest(
@@ -70,8 +99,13 @@ public record CreateCarBookingRequest(
     DateOnly PickupDate,
     TimeOnly PickupTime,
     int DurationHours,
-    int EstimatedKm,
-    string? PickupAddress,
+    TripPlaceRequest Pickup,
+    /// <summary>"Where to".</summary>
+    TripPlaceRequest Drop,
+    /// <summary>Round trip: back to the pickup after "where to". One way: the trip ends at "where to".</summary>
+    bool RoundTrip,
+    /// <summary>Full pickup address typed by the customer (house / hotel, street, landmark). Required.</summary>
+    string PickupAddress,
     string? CustomerNotes,
     Guid? ClientRequestId);
 
@@ -120,6 +154,18 @@ public record CarBookingDto(
     AssignedDriverDto? Driver,
     string PickupCity,
     string? PickupAddress,
+    string? PickupLocation,
+    GeoPointDto? PickupPoint,
+    string? DropLocation,
+    GeoPointDto? DropPoint,
+    /// <summary>Round trip: back to the pickup after "where to".</summary>
+    bool RoundTrip,
+    /// <summary>Null on bookings made before km were measured on the map.</summary>
+    int? DriverApproachKm,
+    int? PickupToDropKm,
+    /// <summary>Round trip only: the drive back from "where to" to the pickup.</summary>
+    int? DropToPickupKm,
+    int? ReturnToBaseKm,
     DateTime PickupAt,
     int DurationHours,
     DateTime EndsAt,

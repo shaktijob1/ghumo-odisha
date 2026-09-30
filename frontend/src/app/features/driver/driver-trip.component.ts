@@ -8,6 +8,7 @@ import { DriverService } from '../../core/services/driver.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { apiErrorMessage } from '../../shared/utils/api-error';
+import { directionsLink } from '../../shared/utils/maps-link';
 import { durationLabel, istDate, istDateTime, istTime } from '../../shared/utils/car-format';
 
 /** Best-effort GPS: resolves null if the phone says no, has no fix in time, or has no GPS. */
@@ -65,6 +66,11 @@ function currentPosition(timeoutMs = 8000): Promise<{ latitude: number; longitud
             </div>
             <div class="kv" style="margin-top:10px">
               <span class="k">Pickup</span><b>{{ time(b.pickupAt) }}, {{ b.pickupCity }}@if (b.pickupAddress) { — {{ b.pickupAddress }} }</b>
+              @if (b.pickupLocation) {
+                <span class="k">Pickup on map</span>
+                <span>{{ b.pickupLocation }}@if (b.pickupPoint) { · <a target="_blank" rel="noopener" [href]="directions(b.pickupPoint)" style="color:var(--accent);font-weight:600">Directions ↗</a> }</span>
+              }
+              @if (b.dropLocation) { <span class="k">Where to</span><b>{{ b.dropLocation }} · {{ b.roundTrip ? 'round trip' : 'one way' }}</b> }
               <span class="k">Duration</span><b>{{ duration(b.durationHours) }} (till {{ dateTime(b.endsAt) }})</b>
               <span class="k">Estimated</span><b>{{ b.estimate.km | number }} km · ₹{{ b.estimate.total | number: '1.0-0' }}</b>
               <span class="k">Paid online</span><b>₹{{ b.bookingAmount | number: '1.0-0' }}</b>
@@ -222,6 +228,7 @@ export class DriverTripComponent implements OnInit {
   readonly badge = computed(() => (this.data() ? carBookingBadgeClass(this.data()!.booking.status) : ''));
   readonly date = istDate;
   readonly time = istTime;
+  readonly directions = directionsLink;
   readonly dateTime = istDateTime;
   readonly duration = durationLabel;
 

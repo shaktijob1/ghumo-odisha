@@ -24,15 +24,11 @@ export const routes: Routes = [
         canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/cars/cars-page.component').then((m) => m.CarsPageComponent),
       },
-      {
-        path: 'cars/:id',
-        title: 'Car details | Ghumo Odisha',
-        canActivate: [carsEnabledGuard],
-        loadComponent: () => import('./features/cars/car-detail.component').then((m) => m.CarDetailComponent),
-      },
+      // No separate details page: a vehicle opens straight on its booking page (old links keep working).
+      { path: 'cars/:id', redirectTo: 'cars/:id/book', pathMatch: 'full' },
       {
         path: 'cars/:id/book',
-        title: 'Book your car | Ghumo Odisha',
+        title: 'Book your vehicle | Ghumo Odisha',
         canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/cars/car-booking.component').then((m) => m.CarBookingComponent),
       },
@@ -127,6 +123,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/refunds/refund-list.component').then((m) => m.RefundListComponent),
       },
       {
+        path: 'collections',
+        title: 'Collections · Ghumo Odisha',
+        loadComponent: () => import('./features/admin/collections/collections.component').then((m) => m.CollectionsComponent),
+      },
+      {
         path: 'customers',
         loadComponent: () => import('./features/admin/customers/customer-list.component').then((m) => m.CustomerListComponent),
       },
@@ -158,6 +159,10 @@ export const routes: Routes = [
       {
         path: 'cars/:id',
         loadComponent: () => import('./features/admin/cars/car-detail.component').then((m) => m.AdminCarDetailComponent),
+      },
+      {
+        path: 'service-areas',
+        loadComponent: () => import('./features/admin/cars/service-areas.component').then((m) => m.AdminServiceAreasComponent),
       },
       {
         path: 'car-bookings',

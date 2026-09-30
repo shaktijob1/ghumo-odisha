@@ -82,7 +82,7 @@ public class BookingServiceTests
 
         var result = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true));
 
-        Assert.Equal(BookingStatus.Requested, result.Booking.BookingStatus);
+        Assert.Equal(BookingStatus.AwaitingPayment, result.Booking.BookingStatus);
         Assert.Equal(2000m, result.Booking.TotalAmount);
 
         var slotAfter = await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId);
@@ -166,7 +166,7 @@ public class BookingServiceTests
         Assert.Equal(BookingStatus.Cancelled, firstAfter.BookingStatus);
 
         var secondAfter = await db.Bookings.SingleAsync(b => b.BookingId == second.Booking.BookingId);
-        Assert.Equal(BookingStatus.Requested, secondAfter.BookingStatus);
+        Assert.Equal(BookingStatus.AwaitingPayment, secondAfter.BookingStatus);
 
         // Never touched by a mere request — only an admin CONFIRM deducts seats.
         var slotAfter = await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId);
@@ -200,7 +200,7 @@ public class BookingServiceTests
         await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slotB.TripDateSlotId, 2, null, AgreedToTerms: true));
 
         var firstAfter = await db.Bookings.SingleAsync(b => b.BookingId == first.Booking.BookingId);
-        Assert.Equal(BookingStatus.Requested, firstAfter.BookingStatus);
+        Assert.Equal(BookingStatus.AwaitingPayment, firstAfter.BookingStatus);
     }
 
     [Fact]
@@ -228,6 +228,107 @@ public class BookingServiceTests
         var booking = await db.Bookings.SingleAsync(b => b.BookingId == requested.Booking.BookingId);
         Assert.Equal(BookingStatus.Confirmed, booking.BookingStatus);
         Assert.Equal(PaymentStatus.AdvancePaid, booking.PaymentStatus);
+    }
+
+    private static async Task<Customer> AnotherCustomerAsync(GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db)
+    {
+        var c = new Customer { Name = "Other Customer", PhoneNumber = TestDb.RandomPhoneNumber(), IsVerified = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        db.Customers.Add(c);
+        await db.SaveChangesAsync();
+        return c;
+    }
+
+    private static CreateBookingRequest GenderRequest(Trip trip, TripDateSlot slot, int gents, int ladies) =>
+        new(trip.TripId, slot.TripDateSlotId, gents + ladies, null, AgreedToTerms: true, MaleCount: gents, FemaleCount: ladies);
+
+    [Fact]
+    public async Task GentsAndLadies_EachCappedAtHalfTheSeats_AndStoredOnTheBooking()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customerA) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 5);   // 3 gents, 3 ladies max
+        var service = CreateService(db);
+
+        var a = await service.RequestBookingAsync(customerA.CustomerId, GenderRequest(trip, slot, gents: 3, ladies: 0));
+        await service.ConfirmBookingAsync(a.Booking.BookingId, new ConfirmBookingRequest(0m));
+        db.ChangeTracker.Clear();
+        var stored = await db.Bookings.SingleAsync(b => b.BookingId == a.Booking.BookingId);
+        Assert.Equal(3, stored.MaleCount);
+        Assert.Equal(0, stored.FemaleCount);
+
+        // Gents are full; ladies still have their half.
+        var customerB = await AnotherCustomerAsync(db);
+        var full = await Assert.ThrowsAsync<ConflictException>(
+            () => service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 1)));
+        Assert.Contains("Gents' places are full", full.Message);
+
+        var b = await service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 0, ladies: 2));
+        await service.ConfirmBookingAsync(b.Booking.BookingId, new ConfirmBookingRequest(0m));
+
+        var counts = await SlotGenderRules.BookedAsync(db, [slot.TripDateSlotId]);
+        Assert.Equal(new SlotGenderCount(3, 2), counts[slot.TripDateSlotId]);
+    }
+
+    [Fact]
+    public async Task GenderCap_IsCheckedAgainAtConfirm_SoTwoRequestsCantBothTakeTheLastGentsPlace()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customerA) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 4);   // 2 gents max
+        var customerB = await AnotherCustomerAsync(db);
+        var service = CreateService(db);
+
+        // Both requests pass the early check (nobody has paid yet)…
+        var a = await service.RequestBookingAsync(customerA.CustomerId, GenderRequest(trip, slot, gents: 2, ladies: 0));
+        var b = await service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
+
+        // …but only the first to pay gets the gents' places.
+        await service.ConfirmBookingAsync(a.Booking.BookingId, new ConfirmBookingRequest(0m));
+        await Assert.ThrowsAsync<ConflictException>(() => service.ConfirmBookingAsync(b.Booking.BookingId, new ConfirmBookingRequest(0m)));
+
+        db.ChangeTracker.Clear();
+        Assert.Equal(BookingStatus.AwaitingPayment, (await db.Bookings.SingleAsync(x => x.BookingId == b.Booking.BookingId)).BookingStatus);
+        Assert.Equal(2, (await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId)).AvailableSeats);
+    }
+
+    [Fact]
+    public async Task OnlineBooking_ClosesTwoDaysBeforeDeparture_ButTheAdminCanStillAddABooking()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        var service = CreateService(db);
+        var today = GhumoOdisha.Application.Common.TripCalendar.Today();
+
+        // Departing the day after tomorrow → inside the cutoff: "Seats filled".
+        slot.StartDate = today.AddDays(SlotBookingRules.OnlineCutoffDays);
+        slot.EndDate = slot.StartDate.AddDays(1);
+        await db.SaveChangesAsync();
+        var closed = await Assert.ThrowsAsync<DepartureClosedException>(() =>
+            service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0)));
+        Assert.Equal(SlotBookingRules.OnlineClosedMessage, closed.Message);
+
+        // The admin can still add one for a customer who phoned in.
+        var bookingId = await service.CreateManualBookingAsync(new CreateManualBookingRequest(
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 500m, PaymentMethod.Cash, null, BookingSource.Phone, null));
+        Assert.True(bookingId > 0);
+
+        // One day further out it's open again.
+        var later = today.AddDays(SlotBookingRules.OnlineCutoffDays + 1);
+        await db.TripDateSlots.Where(x => x.TripDateSlotId == slot.TripDateSlotId)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.StartDate, later).SetProperty(x => x.EndDate, later.AddDays(1)));
+        db.ChangeTracker.Clear();
+        await service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
+    }
+
+    [Fact]
+    public async Task GenderSplit_MustAddUpToTheSeats()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<ValidationAppException>(() => service.RequestBookingAsync(customer.CustomerId,
+            new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 3, null, AgreedToTerms: true, MaleCount: 1, FemaleCount: 1)));
+        Assert.Equal(5, SlotGenderRules.CapPerSide(10));
+        Assert.Equal(8, SlotGenderRules.CapPerSide(15));
     }
 
     [Fact]
@@ -259,7 +360,7 @@ public class BookingServiceTests
             () => service.ConfirmBookingAsync(bookingB.Booking.BookingId, new ConfirmBookingRequest(0m)));
 
         var bookingBAfter = await db.Bookings.SingleAsync(b => b.BookingId == bookingB.Booking.BookingId);
-        Assert.Equal(BookingStatus.Requested, bookingBAfter.BookingStatus);
+        Assert.Equal(BookingStatus.AwaitingPayment, bookingBAfter.BookingStatus);
     }
 
     [Fact]
@@ -349,7 +450,7 @@ public class BookingServiceTests
 
         var whatsApp = new FakeWhatsAppService { BookingConfirmedTemplateConfigured = true };
         var service = CreateService(db, whatsApp);
-        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true));
+        var requested = await service.RequestBookingAsync(customer.CustomerId, new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 2, null, AgreedToTerms: true, MaleCount: 1, FemaleCount: 1));
 
         await service.ConfirmBookingAsync(requested.Booking.BookingId, new ConfirmBookingRequest(1500m));
 
@@ -358,7 +459,7 @@ public class BookingServiceTests
         Assert.Equal("Test Customer", message.CustomerName);
         Assert.Equal(trip.Title, message.TripTitle);
         Assert.Equal(slot.StartDate.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture), message.TravelDate);
-        Assert.Equal("Test Customer", message.PassengerName);
+        Assert.Equal("1 Gent, 1 Lady", message.Passengers);
         Assert.Equal("2", message.Seats);
         Assert.Equal("1,500", message.AmountPaid);
         Assert.Equal(requested.Booking.BookingReference, message.BookingReference);

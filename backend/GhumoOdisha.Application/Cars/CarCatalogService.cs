@@ -13,13 +13,14 @@ public interface ICarCatalogService
     Task<CarSearchResultsDto> SearchAsync(CarSearchQuery query, CancellationToken cancellationToken = default);
     Task<CarPublicDetailDto> GetAsync(int carId, CarWindowQuery window, CancellationToken cancellationToken = default);
     Task<CarFareQuoteDto> QuoteAsync(int carId, CarQuoteRequest request, CancellationToken cancellationToken = default);
+    Task<CarFareSearchResultsDto> SearchWithFaresAsync(CarFareSearchRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
 /// What customers can see: only listed cars (car, driver and active pricing approved) — an unapproved
 /// car is a 404 here, never a hidden flag. Prices are always calculated from the approved pricing.
 /// </summary>
-public class CarCatalogService(IGhumoOdishaDbContext db, IOptions<CarRentalOptions> options) : ICarCatalogService
+public class CarCatalogService(IGhumoOdishaDbContext db, ICarRoutePlanner routes, IOptions<CarRentalOptions> options) : ICarCatalogService
 {
     private readonly CarRentalOptions _options = options.Value;
 
@@ -84,27 +85,68 @@ public class CarCatalogService(IGhumoOdishaDbContext db, IOptions<CarRentalOptio
 
         var now = DateTime.UtcNow;
         var window = CarRentalWindow.Resolve(request.PickupDate, request.PickupTime, request.DurationHours, _options, now);
-        ValidateKm(request.EstimatedKm, _options);
 
-        var busy = await BusyCarIdsAsync([carId], window, now, cancellationToken);
-        return BuildQuote(car.CarId, car.ActivePricing!, window, request.EstimatedKm, _options.BookingAmount,
-            busy.Count == 0 ? null : "This car is already booked for part of that time. Try another time or car.");
+        var route = await routes.PlanAsync(car.Driver, request.Pickup, request.Drop, request.RoundTrip, cancellationToken);
+        var busy = route.IsAvailable ? await BusyCarIdsAsync([carId], window, now, cancellationToken) : [];
+        return BuildQuote(car, window, route, _options.BookingAmount, busy.Contains(carId));
     }
 
-    internal static CarFareQuoteDto BuildQuote(int carId, CarPricing pricing, CarRentalWindow window, int estimatedKm, decimal bookingAmount, string? unavailableReason)
+    public async Task<CarFareSearchResultsDto> SearchWithFaresAsync(CarFareSearchRequest request, CancellationToken cancellationToken = default)
     {
-        var fare = CarFareCalculator.Calculate(FareTerms.From(pricing), estimatedKm, window.Nights);
-        return new CarFareQuoteDto(carId, window.StartUtc, window.EndUtc, window.DurationHours, estimatedKm,
-            pricing.PricePerKm, fare.BaseFare, fare.KmCharge, fare.Nights, pricing.NightHaltPrice, fare.NightHaltCharge,
-            fare.Total, bookingAmount, Math.Max(fare.Total - bookingAmount, 0m), unavailableReason is null, unavailableReason);
-    }
+        var now = DateTime.UtcNow;
+        var window = CarRentalWindow.Resolve(request.PickupDate, request.PickupTime, request.DurationHours, _options, now);
 
-    internal static void ValidateKm(int km, CarRentalOptions options)
-    {
-        if (km < 1 || km > options.MaxEstimatedKm)
+        // Area check and the shared legs once; then only each driver's own km per vehicle.
+        var (legs, reason) = await routes.LegsAsync(request.Pickup, request.Drop, request.RoundTrip, cancellationToken);
+        if (legs is null)
         {
-            throw new ValidationAppException([$"Enter an approximate distance between 1 and {options.MaxEstimatedKm:N0} km."]);
+            return new CarFareSearchResultsDto(false, reason, []);
         }
+
+        var cars = ListedCars();
+        if (request.Seats is not null)
+        {
+            cars = cars.Where(c => c.SeatCapacity == request.Seats);
+        }
+        var list = await cars.ToListAsync(cancellationToken);
+        var busy = await BusyCarIdsAsync(list.Select(c => c.CarId).ToList(), window, now, cancellationToken);
+
+        var results = new List<CarWithFareDto>(list.Count);
+        foreach (var car in list)
+        {
+            var available = !busy.Contains(car.CarId);
+            var plan = await routes.ForDriverAsync(legs, car.Driver, cancellationToken);
+            var fare = plan.IsAvailable ? BuildQuote(car, window, plan, _options.BookingAmount, !available) : null;
+            results.Add(new CarWithFareDto(ToResult(car, available), fare));
+        }
+
+        // Bookable first, cheapest first; vehicles that can't be priced go last.
+        var ordered = results
+            .OrderByDescending(r => r.Car.IsAvailable && r.Fare is not null)
+            .ThenBy(r => r.Fare?.EstimatedTotal ?? decimal.MaxValue)
+            .ThenBy(r => r.Car.SeatCapacity)
+            .ToList();
+        return new CarFareSearchResultsDto(true, null, ordered);
+    }
+
+    private const string BusyMessage = "This vehicle is already booked for part of that time. Try another time or vehicle.";
+
+    internal static CarFareQuoteDto BuildQuote(Car car, CarRentalWindow window, CarRoutePlan route, decimal bookingAmount, bool busy)
+    {
+        var pricing = car.ActivePricing!;
+        if (!route.IsAvailable)
+        {
+            // Outside the pickup areas (or no driver base): nothing to price.
+            return new CarFareQuoteDto(car.CarId, window.StartUtc, window.EndUtc, window.DurationHours, false, 0, 0, 0, 0, 0,
+                pricing.PricePerKm, 0, 0, 0, pricing.NightHaltPrice, 0, 0, bookingAmount, 0, false, route.UnavailableReason);
+        }
+
+        var fare = CarFareCalculator.Calculate(FareTerms.From(pricing), route.TotalKm, window.Nights);
+        var reason = busy ? BusyMessage : null;
+        return new CarFareQuoteDto(car.CarId, window.StartUtc, window.EndUtc, window.DurationHours,
+            route.RoundTrip, route.DriverApproachKm, route.PickupToDropKm, route.DropToPickupKm, route.ReturnToBaseKm, route.TotalKm,
+            pricing.PricePerKm, fare.BaseFare, fare.KmCharge, fare.Nights, pricing.NightHaltPrice, fare.NightHaltCharge,
+            fare.Total, bookingAmount, Math.Max(fare.Total - bookingAmount, 0m), reason is null, reason);
     }
 
     private IQueryable<Car> ListedCars(bool allPhotos = false) =>

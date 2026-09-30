@@ -1,0 +1,79 @@
+/* Trip + departure pickers */
+.colpick { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px; }
+.colpick .fld { margin: 0; }
+
+/* Totals — paid in accent, remaining in the "wait" amber until it reaches zero */
+.colkpis .kpi .note { margin-top: 4px; }
+.colkpis .kpi.paid .v { color: var(--accent); }
+.colkpis .kpi.due { border-color: #E9D3A6; background: var(--wait-bg); }
+.colkpis .kpi.due .v { color: var(--wait); }
+.colkpis .kpi.due.zero { border-color: var(--line); background: #fff; }
+.colkpis .kpi.due.zero .v { color: var(--muted); }
+
+/* Segmented filter chips (also the payment-method picker in the modal) */
+.colchips { display: inline-flex; gap: 4px; padding: 3px; background: #fff; border: 1px solid var(--line); border-radius: 999px; flex-wrap: wrap; }
+.colchips button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; font: 500 12px var(--font-body); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.colchips button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.colchips.wide { display: flex; border-radius: 12px; }
+.colchips.wide button { flex: 1; border-radius: 9px; padding: 9px 10px; font-size: 13px; }
+
+/* Booking rows: a table on wide screens, cards on phones */
+.collist { padding: 4px 16px; }
+.colrow {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) 56px repeat(3, minmax(0, 1fr)) 118px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.colrow:last-child { border-bottom: 0; }
+.colhead { font-size: 11px; font-weight: 600; color: var(--muted); padding: 10px 0 9px; }
+.colrow .num { text-align: right; }
+.colrow .who { min-width: 0; }
+.colrow .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.colrow .who a { color: inherit; }
+.colrow .who a:hover { color: var(--accent); }
+.colrow .paid { color: var(--accent); font-weight: 600; }
+.colrow .rem { color: var(--wait); font-weight: 700; }
+.colrow .rem.zero { color: var(--muted); font-weight: 500; }
+.colrow .act { text-align: right; }
+.colrow .ml { display: none; }
+
+@media (max-width: 1100px) and (min-width: 721px) {
+  .colrow { grid-template-columns: minmax(0, 2fr) 44px repeat(3, minmax(0, 1fr)) 104px; gap: 10px; }
+}
+
+@media (max-width: 720px) {
+  .colpick { grid-template-columns: 1fr; }
+  .filters .srch { flex-basis: 100%; }
+  .filters .colchips { width: 100%; }
+  .filters .colchips button { flex: 1; padding: 7px 6px; }
+
+  .collist { padding: 0; background: none; border: 0; }
+  .colhead { display: none; }
+  .colrow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+  }
+  .colrow:last-child { border-bottom: 1px solid var(--line); }
+  .colrow .who { grid-column: 1 / -1; }
+  .colrow .who b { font-size: 14.5px; white-space: normal; }
+  /* Seats moves into the name line's space; the three amounts line up underneath */
+  .colrow > .cell:nth-child(2) { display: none; }
+  .colrow .num { text-align: left; }
+  .colrow .ml { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-bottom: 2px; }
+  .colrow .cell { font-size: 14px; }
+  .colrow .act { grid-column: 1 / -1; text-align: left; }
+  .colrow .act .btn { width: 100%; padding: 11px 14px; font-size: 13.5px; }
+  .colrow .act .badge { font-size: 11.5px; padding: 5px 11px; }
+
+}
+.mseats { display: none; }
+@media (max-width: 720px) { .mseats { display: inline; } }

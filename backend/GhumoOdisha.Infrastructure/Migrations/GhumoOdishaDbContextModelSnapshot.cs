@@ -303,13 +303,19 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Property<decimal>("RemainingAmount")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<DateOnly?>("RemovedSlotEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("RemovedSlotStartDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTime>("RequestedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<int>("TripDateSlotId")
+                    b.Property<int?>("TripDateSlotId")
                         .HasColumnType("int");
 
                     b.Property<int>("TripId")
@@ -774,7 +780,23 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
+                    b.Property<int?>("DriverApproachKm")
+                        .HasColumnType("int");
+
                     b.Property<int>("DriverId")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("DropLatitude")
+                        .HasColumnType("double");
+
+                    b.Property<string>("DropLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<double?>("DropLongitude")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("DropToPickupKm")
                         .HasColumnType("int");
 
                     b.Property<int>("DurationHours")
@@ -840,6 +862,19 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<double?>("PickupLatitude")
+                        .HasColumnType("double");
+
+                    b.Property<string>("PickupLocation")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<double?>("PickupLongitude")
+                        .HasColumnType("double");
+
+                    b.Property<int?>("PickupToDropKm")
+                        .HasColumnType("int");
+
                     b.Property<string>("RazorpayOrderId")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
@@ -867,6 +902,12 @@ namespace GhumoOdisha.Infrastructure.Migrations
 
                     b.Property<DateTime?>("RefundSettledAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ReturnToBaseKm")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RoundTrip")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -1468,6 +1509,16 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<double?>("BaseLatitude")
+                        .HasColumnType("double");
+
+                    b.Property<string>("BaseLocationLabel")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<double?>("BaseLongitude")
+                        .HasColumnType("double");
+
                     b.Property<string>("City")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -1705,6 +1756,31 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.ToTable("OrganizerPhotos", (string)null);
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.PaymentQrCode", b =>
+                {
+                    b.Property<int>("PaymentQrCodeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PaymentQrCodeId"));
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PaymentQrCodeId");
+
+                    b.ToTable("PaymentQrCodes", (string)null);
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.PickupPoint", b =>
                 {
                     b.Property<int>("PickupPointId")
@@ -1806,6 +1882,42 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.HasIndex("Place", "CreatedAtUtc");
 
                     b.ToTable("SearchLogs", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.ServiceArea", b =>
+                {
+                    b.Property<int>("ServiceAreaId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ServiceAreaId"));
+
+                    b.Property<string>("BoundaryJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Pincodes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("ServiceAreaId");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("ServiceAreas", (string)null);
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.SiteHeroPhoto", b =>
@@ -2125,8 +2237,7 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.HasOne("GhumoOdisha.Domain.Entities.TripDateSlot", "TripDateSlot")
                         .WithMany("Bookings")
                         .HasForeignKey("TripDateSlotId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("GhumoOdisha.Domain.Entities.Trip", "Trip")
                         .WithMany("Bookings")

@@ -1,3 +1,4 @@
+import { GeoPoint } from './location.model';
 import {
   CarBooking,
   CarBookingSummary,
@@ -37,6 +38,9 @@ export interface DriverProfile {
   email: string | null;
   address: string | null;
   city: string | null;
+  /** Where the driver starts from; km from here to each pickup are added to the fare. */
+  baseLocation: GeoPoint | null;
+  baseLocationLabel: string | null;
   drivingLicenceNumber: string | null;
   licenceExpiryDate: string | null;
   experienceYears: number | null;

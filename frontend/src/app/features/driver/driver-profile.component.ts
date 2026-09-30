@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApprovalLabels, DriverDocumentType, DriverDocumentTypeLabels, DriverStatus, approvalBadgeClass } from '../../core/models/car.model';
 import { DriverDocument, DriverProfile } from '../../core/models/driver.model';
@@ -7,6 +7,8 @@ import { DriverAuthService } from '../../core/services/driver-auth.service';
 import { DriverService } from '../../core/services/driver.service';
 import { ToastService } from '../../core/services/toast.service';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
+import { BaseLocationPanelComponent } from '../../shared/components/base-location-panel.component';
+import { PickedPlace } from '../../core/services/google-maps.service';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 import { apiErrorMessage } from '../../shared/utils/api-error';
 import { istDate } from '../../shared/utils/car-format';
@@ -15,7 +17,7 @@ import { istDate } from '../../shared/utils/car-format';
 @Component({
   selector: 'app-driver-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, ImageUrlPipe, StatePanelComponent],
+  imports: [CommonModule, FormsModule, ImageUrlPipe, StatePanelComponent, BaseLocationPanelComponent],
   template: `
     @switch (state()) {
       @case ('loading') { <app-state-panel kind="loading"></app-state-panel> }
@@ -73,6 +75,16 @@ import { istDate } from '../../shared/utils/car-format';
               <button type="submit" class="btn" [disabled]="saving()">@if (saving()) { <span class="spin"></span> } @else { Save details }</button>
             </form>
           </section>
+
+          <app-base-location-panel
+            variant="driver"
+            intro="Where you start from — your home or taxi stand. The km from here to the customer’s pickup are added to the fare."
+            [point]="p.baseLocation"
+            [label]="p.baseLocationLabel"
+            [saving]="savingBase()"
+            [error]="baseError()"
+            (save)="saveBaseLocation($event)"
+          ></app-base-location-panel>
 
           <section class="card pad">
             <h3 class="cz-h3">WhatsApp number</h3>
@@ -149,6 +161,9 @@ export class DriverProfileComponent implements OnInit {
   readonly state = signal<'loading' | 'ready' | 'error'>('loading');
   readonly error = signal('');
   readonly profile = signal<DriverProfile | null>(null);
+  readonly savingBase = signal(false);
+  readonly baseError = signal<string | null>(null);
+  private readonly basePanel = viewChild(BaseLocationPanelComponent);
 
   form = { name: '', email: '', address: '', city: '', drivingLicenceNumber: '', licenceExpiryDate: '', experienceYears: null as number | null };
   readonly saving = signal(false);
@@ -341,6 +356,23 @@ export class DriverProfileComponent implements OnInit {
 
   docLabel(t: DriverDocumentType): string {
     return DriverDocumentTypeLabels[t];
+  }
+
+  saveBaseLocation(place: PickedPlace): void {
+    this.savingBase.set(true);
+    this.baseError.set(null);
+    this.driverService.setBaseLocation(place).subscribe({
+      next: (p) => {
+        this.apply(p, false);
+        this.savingBase.set(false);
+        this.basePanel()?.done();
+        this.toast.success('Starting point saved.');
+      },
+      error: (e: unknown) => {
+        this.savingBase.set(false);
+        this.baseError.set(apiErrorMessage(e, 'Could not save your starting point.'));
+      },
+    });
   }
 
   private reload(): void {

@@ -16,7 +16,7 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
         var totalTrips = await db.Trips.CountAsync(cancellationToken);
         var activeTrips = await db.Trips.CountAsync(t => t.Status == TripStatus.Active, cancellationToken);
         var totalCustomers = await db.Customers.CountAsync(cancellationToken);
-        var bookingRequests = await db.Bookings.CountAsync(b => b.BookingStatus == BookingStatus.Requested || b.BookingStatus == BookingStatus.Pending, cancellationToken);
+        var completedBookings = await db.Bookings.CountAsync(b => b.BookingStatus == BookingStatus.Completed, cancellationToken);
         var confirmedBookings = await db.Bookings.CountAsync(b => b.BookingStatus == BookingStatus.Confirmed, cancellationToken);
         var upcomingTripsCount = await db.TripDateSlots
             .Where(s => s.Status == TripDateSlotStatus.Active && s.StartDate >= today)
@@ -33,7 +33,7 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
             .SumAsync(b => (decimal?)b.AdvanceAmount, cancellationToken) ?? 0;
 
         var counters = new DashboardCountersDto(
-            totalTrips, activeTrips, totalCustomers, bookingRequests,
+            totalTrips, activeTrips, totalCustomers, completedBookings,
             confirmedBookings, upcomingTripsCount, confirmedRevenue, advanceCollected);
 
         var upcomingTrips = await db.TripDateSlots
@@ -42,15 +42,6 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
             .OrderBy(s => s.StartDate)
             .Take(RecentItemsLimit)
             .Select(s => new DashboardUpcomingTripDto(s.TripId, s.Trip.Title, s.StartDate, s.AvailableSeats, s.TotalSeats))
-            .ToListAsync(cancellationToken);
-
-        var recentRequests = await db.Bookings
-            .Include(b => b.Customer)
-            .Include(b => b.Trip)
-            .Include(b => b.TripDateSlot)
-            .Where(b => b.BookingStatus == BookingStatus.Requested || b.BookingStatus == BookingStatus.Pending)
-            .OrderByDescending(b => b.RequestedAt)
-            .Take(RecentItemsLimit)
             .ToListAsync(cancellationToken);
 
         var recentlyConfirmed = await db.Bookings
@@ -65,7 +56,6 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
         return new DashboardDto(
             counters,
             upcomingTrips,
-            recentRequests.Select(MapToListItem).ToList(),
             recentlyConfirmed.Select(MapToListItem).ToList());
     }
 
@@ -78,8 +68,8 @@ public class DashboardService(IGhumoOdishaDbContext db) : IDashboardService
         booking.TripId,
         booking.Trip.Title,
         booking.TripDateSlotId,
-        booking.TripDateSlot.StartDate,
-        booking.TripDateSlot.EndDate,
+        booking.StartDate,
+        booking.EndDate,
         booking.NumberOfSeats,
         booking.TotalAmount,
         booking.AdvanceAmount,

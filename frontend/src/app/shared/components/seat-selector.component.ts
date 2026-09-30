@@ -5,14 +5,17 @@ import { Component, input, model } from '@angular/core';
   standalone: true,
   template: `
     <div class="stepper">
-      <button type="button" (click)="decrement()" [disabled]="value() <= 1">−</button>
+      <button type="button" (click)="decrement()" [disabled]="value() <= min()" [attr.aria-label]="'Fewer ' + label()">−</button>
       <b>{{ value() }}</b>
-      <button type="button" (click)="increment()" [disabled]="value() >= max()">+</button>
+      <button type="button" (click)="increment()" [disabled]="value() >= max()" [attr.aria-label]="'More ' + label()">+</button>
     </div>
   `,
 })
 export class SeatSelectorComponent {
   readonly max = input(10);
+  readonly min = input(1);
+  /** What's being counted, for screen readers ("travellers", "gents"…). */
+  readonly label = input('travellers');
   readonly value = model(1);
 
   increment(): void {
@@ -20,6 +23,6 @@ export class SeatSelectorComponent {
   }
 
   decrement(): void {
-    if (this.value() > 1) this.value.set(this.value() - 1);
+    if (this.value() > this.min()) this.value.set(this.value() - 1);
   }
 }

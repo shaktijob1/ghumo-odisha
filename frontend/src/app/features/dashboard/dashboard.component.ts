@@ -13,11 +13,11 @@ import { TripCardComponent } from '../../shared/components/trip-card.component';
 import { DestinationCardComponent } from '../../shared/components/destination-card.component';
 import { FeatureCardComponent, FeatureIcon } from '../../shared/components/feature-card.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
-import { DatePickerComponent } from '../../shared/components/date-picker.component';
+import { VehicleSearchFormComponent } from '../../shared/components/vehicle-search-form.component';
 import { CarResultsComponent } from '../../shared/components/car-results.component';
-import { CarService } from '../../core/services/car.service';
-import { CarWindow } from '../../core/models/car.model';
-import { DURATION_PRESETS, PICKUP_TIMES, durationLabel, istDateValue, timeLabel } from '../../shared/utils/car-format';
+
+import { VehicleSearch } from '../../shared/utils/vehicle-search';
+
 import { scrollRowBy } from '../../shared/utils/scroll-row';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -49,12 +49,7 @@ function buildMonthOptions(count: number): MonthOption[] {
 type SearchTab = 'trips' | 'cars' | 'holidays';
 
 /** The hero's custom dropdowns (Cars / Holidays tabs); only one is open at a time. */
-type HeroDropdown = 'carPickup' | 'carTime' | 'carDuration' | 'holidayMonth' | 'holidayTravellers';
-
-/** "2026-10-03" in the visitor's local time — the earliest date the car date picker offers. */
-function localDateValue(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+type HeroDropdown = 'holidayMonth' | 'holidayTravellers';
 
 /** "2026-10" → trips with a departure overlapping 1–31 Oct 2026. */
 function monthRange(month: string): { fromDate: string; toDate: string } {
@@ -72,14 +67,14 @@ interface Feature {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, DatePickerComponent, CarResultsComponent],
+  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly tripService = inject(PublicTripService);
   private readonly destinationService = inject(PublicDestinationService);
   private readonly contactService = inject(ContactService);
-  private readonly carService = inject(CarService);
+
   private readonly heroPhotoService = inject(HeroService);
   private readonly searchLog = inject(SearchLogService);
   private readonly siteFeatures = inject(FeatureService);
@@ -160,7 +155,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // --- Hero search card: Trips / Cars / Holidays tabs (Trips by default) ---
   readonly searchTabs: { key: SearchTab; title: string; subtitle: string }[] = [
     { key: 'trips', title: 'Trips', subtitle: 'Join amazing group trips' },
-    { key: 'cars', title: 'Cars', subtitle: 'Book cars & travellers' },
+    { key: 'cars', title: 'Vehicles', subtitle: 'Cars & tempo travellers with driver' },
     { key: 'holidays', title: 'Holidays', subtitle: 'Custom holiday packages' },
   ];
   readonly searchTab = signal<SearchTab>('trips');
@@ -168,6 +163,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectSearchTab(tab: SearchTab): void {
     this.closeSearchPopovers();
     this.searchTab.set(tab);
+    // Vehicles / Holidays: bring the search card to the top of the screen ("Meet. Travel. Explore."
+    // scrolls away) so all their fields and dropdowns have room.
+    // Back on Trips the page is long again, so the spacer that made room for that scroll goes.
+    if (tab !== 'trips') setTimeout(() => this.cardToTop());
+    else this.searchRoom.set(0);
   }
 
   // --- Phones: once the visitor starts using the search fields, the card scrolls up to the top of
@@ -180,8 +180,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   onSearchFieldsEngaged(event: Event): void {
     if (typeof window === 'undefined' || !window.matchMedia('(max-width: 640px)').matches) return;
-    // The Search button scrolls to the results itself — don't pull the card back up over it.
-    if ((event.target as Element | null)?.closest('.hx-go')) return;
+    // The Search button scrolls to the results itself — don't pull the card back up over it. The Vehicles
+    // form scrolls its own dropdowns into view (the card is already at the top from the tab tap).
+    if ((event.target as Element | null)?.closest('.hx-go, app-vehicle-search-form')) return;
+    this.cardToTop();
+  }
+
+  /** Scrolls the search card to the top of the screen, adding a spacer below it if the page is too short. */
+  private cardToTop(): void {
     const card = this.heroCard()?.nativeElement;
     if (!card) return;
     const targetY = Math.round(window.scrollY + card.getBoundingClientRect().top - 8);
@@ -210,35 +216,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
-  // Cars: pickup locations come from the approved cars (API); the search shows live results below the
+  // Vehicles: the shared search form (app-vehicle-search-form) owns its fields; results show below the
   // card. Holidays have no booking system yet, so their search goes to the organizer on WhatsApp.
-  readonly carPickups = signal<string[]>([]);
-  readonly carPickup = signal('');
-  readonly carDate = signal('');
-  readonly carTimes = PICKUP_TIMES;
-  readonly carTime = signal('10:00');
-  readonly carTimeLabel = computed(() => timeLabel(this.carTime()));
-  readonly carDurationPresets = DURATION_PRESETS;
-  readonly carHours = signal(12);
-  /** "Custom" duration: typed number of hours or days. */
-  readonly carCustom = signal(false);
-  readonly carCustomValue = signal(5);
-  readonly carCustomUnit = signal<'hours' | 'days'>('days');
-  readonly carDurationLabel = computed(() => durationLabel(this.carHours()));
-
-  pickCarDuration(hours: number): void {
-    this.carCustom.set(false);
-    this.carHours.set(hours);
-    this.openDropdown.set(null);
-  }
-
-  applyCustomDuration(): void {
-    const value = Math.floor(this.carCustomValue() || 0);
-    if (value < 1) return;
-    this.carHours.set(this.carCustomUnit() === 'days' ? value * 24 : value);
-    this.openDropdown.set(null);
-  }
-  readonly todayIso = localDateValue(new Date());
 
   readonly travellerOptions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
   readonly holidayPlace = signal('');
@@ -247,14 +226,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly holidayTravellers = signal('2');
 
   /** The search the "Available vehicles" section below the hero is showing (null = not searched yet). */
-  readonly carSearch = signal<{ city: string | null; window: CarWindow } | null>(null);
+  readonly carSearch = signal<VehicleSearch | null>(null);
 
-  searchCars(): void {
+  searchCars(search: VehicleSearch): void {
     this.closeSearchPopovers();
     this.searchRoom.set(0);
-    // No date picked yet: tomorrow (pickups need a couple of hours' notice).
-    const date = this.carDate() || istDateValue(1);
-    this.carSearch.set({ city: this.carPickup() || null, window: { date, time: this.carTime(), hours: this.carHours() } });
+    this.carSearch.set(search);
     // Wait for the section to render, then bring it into view.
     setTimeout(() => this.scrollTo('car-results'));
   }
@@ -429,7 +406,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.searchTab.set('trips');
         return;
       }
-      this.carService.search({}).subscribe({ next: (r) => this.carPickups.set(r.locations), error: () => undefined });
     });
   }
 

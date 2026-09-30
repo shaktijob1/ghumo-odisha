@@ -54,15 +54,9 @@ export class BookingDetailComponent implements OnInit {
 
   bookingId!: number;
 
-  readonly showConfirmModal = signal(false);
-  readonly showRejectModal = signal(false);
   readonly showCancelModal = signal(false);
-  readonly actionError = signal<string | null>(null);
   readonly submitting = signal(false);
 
-  advanceAmount = 0;
-  confirmMethod: PaymentMethod = PaymentMethod.Cash;
-  confirmReference = '';
   adminNotes = '';
 
   readonly PaymentMethodLabels = PaymentMethodLabels;
@@ -116,54 +110,9 @@ export class BookingDetailComponent implements OnInit {
     this.bookingService.getBooking(this.bookingId).subscribe({
       next: (b) => {
         this.booking.set(b);
-        this.advanceAmount = b.advanceAmount;
         this.state.set('ready');
       },
       error: () => this.state.set('error'),
-    });
-  }
-
-  openConfirmModal(): void {
-    this.actionError.set(null);
-    this.advanceAmount = this.booking()?.advanceAmount ?? 0;
-    this.confirmMethod = PaymentMethod.Cash;
-    this.confirmReference = '';
-    this.showConfirmModal.set(true);
-  }
-
-  submitConfirm(): void {
-    this.submitting.set(true);
-    this.actionError.set(null);
-    const request = {
-      advanceAmount: this.advanceAmount,
-      method: this.confirmMethod,
-      paymentReference: this.confirmReference.trim() || null,
-    };
-    this.bookingService.confirmBooking(this.bookingId, request).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.showConfirmModal.set(false);
-        this.toast.success('Booking confirmed.');
-        this.load();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.submitting.set(false);
-        const body = err.error as ApiResponse<unknown> | undefined;
-        this.actionError.set(body?.message ?? 'Could not confirm this booking.');
-      },
-    });
-  }
-
-  submitReject(): void {
-    this.submitting.set(true);
-    this.bookingService.rejectBooking(this.bookingId, { adminNotes: this.adminNotes || null }).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.showRejectModal.set(false);
-        this.toast.success('Booking rejected.');
-        this.load();
-      },
-      error: () => this.submitting.set(false),
     });
   }
 
@@ -203,7 +152,7 @@ export class BookingDetailComponent implements OnInit {
 
   get canChangeSeats(): boolean {
     const s = this.booking()?.bookingStatus;
-    return s === BookingStatus.Requested || s === BookingStatus.Pending || s === BookingStatus.Confirmed;
+    return s === BookingStatus.AwaitingPayment || s === BookingStatus.Pending || s === BookingStatus.Confirmed;
   }
 
   openSeatsModal(): void {
@@ -453,9 +402,4 @@ export class BookingDetailComponent implements OnInit {
     });
   }
 
-  get remaining(): number {
-    const b = this.booking();
-    if (!b) return 0;
-    return Math.max(0, b.totalAmount - this.advanceAmount);
-  }
 }
