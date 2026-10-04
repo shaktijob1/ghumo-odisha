@@ -10,7 +10,8 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/customer-layout/customer-layout.component').then((m) => m.CustomerLayoutComponent),
     children: [
       { path: '', loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
-      { path: 'trips', title: 'Odisha Tour Packages & Group Trips | Ghumo Odisha', loadComponent: () => import('./features/trips/home.component').then((m) => m.HomeComponent) },
+      // The old trip list page: every trip is on the home page now (the server 301-redirects /trips too).
+      { path: 'trips', redirectTo: '', pathMatch: 'full' },
       { path: 'trips/:id', loadComponent: () => import('./features/trips/trip-detail.component').then((m) => m.TripDetailComponent) },
       {
         path: 'destinations/:slug',
@@ -29,30 +30,36 @@ export const routes: Routes = [
       {
         path: 'cars/:id/book',
         title: 'Book your vehicle | Ghumo Odisha',
+        data: { noindex: true },
         canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/cars/car-booking.component').then((m) => m.CarBookingComponent),
       },
       {
         path: 'my-bookings/cars/:id',
         title: 'Car booking | Ghumo Odisha',
+        data: { noindex: true },
         canActivate: [customerGuard],
         loadComponent: () => import('./features/cars/car-booking-detail.component').then((m) => m.CarBookingDetailComponent),
       },
       {
         path: 'hotels',
-        data: { title: 'Hotels' },
+        data: { title: 'Hotels', noindex: true },
         canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
       },
       { path: 'terms', title: 'Trip Terms & Conditions | Ghumo Odisha', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
-      { path: 'login', loadComponent: () => import('./features/auth/customer-auth.component').then((m) => m.CustomerAuthComponent) },
+      { path: 'login', title: 'Sign in | Ghumo Odisha', data: { noindex: true }, loadComponent: () => import('./features/auth/customer-auth.component').then((m) => m.CustomerAuthComponent) },
       {
         path: 'my-bookings',
+        title: 'My bookings | Ghumo Odisha',
+        data: { noindex: true },
         canActivate: [customerGuard],
         loadComponent: () => import('./features/account/my-bookings.component').then((m) => m.MyBookingsComponent),
       },
       {
         path: 'profile',
+        title: 'My profile | Ghumo Odisha',
+        data: { noindex: true },
         canActivate: [customerGuard],
         loadComponent: () => import('./features/account/profile.component').then((m) => m.ProfileComponent),
       },
@@ -60,6 +67,8 @@ export const routes: Routes = [
   },
   {
     path: 'admin/login',
+    title: 'Admin sign in · Ghumo Odisha',
+    data: { noindex: true },
     loadComponent: () => import('./features/admin/auth/admin-login.component').then((m) => m.AdminLoginComponent),
   },
   {
@@ -67,10 +76,13 @@ export const routes: Routes = [
     // and no admin layout: anyone with the link can open it and look up their own coupon code.
     path: 'admin/influencer',
     title: 'Partner earnings · Ghumo Odisha',
+    data: { noindex: true },
     loadComponent: () => import('./features/admin/influencer/influencer-portal.component').then((m) => m.InfluencerPortalComponent),
   },
   {
     path: 'admin',
+    title: 'Admin · Ghumo Odisha',
+    data: { noindex: true },
     loadComponent: () => import('./layouts/admin-layout/admin-layout.component').then((m) => m.AdminLayoutComponent),
     canActivate: [adminGuard],
     children: [
@@ -187,12 +199,14 @@ export const routes: Routes = [
   {
     path: 'driver/login',
     title: 'Driver sign in | Ghumo Odisha',
+    data: { noindex: true },
     loadComponent: () => import('./features/driver/driver-login.component').then((m) => m.DriverLoginComponent),
   },
   {
     // Driver area: own shell (bottom tab bar on phones), signed in with the Driver role.
     path: 'driver',
     title: 'Driver | Ghumo Odisha',
+    data: { noindex: true },
     canActivate: [driverGuard],
     loadComponent: () => import('./layouts/driver-layout/driver-layout.component').then((m) => m.DriverLayoutComponent),
     children: [

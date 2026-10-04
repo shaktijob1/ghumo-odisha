@@ -27,6 +27,8 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
         builder.Property(t => t.Status)
             .HasConversion<int>();
 
+        builder.Property(t => t.PlacesCovered).HasMaxLength(4000);
+
         builder.Property(t => t.ItineraryPdfUrl)
             .HasMaxLength(500);
 

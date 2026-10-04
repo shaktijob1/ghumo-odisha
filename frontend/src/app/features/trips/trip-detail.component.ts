@@ -3,8 +3,7 @@ import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, effec
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Location } from '@angular/common';
-import { SeoService } from '../../core/services/seo.service';
-import { durationLabel, parseTripId, tripPath } from '../../shared/utils/trip-path';
+import { parseTripId, tripPath } from '../../shared/utils/trip-path';
 import { PublicTripService } from '../../core/services/public-trip.service';
 import { CustomerBookingService } from '../../core/services/customer-booking.service';
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
@@ -12,7 +11,7 @@ import { CustomerProfileService } from '../../core/services/customer-profile.ser
 import { ContactService } from '../../core/services/contact.service';
 import { ToastService } from '../../core/services/toast.service';
 import { TermsDialogService } from '../../core/services/terms-dialog.service';
-import { TripDetail, DateSlot, TripHighlight, TripInclusions } from '../../core/models/trip.model';
+import { TripDetail, DateSlot, TripHighlight, TripInclusions, TripSummary } from '../../core/models/trip.model';
 import { BookingResponse, CreateBookingResult } from '../../core/models/booking.model';
 import { CustomerAuthResponse } from '../../core/models/auth.model';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
@@ -20,6 +19,8 @@ import { SeatSelectorComponent } from '../../shared/components/seat-selector.com
 import { WhatsappAuthComponent } from '../../shared/components/whatsapp-auth.component';
 import { PaymentPanelComponent } from '../../shared/components/payment-panel.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
+import { BreadcrumbsComponent, Crumb } from '../../shared/components/breadcrumbs.component';
+import { FaqListComponent } from '../../shared/components/faq-list.component';
 import { downloadFile } from '../../shared/utils/download-file';
 import { toLocalDateKey } from '../../shared/utils/date-key';
 import { payNowFor } from '../../shared/components/booking-price-summary.component';
@@ -27,13 +28,13 @@ import { CouponSelection } from '../../shared/components/coupon-field.component'
 import { roomsForSeats } from '../../shared/utils/rooms';
 import { scrollRowBy } from '../../shared/utils/scroll-row';
 
-type PhotoRow = 'hl' | 'stay' | 'travel';
+type PhotoRow = 'hl' | 'stay' | 'travel' | 'more';
 
 // Booking popup: confirm date → confirm seats (rooms shown) → then the 'flow' chain of
 // pickup point / sign-in / name / create request → trip summary with coupon + Pay Now.
 type BookingStep = 'date' | 'seats' | 'flow';
 
-type LoadState = 'loading' | 'ready' | 'error';
+type LoadState = 'loading' | 'ready' | 'error' | 'not-found';
 
 type InclusionKey = keyof TripInclusions;
 
@@ -43,14 +44,13 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 @Component({
   selector: 'app-trip-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, SeatSelectorComponent, WhatsappAuthComponent, PaymentPanelComponent, ImageUrlPipe, BreadcrumbsComponent, FaqListComponent],
   templateUrl: './trip-detail.component.html',
-  styleUrl: './trip-detail.component.css',
+  styleUrls: ['./trip-detail.component.css', './trip-detail-sections.component.css'],
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
-  private readonly seo = inject(SeoService);
   private readonly tripService = inject(PublicTripService);
   private readonly bookingService = inject(CustomerBookingService);
   readonly auth = inject(CustomerAuthService);
@@ -60,12 +60,33 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   readonly termsDialog = inject(TermsDialogService);
 
   readonly contact = this.contactService.get();
+
+  // Wider than phones: the photo gallery (with the trip name over it) shows instead of the single
+  // hero, so exactly one of the two carries the page's <h1>. Same 641px breakpoint as styles.css.
+  private readonly wideQuery = typeof window !== 'undefined' ? window.matchMedia('(min-width: 641px)') : null;
+  readonly wide = signal(this.wideQuery?.matches ?? true);
+  private readonly onWideChange = (e: MediaQueryListEvent) => this.wide.set(e.matches);
+
+  /** Home › (first destination) › this trip — same trail as the API's BreadcrumbList. */
+  readonly crumbs = computed<Crumb[]>(() => {
+    const t = this.trip();
+    if (!t) return [];
+    const items: Crumb[] = [];
+    const main = t.destinations[0];
+    if (main) items.push({ label: main.name, link: '/destinations/' + main.slug });
+    items.push({ label: t.title });
+    return items;
+  });
+
+  /** Other trips, those sharing a destination with this one first (same rule as the server-rendered page). */
+  readonly relatedTrips = signal<TripSummary[]>([]);
+  readonly tripPath = tripPath;
   readonly state = signal<LoadState>('loading');
   readonly trip = signal<TripDetail | null>(null);
 
   readonly heroIndex = signal(0);
   readonly selectedSlotId = signal<number | null>(null);
-  /** Travellers are chosen as gents + ladies (the trip keeps a 1:1 mix); seats are their total. */
+  /** Travellers are chosen as gents + ladies ; seats are their total. */
   readonly gents = signal(1);
   readonly ladies = signal(0);
   readonly seats = computed(() => this.gents() + this.ladies());
@@ -101,6 +122,9 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     const today = toLocalDateKey(new Date());
     return (this.trip()?.dateSlots ?? []).filter((s) => s.startDate.slice(0, 10) >= today);
   });
+
+  /** First departure that can still be booked online — drives the notice above "About this trip". */
+  readonly nextOpenSlot = computed(() => this.upcomingSlots().find((s) => !s.isSoldOut && !s.isBookingClosed) ?? null);
 
   // One tab per calendar month that has at least one upcoming departure, in chronological order.
   readonly slotMonths = computed(() => {
@@ -225,12 +249,32 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    this.tripId = parseTripId(this.route.snapshot.paramMap.get('id'));
-    this.load();
+    this.wideQuery?.addEventListener('change', this.onWideChange);
+    // A related-trip link opens another trip in this same component, so follow the route id.
+    let first = true;
+    this.route.paramMap.subscribe((params) => {
+      this.tripId = parseTripId(params.get('id'));
+      if (!first) window.scrollTo({ top: 0 });
+      first = false;
+      this.load();
+    });
   }
 
   ngOnDestroy(): void {
+    this.wideQuery?.removeEventListener('change', this.onWideChange);
     this.stopHeroAutoplay();
+  }
+
+  private loadRelated(t: TripDetail): void {
+    const names = new Set(t.destinations.map((d) => d.name.toLowerCase()));
+    this.tripService.getTrips(1, 50).subscribe({
+      next: (page) => {
+        const others = page.items.filter((x) => x.tripId !== t.tripId);
+        const shares = (x: TripSummary) => x.destinationNames.some((n) => names.has(n.toLowerCase()));
+        this.relatedTrips.set([...others.filter(shares), ...others.filter((x) => !shares(x))].slice(0, 4));
+      },
+      error: () => this.relatedTrips.set([]),
+    });
   }
 
   load(): void {
@@ -238,7 +282,8 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.tripService.getTrip(this.tripId).subscribe({
       next: (t) => {
         this.trip.set(t);
-        this.applySeo(t);
+        this.showOfficialPath(t);
+        this.loadRelated(t);
         const firstOpenSlot = this.upcomingSlots().find((s) => !s.isSoldOut && !s.isBookingClosed);
         this.selectedSlotId.set(firstOpenSlot?.tripDateSlotId ?? null);
         // Open on the month holding the next bookable departure (e.g. October if September is
@@ -252,30 +297,20 @@ export class TripDetailComponent implements OnInit, OnDestroy {
         this.state.set('ready');
         this.startHeroAutoplay();
       },
-      error: () => this.state.set('error'),
+      // A removed or unpublished trip: say so and point to the other trips (the server sends 404 for it too).
+      error: (err) => this.state.set(err?.status === 404 ? 'not-found' : 'error'),
     });
   }
 
-  // Same title/description the API writes into the first page load (SeoPageRenderer.TripPage),
-  // plus swapping an old /trips/1 address for the readable /trips/1-puri-konark one in place.
-  private applySeo(t: TripDetail): void {
+  // Swaps an old /trips/1 address for the readable /trips/1-puri-konark one in place (the server
+  // 301-redirects direct visits; page tags come from SeoService for every navigation).
+  private showOfficialPath(t: TripDetail): void {
     const path = tripPath(t.tripId, t.title);
     const [currentPath, query] = this.location.path(false).split('?');
     if (currentPath !== path) {
       this.location.replaceState(path, query ?? '');
     }
 
-    const today = toLocalDateKey(new Date());
-    const next = t.dateSlots.filter((s) => s.startDate.slice(0, 10) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
-    const duration = next ? ` – ${durationLabel(next.startDate, next.endDate)}` : '';
-    const price = `₹${t.amountPerPerson.toLocaleString('en-IN')}`;
-    const summary = `${t.title}${duration} group trip from ${price} per person. ${t.description.replace(/\s+/g, ' ').trim()}`;
-    this.seo.setPage({
-      title: `${t.title}${duration} from ${price} | Ghumo Odisha`,
-      description: summary.length > 160 ? summary.slice(0, summary.lastIndexOf(' ', 159)) + '…' : summary,
-      path,
-      image: [...t.photos].sort((a, b) => a.displayOrder - b.displayOrder)[0]?.imageUrl ?? null,
-    });
   }
 
   private startHeroAutoplay(): void {
@@ -381,6 +416,13 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.showAllSlots.set(false);
   }
 
+  /** A date tapped in the gallery's departures roll: pick it and open the booking popup on it. */
+  bookFromRoll(slot: DateSlot): void {
+    if (slot.isSoldOut || slot.isBookingClosed) return;
+    this.selectSlot(slot);
+    this.openBookingModal();
+  }
+
   selectSlot(slot: DateSlot): void {
     if (slot.isSoldOut || slot.isBookingClosed) return;
     this.selectedSlotId.set(slot.tripDateSlotId);
@@ -438,9 +480,6 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   /** "Pickup from … +3 more" opens the full list of pickup points. */
   readonly showPickups = signal(false);
 
-  encode(value: string): string {
-    return encodeURIComponent(value);
-  }
 
   readonly tripFacts = computed(() => {
     const t = this.trip();
@@ -471,21 +510,24 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly hlScroll = viewChild<ElementRef<HTMLElement>>('hlScroll');
   private readonly stayScroll = viewChild<ElementRef<HTMLElement>>('stayScroll');
   private readonly travelScroll = viewChild<ElementRef<HTMLElement>>('travelScroll');
+  private readonly moreScroll = viewChild<ElementRef<HTMLElement>>('moreScroll');
   readonly rowNav = signal<Record<PhotoRow, { prev: boolean; next: boolean }>>({
     hl: { prev: false, next: false },
     stay: { prev: false, next: false },
     travel: { prev: false, next: false },
+    more: { prev: false, next: false },
   });
   private readonly rowNavSync = effect(() => {
     // Re-check whenever any row renders.
     this.hlScroll();
     this.stayScroll();
     this.travelScroll();
+    this.moreScroll();
     setTimeout(() => this.updateAllRows());
   });
 
   private rowEl(row: PhotoRow): HTMLElement | undefined {
-    const ref = row === 'hl' ? this.hlScroll() : row === 'stay' ? this.stayScroll() : this.travelScroll();
+    const ref = row === 'hl' ? this.hlScroll() : row === 'stay' ? this.stayScroll() : row === 'travel' ? this.travelScroll() : this.moreScroll();
     return ref?.nativeElement;
   }
 
@@ -500,7 +542,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   }
 
   private updateAllRows(): void {
-    (['hl', 'stay', 'travel'] as const).forEach((r) => this.updateRow(r));
+    (['hl', 'stay', 'travel', 'more'] as const).forEach((r) => this.updateRow(r));
     this.updateDayRail();
   }
 

@@ -1,0 +1,33 @@
+/* Trip name over the gallery's first photo: its own grid item (a heading can't live inside the
+   photo button), covering the first column, letting clicks through to the photo. */
+.tdgallery { position: relative; }
+.tdg-over { grid-column: 1; grid-row: 1 / -1; pointer-events: none; }
+.tdg-over a, .tdg-over button { pointer-events: auto; }
+
+/* Phones-only hero keeps the look of its old <h1> when the gallery carries the real one. */
+.dhero-name { font-size: 34px; line-height: 1.15; margin: 8px 0 6px; color: #fff; font-weight: 700; font-family: var(--font-heading); }
+
+/* Itinerary: every day is in the page as a tab panel; only the selected one shows. */
+.tdday[hidden] { display: none; }
+.tdday-title { font-size: 15.5px; font-weight: 700; margin: 0; line-height: 1.3; }
+
+/* Destinations covered by this trip. */
+.tddest { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.tddest a { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.tddest a:hover { border-color: #BFDDD4; background: var(--accent-soft); color: var(--accent); }
+.tddest span { color: var(--accent); }
+
+/* Related trips: small cards in the same sideways row as "What you'll see". */
+.morecard { text-decoration: none; color: inherit; }
+.morecard .body { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.morecard-price { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.morecard-dur { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.tdrelated-all { font-size: 13px; font-weight: 600; color: var(--accent); }
+@media (max-width: 640px) {
+  .dhero-name { font-size: 26px; }
+}
+
+/* Places covered: small tags, wrapping. */
+.tdplaces { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.tdplaces li { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: #fff; font-size: 13px; font-weight: 500; color: var(--ink); }
+.tdplaces svg { color: var(--orange); flex-shrink: 0; }

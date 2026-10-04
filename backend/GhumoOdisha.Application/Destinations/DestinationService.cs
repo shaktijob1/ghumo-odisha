@@ -1,3 +1,4 @@
+using GhumoOdisha.Application.Seo;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Destinations.Dtos;
 using GhumoOdisha.Application.Exceptions;
@@ -247,7 +248,8 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
         destination.DistanceFromBhubaneswar,
         destination.IdealDuration,
         destination.KnownFor,
-        destination.Trips.Count(t => t.Status == TripStatus.Active));
+        destination.Trips.Count(t => t.Status == TripStatus.Active),
+        TripPageContent.BuildDestinationFaqs(destination.Name, destination.BestSeason, destination.DistanceFromBhubaneswar, destination.IdealDuration, destination.KnownFor));
 
     private static AdminDestinationListItemDto MapToAdminListItem(Destination destination) => new(
         destination.DestinationId,

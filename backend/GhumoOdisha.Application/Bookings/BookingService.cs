@@ -71,8 +71,6 @@ public class BookingService(
             {
                 throw new ValidationAppException(["Gents + ladies must add up to the number of seats."]);
             }
-            // Early, friendly check; the confirm step checks again under the slot lock.
-            await SlotGenderRules.EnsureWithinAsync(db, slot, request.MaleCount ?? 0, request.FemaleCount ?? 0, cancellationToken: cancellationToken);
         }
 
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == customerId, cancellationToken)
@@ -600,13 +598,6 @@ public class BookingService(
         if (request.AdvanceAmount < 0 || request.AdvanceAmount > totalAmount)
         {
             throw new ValidationAppException([$"Advance amount must be between 0 and {totalAmount}."]);
-        }
-
-        // 1:1 gents / ladies — checked here, with the slot row locked, so two customers paying at the
-        // same moment can't both take the last gents' place. An admin's manual booking may go over it.
-        if (booking.BookingSource == BookingSource.Website && (booking.MaleCount is not null || booking.FemaleCount is not null))
-        {
-            await SlotGenderRules.EnsureWithinAsync(db, slot, booking.MaleCount ?? 0, booking.FemaleCount ?? 0, booking.BookingId, cancellationToken);
         }
 
         await DeductSeatsAsync(slot, booking.NumberOfSeats, cancellationToken);

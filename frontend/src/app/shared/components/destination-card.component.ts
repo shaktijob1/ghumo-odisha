@@ -12,7 +12,7 @@ import { ImageUrlPipe } from '../pipes/image-url.pipe';
     <a class="dcard" [routerLink]="['/destinations', destination.slug]">
       <div class="ph">
         @if (destination.coverImageUrl || destination.heroImageUrl) {
-          <img [src]="(destination.coverImageUrl || destination.heroImageUrl) | imageUrl" alt="{{ destination.name }}" />
+          <img [src]="(destination.coverImageUrl || destination.heroImageUrl) | imageUrl" alt="{{ destination.name }}" loading="lazy" decoding="async" />
         }
       </div>
       <div class="cnt">

@@ -19,6 +19,10 @@ import { CarResultsComponent } from '../../shared/components/car-results.compone
 import { VehicleSearch } from '../../shared/utils/vehicle-search';
 
 import { scrollRowBy } from '../../shared/utils/scroll-row';
+import { FaqListComponent } from '../../shared/components/faq-list.component';
+import { SiteContentService } from '../../core/services/site-content.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -67,8 +71,24 @@ interface Feature {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent],
+  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent, FaqListComponent],
   templateUrl: './dashboard.component.html',
+  styles: `
+    .hx-h1-sub { display: block; margin-top: 12px; font-family: var(--font-body); font-size: clamp(17px, 1.9vw, 24px); font-weight: 600; line-height: 1.3; letter-spacing: 0; color: var(--accent); }
+    .hw-intro { max-width: 70ch; color: var(--muted); font-size: 14px; line-height: 1.65; margin: 6px 0 0; }
+    .hw-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; list-style: none; margin: 0; padding: 0; }
+    .hw-steps li { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line); border-radius: var(--radius-card); padding: 16px; background: #fff; }
+    .hw-n { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
+    .hw-steps h3 { font-size: 15px; margin: 2px 0 4px; }
+    .hw-steps p { font-size: 13px; line-height: 1.6; color: var(--muted); margin: 0; }
+    .hw-panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-card); padding: 26px 30px; }
+    .hw-more { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
+    .hw-more a { color: var(--accent); font-weight: 600; }
+    @media (max-width: 640px) {
+      .hx-h1-sub { margin-top: 8px; font-size: 17px; }
+      .hw-panel { padding: 16px 14px; }
+    }
+  `,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private readonly tripService = inject(PublicTripService);
@@ -78,6 +98,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly heroPhotoService = inject(HeroService);
   private readonly searchLog = inject(SearchLogService);
   private readonly siteFeatures = inject(FeatureService);
+
+  /** Intro, booking steps and FAQ (null until loaded, or if it fails — the sections just don't show). */
+  readonly homeContent = toSignal(inject(SiteContentService).getHomeContent().pipe(catchError(() => of(null))), { initialValue: null });
   /** appsettings Features:HideCarsAndHolidays — the search card shows Trips only (no tab bar). */
   readonly tripsOnly = this.siteFeatures.hideCarsAndHolidays;
 
@@ -272,14 +295,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   });
 
+  // Places covered by upcoming trips ("Jirang Monastery"): suggested too, and searched as text.
+  private readonly coveredPlaces = toSignal(this.tripService.getPlaces().pipe(catchError(() => of([] as string[]))), { initialValue: [] as string[] });
+
   // Type-ahead: nothing until the visitor types, then only the places matching what they've typed —
   // names starting with it first ("k" → Koraput before Puri-Konark), then names containing it.
+  // Destinations come first, then places covered by trips.
   readonly placeSuggestions = computed(() => {
     const query = this.searchPlace().trim().toLowerCase();
     if (!query) return [];
-    const matches = this.placeOptions().filter((p) => p.toLowerCase().includes(query));
-    const starts = matches.filter((p) => p.toLowerCase().startsWith(query));
-    return [...starts, ...matches.filter((p) => !p.toLowerCase().startsWith(query))];
+    const rank = (names: string[]) => {
+      const matches = names.filter((p) => p.toLowerCase().includes(query));
+      const starts = matches.filter((p) => p.toLowerCase().startsWith(query));
+      return [...starts, ...matches.filter((p) => !p.toLowerCase().startsWith(query))];
+    };
+    const destinations = rank(this.placeOptions());
+    const known = new Set(destinations.map((p) => p.toLowerCase()));
+    const places = rank(this.coveredPlaces()).filter((p) => !known.has(p.toLowerCase()));
+    return [...destinations, ...places].slice(0, 12);
   });
 
   toggleMonth(): void {
@@ -547,15 +580,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * Subtitle under "Upcoming Adventures": says what the list is showing after a search (in place of
    * filter chips); empty — and hidden — when nothing is searched.
    */
-  readonly upcomingSubtitle = computed(() => {
-    const month = this.monthOptions.find((m) => m.value === this.appliedMonth())?.full ?? '';
-    const place = this.selectedLocation() ?? (this.placeQuery() ? `“${this.placeQuery()}”` : '');
-    if (month && place) return `Trips to ${place} happening in ${month}.`;
-    if (month) return `Trips happening in ${month}.`;
-    if (this.placeQuery()) return `Trips matching ${place}.`;
-    return '';
-  });
-
   clearMonthFilter(): void {
     this.appliedMonth.set('');
     this.searchMonth.set('');

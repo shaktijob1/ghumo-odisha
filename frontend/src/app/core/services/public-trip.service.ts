@@ -31,6 +31,11 @@ export class PublicTripService {
     return this.http.get<ApiResponse<string[]>>(`${environment.apiUrl}/trips/locations`, { params }).pipe(map((r) => r.data!));
   }
 
+  /** Places covered by upcoming trips — extra home search suggestions (searched as text, not a destination). */
+  getPlaces(): Observable<string[]> {
+    return this.http.get<ApiResponse<string[]>>(`${environment.apiUrl}/trips/places`).pipe(map((r) => r.data ?? []));
+  }
+
   getTrip(id: number): Observable<TripDetail> {
     return this.http.get<ApiResponse<TripDetail>>(`${environment.apiUrl}/trips/${id}`).pipe(map((r) => r.data!));
   }

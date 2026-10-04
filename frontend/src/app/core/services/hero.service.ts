@@ -3,8 +3,8 @@ import { Injectable, WritableSignal, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 
-/** Which customer page's admin-uploaded hero banner to load. */
-export type HeroPage = 'home' | 'trips';
+/** Which admin-uploaded site photo to load: the home banner, or the office photo in the footer. */
+export type HeroPage = 'home' | 'office';
 
 /** Admin-uploaded hero banner photos, one per page, if they have been set. */
 @Injectable({ providedIn: 'root' })

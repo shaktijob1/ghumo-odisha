@@ -24,6 +24,12 @@ public class Trip
     public bool AllowCoupons { get; set; } = true;
     public TripStatus Status { get; set; }
     public string? ItineraryPdfUrl { get; set; }
+
+    /// <summary>
+    /// Every place the trip visits ("Jirang Monastery", "Gandahati Waterfall"), one per line. Shown on
+    /// the trip page and matched by the site search, so a trip is found by any place it covers.
+    /// </summary>
+    public string? PlacesCovered { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

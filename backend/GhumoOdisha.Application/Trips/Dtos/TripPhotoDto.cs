@@ -1,3 +1,5 @@
+using GhumoOdisha.Domain.Enums;
+
 namespace GhumoOdisha.Application.Trips.Dtos;
 
 public record TripPhotoDto(int TripPhotoId, string ImageUrl, int DisplayOrder);
@@ -15,11 +17,12 @@ public record ItineraryPointDto(int ItineraryPointId, string Time, string Descri
 public record ItineraryDayDto(int ItineraryDayId, int DayNumber, string Title, string Description, int DisplayOrder, IReadOnlyList<ItineraryPointDto> Points);
 
 /// <param name="GentsBooked">Gents / ladies already booked (paid) on this date — shown to customers instead of seats left.</param>
-/// <param name="GentsLeft">Places still open for gents / ladies under the 1:1 rule (each side gets half the seats, rounded up).</param>
+/// <param name="GentsLeft">Places still open for gents / ladies — no gender cap, so both equal the seats still free.</param>
 public record DateSlotDto(int TripDateSlotId, DateOnly StartDate, DateOnly EndDate, int TotalSeats, int AvailableSeats, bool IsSoldOut,
     int GentsBooked, int LadiesBooked, int GentsLeft, int LadiesLeft,
     /// <summary>Within the online cutoff (trip day and the 2 days before): customers see "Seats filled".</summary>
-    bool IsBookingClosed);
+    bool IsBookingClosed,
+    TripDateSlotStatus Status);
 
 public record TripInclusionsDto(
     bool Breakfast, bool Lunch, bool Dinner, bool Stay, bool Coordinator,

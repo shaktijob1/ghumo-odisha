@@ -10,6 +10,9 @@ public interface ITripService
     Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default, string? destination = null, bool upcomingOnly = false);
     Task<IReadOnlyList<string>> GetUpcomingTripLocationsAsync(DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default);
 
+    /// <summary>Places covered by trips with upcoming dates, for the home search suggestions.</summary>
+    Task<IReadOnlyList<string>> GetUpcomingTripPlacesAsync(CancellationToken cancellationToken = default);
+
     Task<TripDetailDto> GetTripDetailAsync(int tripId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<DateSlotDto>> GetActiveDateSlotsAsync(int tripId, CancellationToken cancellationToken = default);

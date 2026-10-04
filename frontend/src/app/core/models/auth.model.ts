@@ -55,4 +55,10 @@ export interface ContactInfo {
   email: string;
   photoUrl: string | null;
   instagramUrl: string | null;
+  /** Office address (Company:Address), shown in the footer. */
+  officeAddress: string | null;
+  /** Directions link for the office. */
+  officeMapUrl: string | null;
+  /** Admin-uploaded office photo. */
+  officePhotoUrl: string | null;
 }

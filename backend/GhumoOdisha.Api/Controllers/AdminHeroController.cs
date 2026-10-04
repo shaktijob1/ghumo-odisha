@@ -29,6 +29,6 @@ public class AdminHeroController(ISiteHeroPhotoService heroPhotoService) : Contr
 
         var image = new UploadedImage(file.OpenReadStream(), file.FileName, file.ContentType, file.Length);
         await heroPhotoService.SetPhotoAsync(page, image, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(new { }, page == SiteHeroPage.Trips ? "Trips page hero photo updated." : "Dashboard hero photo updated."));
+        return Ok(ApiResponse<object>.Ok(new { }, page switch { SiteHeroPage.Office => "Office photo updated.", SiteHeroPage.Trips => "Trips page hero photo updated.", _ => "Dashboard hero photo updated." }));
     }
 }

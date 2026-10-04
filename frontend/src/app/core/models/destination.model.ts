@@ -1,3 +1,5 @@
+import { FaqItem } from './trip.model';
+
 export interface DestinationSummary {
   destinationId: number;
   name: string;
@@ -23,6 +25,8 @@ export interface DestinationDetail {
   idealDuration: string | null;
   knownFor: string | null;
   tripCount: number;
+  /** Built by the API from this destination's season, distance, duration and highlights. */
+  faqs: FaqItem[];
 }
 
 export interface AdminDestinationListItem {

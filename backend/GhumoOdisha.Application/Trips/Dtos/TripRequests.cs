@@ -18,7 +18,8 @@ public record CreateTripRequest(
     bool IncludesBonfire = false,
     bool IncludesMusicalNight = false,
     bool IncludesSwimmingPool = false,
-    bool AllowCoupons = true);
+    bool AllowCoupons = true,
+    IReadOnlyList<string>? PlacesCovered = null);
 
 public record UpdateTripRequest(
     string Title,
@@ -37,4 +38,5 @@ public record UpdateTripRequest(
     bool IncludesBonfire = false,
     bool IncludesMusicalNight = false,
     bool IncludesSwimmingPool = false,
-    bool AllowCoupons = true);
+    bool AllowCoupons = true,
+    IReadOnlyList<string>? PlacesCovered = null);

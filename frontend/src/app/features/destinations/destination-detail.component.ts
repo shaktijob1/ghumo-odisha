@@ -3,13 +3,14 @@ import { Component, ElementRef, HostListener, OnInit, computed, effect, inject, 
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicDestinationService } from '../../core/services/public-destination.service';
-import { SeoService } from '../../core/services/seo.service';
 import { DestinationDetail } from '../../core/models/destination.model';
 import { TripSummary } from '../../core/models/trip.model';
 import { TripCardComponent } from '../../shared/components/trip-card.component';
 import { StatePanelComponent } from '../../shared/components/state-panel.component';
 import { DatePickerComponent } from '../../shared/components/date-picker.component';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
+import { BreadcrumbsComponent } from '../../shared/components/breadcrumbs.component';
+import { FaqListComponent } from '../../shared/components/faq-list.component';
 import { scrollRowBy } from '../../shared/utils/scroll-row';
 
 type LoadState = 'loading' | 'ready' | 'error' | 'not-found';
@@ -18,14 +19,21 @@ type TripsState = 'loading' | 'ready' | 'error';
 @Component({
   selector: 'app-destination-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TripCardComponent, StatePanelComponent, DatePickerComponent, ImageUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, TripCardComponent, StatePanelComponent, DatePickerComponent, ImageUrlPipe, BreadcrumbsComponent, FaqListComponent],
   templateUrl: './destination-detail.component.html',
+  styles: `
+    #dest-faq.sect { padding: 0 0 34px; }
+    #dest-faq .trend-panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 10px 30px rgba(15,20,22,.06); padding: 22px 30px 26px; }
+    #dest-faq .sechead { margin-bottom: 12px; }
+    .dfaq-more { margin: 14px 0 0; font-size: 13.5px; font-weight: 600; }
+    .dfaq-more a { color: var(--accent); }
+    @media (max-width: 640px) { #dest-faq .trend-panel { padding: 16px 14px; } }
+  `,
 })
 export class DestinationDetailComponent implements OnInit {
   readonly todayIso = new Date().toISOString().slice(0, 10);
   private readonly route = inject(ActivatedRoute);
   private readonly destinationService = inject(PublicDestinationService);
-  private readonly seo = inject(SeoService);
 
   readonly state = signal<LoadState>('loading');
   readonly destination = signal<DestinationDetail | null>(null);
@@ -102,15 +110,6 @@ export class DestinationDetailComponent implements OnInit {
     this.destinationService.getDestination(this.slug).subscribe({
       next: (d) => {
         this.destination.set(d);
-        // Same title/description the API writes into the first page load (SeoPageRenderer.DestinationPage).
-        const about = (d.aboutText ?? d.tagline ?? d.knownFor ?? '').replace(/\s+/g, ' ').trim();
-        const summary = `Explore ${d.name}, Odisha with Ghumo Odisha group trips and tour packages. ${about}`.trim();
-        this.seo.setPage({
-          title: `${d.name} Tour Packages & Trips | Ghumo Odisha`,
-          description: summary.length > 160 ? summary.slice(0, summary.lastIndexOf(' ', 159)) + '…' : summary,
-          path: `/destinations/${d.slug}`,
-          image: d.heroImageUrl,
-        });
         this.state.set('ready');
         this.loadTrips();
       },

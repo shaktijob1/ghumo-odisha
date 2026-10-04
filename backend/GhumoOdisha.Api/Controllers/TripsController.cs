@@ -35,6 +35,14 @@ public class TripsController(ITripService tripService) : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<string>>.Ok(result));
     }
 
+    /// <summary>Places covered by upcoming trips ("Jirang Monastery") — extra home search suggestions, searched as text.</summary>
+    [HttpGet("places")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<string>>>> GetUpcomingTripPlaces(CancellationToken cancellationToken)
+    {
+        var result = await tripService.GetUpcomingTripPlacesAsync(cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<string>>.Ok(result));
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<TripDetailDto>>> GetTripDetail(int id, CancellationToken cancellationToken)
     {

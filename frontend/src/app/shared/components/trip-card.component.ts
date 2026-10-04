@@ -13,7 +13,7 @@ import { tripPath } from '../utils/trip-path';
     <a class="tcard" [class.dash]="showNextDeparture" [routerLink]="link">
       <div class="shot" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
         @if (photoUrls.length > 0 && !imgFailed()) {
-          <img [src]="photoUrls[activeIndex()] | imageUrl" alt="{{ trip.title }}" (error)="imgFailed.set(true)" />
+          <img [src]="photoUrls[activeIndex()] | imageUrl" alt="{{ trip.title }}" loading="lazy" decoding="async" (error)="imgFailed.set(true)" />
         } @else {
           <div class="noshot">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -42,6 +42,10 @@ import { tripPath } from '../utils/trip-path';
           </div>
         }
 
+        @if (soldOut) {
+          <span class="bookedribbon">Fully booked</span>
+        }
+
         <div class="heroinfo mobiletab-only">
           <h3>{{ trip.title }}</h3>
         </div>
@@ -56,7 +60,7 @@ import { tripPath } from '../utils/trip-path';
                 @let isDup = copy === 1 || $index >= trip.upcomingSlots.length;
                 <span class="datepill" [class]="'tone' + ($index % 5)" [class.dup]="isDup" [attr.aria-hidden]="isDup ? 'true' : null">
                   <b>{{ s.startDate | date:'d MMM' | uppercase }}</b>
-                  <small>{{ s.availableSeats === 0 ? 'Seats filled' : s.availableSeats + (s.availableSeats === 1 ? ' seat' : ' seats') }}</small>
+                  <small>{{ s.availableSeats === 0 ? 'Booked' : s.availableSeats + (s.availableSeats === 1 ? ' seat' : ' seats') }}</small>
                 </span>
               }
             }
@@ -115,10 +119,14 @@ import { tripPath } from '../utils/trip-path';
                    spell out the month and add the weekday (data-count drives that in styles.css). -->
               <div class="depchips-row" [attr.data-count]="departureChips.length">
                 @for (s of departureChips; track s.startDate) {
-                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Seats filled' : null">
+                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Booked' : null" [attr.aria-label]="s.availableSeats === 0 ? 'Booked' : null">
                     <span class="dchip-mon"><span class="m-short">{{ s.startDate | date:'MMM' | uppercase }}</span><span class="m-long">{{ s.startDate | date:'MMMM' | uppercase }}</span></span>
                     <span class="dchip-day">{{ s.startDate | date:'d' }}</span>
                     <span class="dchip-wd">{{ s.startDate | date:'EEEE' }}</span>
+                    @if (s.availableSeats === 0) {
+                      <!-- Booked date: a rubber stamp drops onto the chip. -->
+                      <span class="dchip-stamp" aria-hidden="true">Booked</span>
+                    }
                     @if (s.availableSeats > 0) {
                       <!-- Seats left on this date: a blinking red tag on the box's top-right corner. -->
                       <span class="dchip-seats">
@@ -172,10 +180,33 @@ import { tripPath } from '../utils/trip-path';
 
         <div class="pricerow">
           <div class="price"><b>₹{{ trip.amountPerPerson | number:'1.0-0' }}</b><small>/ person</small></div>
-          <span class="btn sm">Book Now</span>
+          @if (soldOut) {
+            <span class="btn sm soldout" aria-disabled="true">Sold out</span>
+          } @else {
+            <span class="btn sm">Book Now</span>
+          }
         </div>
       </div>
     </a>
+  `,
+  styles: `
+    /* ============ Trip card: booked dates ============
+       A booked date gets a red rubber stamp that drops onto its chip; when every date on the card is
+       booked, a ribbon on the photo and a panel offering the next open dates (naming a searched month). */
+    .dchip-stamp { position: absolute; left: 50%; top: calc(100% - 11px); z-index: 2; padding: 3px 7px; border: 2px solid var(--danger); border-radius: 6px; background: rgba(255,255,255,.88); color: var(--danger); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; line-height: 1.2; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%) rotate(-14deg); box-shadow: 0 0 0 2px rgba(192,72,58,.12); animation: dchip-stamp-in .55s cubic-bezier(.2,.9,.3,1.25) both; }
+    /* The stamp sits across the chip's bottom edge (no extra height), so the date above stays readable;
+       four chips to a row are narrow, so their stamp is smaller. */
+    .depchips-row[data-count="4"] .dchip-stamp { padding: 2px 4px; border-width: 1.5px; font-size: 9px; letter-spacing: .05em; }
+    .dchip:nth-child(2) .dchip-stamp { animation-delay: .12s; }
+    .dchip:nth-child(3) .dchip-stamp { animation-delay: .24s; }
+    .dchip:nth-child(4) .dchip-stamp { animation-delay: .36s; }
+    @keyframes dchip-stamp-in {
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(2.4); }
+      60% { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(.92); }
+      100% { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
+    }
+    .tcard .bookedribbon { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 5px 12px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 4px 12px rgba(192,72,58,.35); }
+    @media (prefers-reduced-motion: reduce) { .dchip-stamp { animation: none; } }
   `,
 })
 export class TripCardComponent implements OnInit, OnDestroy {
@@ -225,9 +256,25 @@ export class TripCardComponent implements OnInit, OnDestroy {
     return this.rollingCache;
   }
 
-  /** Up to four upcoming departures (the API already limits them to a searched month, if any). */
+  /** Every date on the card is booked (sold out or closed online). */
+  get allBooked(): boolean {
+    const slots = this.trip.upcomingSlots ?? [];
+    return slots.length > 0 && slots.every((s) => s.availableSeats === 0);
+  }
+
+  /** Every date on the card is booked and no later date is open either — the card can't be booked. */
+  get soldOut(): boolean {
+    return this.allBooked && (this.trip.nextOpenSlots ?? []).length === 0;
+  }
+
+  /**
+   * Up to four departures (the API already limits them to a searched month, if any). When all of
+   * them are booked, the next open dates (up to two) take the last places beside them.
+   */
   get departureChips(): UpcomingSlot[] {
-    return (this.trip.upcomingSlots ?? []).slice(0, 4);
+    const slots = this.trip.upcomingSlots ?? [];
+    const open = this.allBooked ? (this.trip.nextOpenSlots ?? []).slice(0, 2) : [];
+    return [...slots.slice(0, 4 - open.length), ...open];
   }
 
   // No per-trip advance-booking amount exists on TripSummary yet; this mirrors

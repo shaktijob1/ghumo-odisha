@@ -11,7 +11,7 @@ public class SeoOptions
 
     public string SiteUrl { get; set; } = "https://ghumoodisha.com";
     public string SiteName { get; set; } = "Ghumo Odisha";
-    public string DefaultTitle { get; set; } = "Ghumo Odisha | Odisha Trips, Tours & Travel Packages";
+    public string DefaultTitle { get; set; } = "Ghumo Odisha | Odisha Group Trips & Travel Packages";
     public string DefaultDescription { get; set; } = string.Empty;
 
     /// <summary>Preview image used when a page has none of its own (site path like "/uploads/hero/x.jpg" or a full URL).</summary>

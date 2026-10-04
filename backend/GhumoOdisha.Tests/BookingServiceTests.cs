@@ -242,51 +242,28 @@ public class BookingServiceTests
         new(trip.TripId, slot.TripDateSlotId, gents + ladies, null, AgreedToTerms: true, MaleCount: gents, FemaleCount: ladies);
 
     [Fact]
-    public async Task GentsAndLadies_EachCappedAtHalfTheSeats_AndStoredOnTheBooking()
+    public async Task NoGenderCap_GentsOrLadiesCanTakeEverySeat_AndTheSplitIsStored()
     {
         await using var db = TestDb.CreateContext();
-        var (trip, slot, customerA) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 5);   // 3 gents, 3 ladies max
+        var (trip, slot, customerA) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 5);
         var service = CreateService(db);
 
-        var a = await service.RequestBookingAsync(customerA.CustomerId, GenderRequest(trip, slot, gents: 3, ladies: 0));
+        // An all-gents group can take 4 of 5 seats — no half-the-seats limit.
+        var a = await service.RequestBookingAsync(customerA.CustomerId, GenderRequest(trip, slot, gents: 4, ladies: 0));
         await service.ConfirmBookingAsync(a.Booking.BookingId, new ConfirmBookingRequest(0m));
         db.ChangeTracker.Clear();
         var stored = await db.Bookings.SingleAsync(b => b.BookingId == a.Booking.BookingId);
-        Assert.Equal(3, stored.MaleCount);
+        Assert.Equal(4, stored.MaleCount);
         Assert.Equal(0, stored.FemaleCount);
 
-        // Gents are full; ladies still have their half.
+        // The last seat goes to whoever books it.
         var customerB = await AnotherCustomerAsync(db);
-        var full = await Assert.ThrowsAsync<ConflictException>(
-            () => service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 1)));
-        Assert.Contains("Gents' places are full", full.Message);
-
-        var b = await service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 0, ladies: 2));
+        var b = await service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
         await service.ConfirmBookingAsync(b.Booking.BookingId, new ConfirmBookingRequest(0m));
 
-        var counts = await SlotGenderRules.BookedAsync(db, [slot.TripDateSlotId]);
-        Assert.Equal(new SlotGenderCount(3, 2), counts[slot.TripDateSlotId]);
-    }
-
-    [Fact]
-    public async Task GenderCap_IsCheckedAgainAtConfirm_SoTwoRequestsCantBothTakeTheLastGentsPlace()
-    {
-        await using var db = TestDb.CreateContext();
-        var (trip, slot, customerA) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 4);   // 2 gents max
-        var customerB = await AnotherCustomerAsync(db);
-        var service = CreateService(db);
-
-        // Both requests pass the early check (nobody has paid yet)…
-        var a = await service.RequestBookingAsync(customerA.CustomerId, GenderRequest(trip, slot, gents: 2, ladies: 0));
-        var b = await service.RequestBookingAsync(customerB.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
-
-        // …but only the first to pay gets the gents' places.
-        await service.ConfirmBookingAsync(a.Booking.BookingId, new ConfirmBookingRequest(0m));
-        await Assert.ThrowsAsync<ConflictException>(() => service.ConfirmBookingAsync(b.Booking.BookingId, new ConfirmBookingRequest(0m)));
-
         db.ChangeTracker.Clear();
-        Assert.Equal(BookingStatus.AwaitingPayment, (await db.Bookings.SingleAsync(x => x.BookingId == b.Booking.BookingId)).BookingStatus);
-        Assert.Equal(2, (await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId)).AvailableSeats);
+        Assert.Equal(0, (await db.TripDateSlots.SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId)).AvailableSeats);
+        Assert.Equal(new SlotGenderCount(5, 0), (await SlotGenderRules.BookedAsync(db, [slot.TripDateSlotId]))[slot.TripDateSlotId]);
     }
 
     [Fact]
@@ -327,8 +304,6 @@ public class BookingServiceTests
 
         await Assert.ThrowsAsync<ValidationAppException>(() => service.RequestBookingAsync(customer.CustomerId,
             new CreateBookingRequest(trip.TripId, slot.TripDateSlotId, 3, null, AgreedToTerms: true, MaleCount: 1, FemaleCount: 1)));
-        Assert.Equal(5, SlotGenderRules.CapPerSide(10));
-        Assert.Equal(8, SlotGenderRules.CapPerSide(15));
     }
 
     [Fact]

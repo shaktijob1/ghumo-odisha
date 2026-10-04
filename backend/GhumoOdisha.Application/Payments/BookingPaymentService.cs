@@ -29,8 +29,8 @@ public class BookingPaymentService(
 {
     // Business rule, not a secret: reserve a seat for ₹99/seat now (balance collected later, same as
     // an offline advance), or skip the balance entirely by paying ₹199/seat less up front.
-    private const decimal PerSeatAdvanceAmount = 99m;
-    private const decimal FullPaymentDiscountPerSeat = 199m;
+    public const decimal PerSeatAdvanceAmount = 99m;
+    public const decimal FullPaymentDiscountPerSeat = 199m;
 
     private const string DevOrderPrefix = "dev_order_";
 
@@ -80,10 +80,6 @@ public class BookingPaymentService(
             var slot = await db.TripDateSlots.AsNoTracking().FirstOrDefaultAsync(s => s.TripDateSlotId == booking.TripDateSlotId, cancellationToken)
                 ?? throw new NotFoundException("Date slot not found.");
             SlotBookingRules.EnsureBookable(slot, booking.NumberOfSeats);
-            if (booking.MaleCount is not null || booking.FemaleCount is not null)
-            {
-                await SlotGenderRules.EnsureWithinAsync(db, slot, booking.MaleCount ?? 0, booking.FemaleCount ?? 0, booking.BookingId, cancellationToken);
-            }
 
             // A coupon's amount is per seat: ₹200 off × 4 seats = ₹800 off the booking. Seats come from
             // the booking row, never from the client.

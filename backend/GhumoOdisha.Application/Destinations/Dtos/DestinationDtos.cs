@@ -1,3 +1,5 @@
+using GhumoOdisha.Application.Seo;
+
 namespace GhumoOdisha.Application.Destinations.Dtos;
 
 public record DestinationSummaryDto(
@@ -22,7 +24,8 @@ public record DestinationDetailDto(
     string? DistanceFromBhubaneswar,
     string? IdealDuration,
     string? KnownFor,
-    int TripCount);
+    int TripCount,
+    IReadOnlyList<FaqItem> Faqs);
 
 public record AdminDestinationListItemDto(
     int DestinationId,

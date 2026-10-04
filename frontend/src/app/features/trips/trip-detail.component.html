@@ -5,28 +5,119 @@
   @case ('error') {
     <app-state-panel kind="error" message="Could not load this trip."></app-state-panel>
   }
+  @case ('not-found') {
+    <div class="container" style="padding:56px 20px;text-align:center">
+      <h1 style="font-size:28px;margin-bottom:10px">This trip isn't available</h1>
+      <p class="mut" style="margin-bottom:18px">It may have ended or been removed. Have a look at our other trips.</p>
+      <a class="btn" routerLink="/" fragment="upcoming-trips">See all trips</a>
+    </div>
+  }
   @case ('ready') {
     @let t = trip()!;
 
+    <!-- Next-departure status shown in the hero, under the title: next bookable date + the 2-day
+         online cutoff (seat counts stay hidden on purpose). Spans only — it sits inside a button. -->
+    <ng-template #departureStatus>
+      @if (nextOpenSlot(); as ns) {
+        <span class="tdstatus" role="note">
+          <span class="tdstatus-ic" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+          </span>
+          <span class="tdstatus-txt">
+            <b>Next departure · {{ ns.startDate | date:'EEE, d MMM' }}</b>
+            <small>Online booking closes 2 days before departure</small>
+          </span>
+        </span>
+      } @else if (upcomingSlots().length > 0) {
+        <span class="tdstatus wait" role="note">
+          <span class="tdstatus-ic" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          </span>
+          <span class="tdstatus-txt">
+            <b>Current dates are full</b>
+            <small>Message us on WhatsApp to hear when new dates open</small>
+          </span>
+        </span>
+      }
+    </ng-template>
+
     <div class="container">
-      <!-- Desktop: photo gallery — big first photo with the trip name, up to four more beside it.
-           Phones keep the single rotating hero below. -->
+      <app-breadcrumbs [items]="crumbs()"></app-breadcrumbs>
+      <!-- Desktop: photo gallery — big first photo with the trip name, more photos beside it and,
+           when there are upcoming dates, a rolling list of departures with seats left in the right
+           column. Phones keep the single rotating hero below. -->
       @if (t.photos.length > 0) {
-        @let shown = t.photos.slice(0, 5);
-        <section class="tdgallery" [attr.data-count]="shown.length">
+        @let deps = upcomingSlots();
+        @let shown = t.photos.slice(0, deps.length > 0 ? 3 : 5);
+        <section class="tdgallery" [class.has-deps]="deps.length > 0" [attr.data-count]="shown.length">
           @for (p of shown; track p.tripPhotoId; let i = $index; let last = $last) {
             <button type="button" class="tdg-item" [class.tdg-main]="i === 0" (click)="openPhotos(t.title, tripPhotoUrls(t), i)" [attr.aria-label]="'View trip photo ' + (i + 1)">
-              <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' photo ' + (i + 1)" />
-              @if (i === 0) {
-                <span class="tdg-title">
-                  <h1>{{ t.title }}</h1>
-                  <span>From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</span>
-                </span>
-              }
+              <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' photo ' + (i + 1)" [attr.fetchpriority]="i === 0 ? 'high' : null" [attr.loading]="i === 0 ? null : 'lazy'" decoding="async" />
               @if (last && t.photos.length > shown.length) {
                 <span class="tdg-more">+{{ t.photos.length - shown.length }} photos</span>
               }
             </button>
+          }
+          <!-- Trip name over the big first photo. Outside the photo button (a heading can't sit inside a
+               button) and click-through, so tapping it still opens the photos. Only one <h1> is ever
+               in the page: this one on wider screens, the hero's below on phones. -->
+          @if (wide()) {
+            <div class="tdg-title tdg-over">
+              <h1>{{ t.title }}</h1>
+              <span class="tdg-price">From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</span>
+              <ng-container *ngTemplateOutlet="departureStatus"></ng-container>
+            </div>
+          }
+          @if (deps.length > 0) {
+            <!-- Rolls bottom-to-top in a loop: the list is rendered twice and the track slides up by
+                 half its height. Short lists that fit without scrolling stay still. -->
+            @let rolling = deps.length > 4;
+            <aside class="tdg-deps" aria-label="Upcoming departures">
+              <div class="tdg-deps-head">
+                <span class="tdg-deps-ic" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                </span>
+                <span class="tdg-deps-title">
+                  <b><span class="up-g">Upcoming </span><span class="up-o">departures</span></b>
+                  <small>{{ deps.length }} {{ deps.length === 1 ? 'date' : 'dates' }} · tap one to book</small>
+                </span>
+              </div>
+              <div class="tdg-deps-view" [class.rolling]="rolling">
+                <div class="tdg-deps-track" [style.--roll-secs]="deps.length * 3.2">
+                  @for (copy of (rolling ? [0, 1] : [0]); track copy) {
+                    @for (s of deps; track s.tripDateSlotId; let i = $index) {
+                      @let closed = s.isSoldOut || s.isBookingClosed;
+                      @let low = !closed && s.availableSeats <= 5;
+                      <button type="button" class="tdg-dep" [attr.data-tone]="i % 4" [class.out]="closed" [class.low]="low" [disabled]="closed" [attr.aria-hidden]="copy === 1 ? 'true' : null" [attr.tabindex]="copy === 1 ? -1 : null" (click)="bookFromRoll(s)">
+                        <span class="tdg-dep-cal" aria-hidden="true">
+                          <b>{{ s.startDate | date:'d' }}</b>
+                          <small>{{ s.startDate | date:'MMM' }}</small>
+                        </span>
+                        <span class="tdg-dep-body">
+                          <span class="tdg-dep-range">{{ s.startDate | date:'EEE, d MMM' }} → {{ s.endDate | date:'EEE, d MMM' }}</span>
+                          <span class="tdg-dep-seats">
+                            @if (closed) {
+                              Seats filled
+                            } @else if (low) {
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 2s1 3.5-1.5 6.5S8 13 8 15a4 4 0 0 0 8 0c0-1.2-.4-2.3-1-3.2 2.4 1 4 3.4 4 6.2a7 7 0 0 1-14 0c0-5 4-7.5 5.5-10S13.5 2 13.5 2z"></path></svg>
+                              Only {{ s.availableSeats }} {{ s.availableSeats === 1 ? 'seat' : 'seats' }} left
+                            } @else {
+                              {{ s.availableSeats }} seats left
+                            }
+                          </span>
+                          <span class="tdg-dep-bar" aria-hidden="true"><i [style.width.%]="closed || s.totalSeats <= 0 ? 100 : (s.totalSeats - s.availableSeats) * 100 / s.totalSeats"></i></span>
+                        </span>
+                        @if (!closed) {
+                          <span class="tdg-dep-go" aria-hidden="true">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"></path></svg>
+                          </span>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              </div>
+            </aside>
           }
         </section>
       }
@@ -35,8 +126,13 @@
           <img [src]="t.photos[heroIndex()].imageUrl | imageUrl" alt="{{ t.title }}" />
         }
         <div class="dhero-inner">
-          <h1>{{ t.title }}</h1>
+          @if (wide() && t.photos.length > 0) {
+            <p class="dhero-name">{{ t.title }}</p>
+          } @else {
+            <h1>{{ t.title }}</h1>
+          }
           <p>From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</p>
+          <ng-container *ngTemplateOutlet="departureStatus"></ng-container>
         </div>
       </section>
     </div>
@@ -45,70 +141,215 @@
       <div class="tlayout">
         <div>
           <!-- Left-column sections: white panels on desktop (same pattern as the home page), lighter on mobile. -->
-          <section class="tdsec">
-            <div class="tdsec-head"><h2>About <span class="up-g">this </span><span class="up-o">trip</span></h2></div>
-            <p class="tdabout">{{ t.description }}</p>
-            @if (tripFacts().length > 0) {
-              <div class="tdfacts">
-                @for (f of tripFacts(); track f.label) {
-                  <!-- The pickup tile opens the list of every pickup point; the others are plain facts. -->
-                  <div class="tdfact" [attr.data-tone]="$index % 4" [class.tdfact-btn]="f.icon === 'pin'"
-                    [attr.role]="f.icon === 'pin' ? 'button' : null" [attr.tabindex]="f.icon === 'pin' ? 0 : null"
-                    [attr.aria-label]="f.icon === 'pin' ? 'See all ' + t.pickupPoints.length + ' pickup points' : null"
-                    (click)="f.icon === 'pin' && showPickups.set(true)" (keydown.enter)="f.icon === 'pin' && showPickups.set(true)">
-                    <span class="tdfact-ic" aria-hidden="true">
-                      @switch (f.icon) {
-                        @case ('clock') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg> }
-                        @case ('calendar') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg> }
-                        @case ('pin') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
-                        @case ('tag') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg> }
-                      }
-                    </span>
-                    @if (f.icon === 'pin') {
-                      <div>
-                        <span class="tdfact-l">{{ f.label }}</span>
-                        <b>{{ t.pickupPoints[0].location }}</b>
-                        <span class="tdfact-more">{{ t.pickupPoints.length > 1 ? '+' + (t.pickupPoints.length - 1) + ' more' : 'See time' }}
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-                        </span>
-                      </div>
-                    } @else {
-                      <div><span class="tdfact-l">{{ f.label }}</span><b>{{ f.value }}</b></div>
+          <!-- Key facts right under the hero: duration, next departure, pickup, price. -->
+          @if (tripFacts().length > 0) {
+            <div class="tdfacts tdfacts-top">
+              @for (f of tripFacts(); track f.label) {
+                <!-- The pickup tile opens the list of every pickup point; the others are plain facts. -->
+                <div class="tdfact" [attr.data-tone]="$index % 4" [class.tdfact-btn]="f.icon === 'pin'"
+                  [attr.role]="f.icon === 'pin' ? 'button' : null" [attr.tabindex]="f.icon === 'pin' ? 0 : null"
+                  [attr.aria-label]="f.icon === 'pin' ? 'See all ' + t.pickupPoints.length + ' pickup points' : null"
+                  (click)="f.icon === 'pin' && showPickups.set(true)" (keydown.enter)="f.icon === 'pin' && showPickups.set(true)">
+                  <span class="tdfact-ic" aria-hidden="true">
+                    @switch (f.icon) {
+                      @case ('clock') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg> }
+                      @case ('calendar') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg> }
+                      @case ('pin') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
+                      @case ('tag') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg> }
                     }
-                  </div>
+                  </span>
+                  @if (f.icon === 'pin') {
+                    <div>
+                      <span class="tdfact-l">{{ f.label }}</span>
+                      <b>{{ t.pickupPoints[0].location }}</b>
+                      <span class="tdfact-more">{{ t.pickupPoints.length > 1 ? '+' + (t.pickupPoints.length - 1) + ' more' : 'See time' }}
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                      </span>
+                    </div>
+                  } @else {
+                    <div><span class="tdfact-l">{{ f.label }}</span><b>{{ f.value }}</b></div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (t.itineraryDays.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2><span class="up-g">Day-wise </span><span class="up-o">itinerary</span></h2><p>{{ t.itineraryDays.length }} day{{ t.itineraryDays.length === 1 ? '' : 's' }} · timings may shift slightly with weather and traffic.</p></div></div>
+              <!-- Day strip: each tab shows the day and its title; with many days it scrolls, with ‹ › and faded edges. -->
+              <div class="dayrail" [class.fade-l]="dayRailPrev()" [class.fade-r]="dayRailNext()">
+                @if (dayRailPrev()) {
+                  <button type="button" class="dayrail-nav prev" aria-label="Earlier days" (click)="scrollDays(-1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+                  </button>
+                }
+                <div class="daytabs" #dayTabsEl role="tablist" aria-label="Itinerary days" (scroll)="updateDayRail()">
+                  @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index) {
+                    <button #dayTab type="button" role="tab" class="daytab" [id]="'daytab-' + i" [attr.aria-controls]="'daypanel-' + i" [class.on]="i === selectedDayIndex()" [class.done]="i < selectedDayIndex()"
+                      [attr.aria-selected]="i === selectedDayIndex()" (click)="selectDay(i)">
+                      <span class="daytab-n">Day {{ d.dayNumber }}</span>
+                      <span class="daytab-t">{{ d.title }}</span>
+                    </button>
+                  }
+                </div>
+                @if (dayRailNext()) {
+                  <button type="button" class="dayrail-nav next" aria-label="Later days" (click)="scrollDays(1)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                  </button>
                 }
               </div>
-            }
-          </section>
 
-          @if (showPickups()) {
-            <div class="modal-backdrop" (click)="showPickups.set(false)">
-              <div class="modal pkmodal" role="dialog" aria-modal="true" aria-labelledby="pk-title" (click)="$event.stopPropagation()">
-                <div class="pkmodal-head">
-                  <span class="pkmodal-ic" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
-                  </span>
-                  <div>
-                    <h4 id="pk-title">Pickup points</h4>
-                    <p>{{ t.pickupPoints.length }} {{ t.pickupPoints.length === 1 ? 'stop' : 'stops' }} on the way — choose yours while booking.</p>
+              <!-- Every day is in the page (Google and screen readers get the whole itinerary); only the
+                   selected one is shown, like any tab set. -->
+              @for (day of t.itineraryDays; track day.itineraryDayId; let di = $index) {
+                <div class="tdday" role="tabpanel" [id]="'daypanel-' + di" [attr.aria-labelledby]="'daytab-' + di" [hidden]="di !== selectedDayIndex()">
+                  <div class="tdday-head">
+                    <span class="tdday-n">Day {{ day.dayNumber }}</span>
+                    <h3 class="tdday-title">{{ day.title }}</h3>
+                    @if (t.itineraryDays.length > 1) {
+                      <span class="tdday-of">{{ di + 1 }} of {{ t.itineraryDays.length }}</span>
+                    }
                   </div>
-                  <button type="button" class="pkmodal-x" aria-label="Close" (click)="showPickups.set(false)">×</button>
-                </div>
-                <ol class="pklist">
-                  @for (p of t.pickupPoints; track p.pickupPointId; let i = $index; let last = $last) {
-                    <li [class.last]="last">
-                      <span class="pklist-n">{{ i + 1 }}</span>
-                      <div class="pklist-body">
-                        <b>{{ p.location }}</b>
-                        <a class="pklist-map" target="_blank" rel="noopener" [href]="'https://www.google.com/maps/search/?api=1&query=' + encode(p.location + ', Odisha')">View on map ↗</a>
-                      </div>
-                      <time class="pklist-time">{{ p.time }}</time>
-                    </li>
+                  @if (t.itineraryDays.length > 1) {
+                    <div class="tdday-progress" aria-hidden="true">
+                      <span [style.width.%]="((di + 1) / t.itineraryDays.length) * 100"></span>
+                    </div>
                   }
-                </ol>
-                <p class="pkmodal-note">Please reach your pickup point 10 minutes early. Times may shift slightly with traffic.</p>
+                  @if (day.description) {
+                    <p class="tdday-desc">{{ day.description }}</p>
+                  }
+                  @if (day.points.length > 0) {
+                    <ol class="tdtl" aria-label="Day {{ day.dayNumber }} schedule">
+                      @for (p of day.points; track p.itineraryPointId; let pi = $index) {
+                        @let tm = splitTime(p.time);
+                        @let kind = activityKind(p.description);
+                        <li>
+                          <time class="tdtl-time"><b>{{ tm.main }}</b>@if (tm.suffix) {<small>{{ tm.suffix }}</small>}</time>
+                          <div class="tdtl-card" [attr.data-tone]="pi % 6">
+                            <span class="tdtl-ic" [attr.data-kind]="kind" aria-hidden="true">
+                              @switch (kind) {
+                              @case ('travel') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M3 11h18M7 17v2M17 17v2"></path><circle cx="7.5" cy="14" r=".6"></circle><circle cx="16.5" cy="14" r=".6"></circle></svg> }
+                              @case ('fun') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M4.2 6.2l2.1 2.1M17.7 15.7l2.1 2.1M3 12h3M18 12h3M4.2 17.8l2.1-2.1M17.7 8.3l2.1-2.1"></path><circle cx="12" cy="12" r="3"></circle></svg> }
+                              @case ('food') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"></path></svg> }
+                              @case ('temple') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21V10l7-6 7 6v11M9 21v-5h6v5M12 4V2"></path></svg> }
+                              @case ('water') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M12 3l5 9H7l5-9z"></path></svg> }
+                              @case ('stay') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V8M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"></path><circle cx="7" cy="11" r="2"></circle></svg> }
+                              @case ('spot') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
+                              }
+                            </span>
+                            <span class="tdtl-text">{{ p.description }}</span>
+                          </div>
+                        </li>
+                      }
+                    </ol>
+                  }
+
+                  <!-- Step through the days without scrolling back up to the tabs. -->
+                  @if (t.itineraryDays.length > 1) {
+                    @let prevDay = t.itineraryDays[di - 1];
+                    @let nextDay = t.itineraryDays[di + 1];
+                    <nav class="tdday-nav" aria-label="Previous and next day">
+                      @if (prevDay) {
+                        <button type="button" class="tdday-step prev" (click)="stepDay(-1)">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+                          <span><small>Day {{ prevDay.dayNumber }}</small><b>{{ prevDay.title }}</b></span>
+                        </button>
+                      } @else { <span></span> }
+                      @if (nextDay) {
+                        <button type="button" class="tdday-step next" (click)="stepDay(1)">
+                          <span><small>Next · Day {{ nextDay.dayNumber }}</small><b>{{ nextDay.title }}</b></span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+                        </button>
+                      }
+                    </nav>
+                  }
+                </div>
+              }
+            </section>
+          }
+
+          @if (t.roomPhotos.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>Where <span class="up-g">you'll </span><span class="up-o">stay</span></h2><p>Tap a photo to view it larger.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous stay photos" [disabled]="!rowNav().stay.prev" (click)="scrollRow('stay', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next stay photos" [disabled]="!rowNav().stay.next" (click)="scrollRow('stay', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
               </div>
-            </div>
+              <div class="hlscroll" #stayScroll (scroll)="updateRow('stay')">
+                @for (p of t.roomPhotos; track p.roomPhotoId; let i = $index) {
+                  <button type="button" class="hlcard galcard" (click)="openPhotos('Where you\'ll stay', roomUrls(t), i)" [attr.aria-label]="'View stay photo ' + (i + 1)">
+                    <div class="shot">
+                      <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' – stay photo ' + (i + 1)" loading="lazy" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
+                    </div>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (t.vehiclePhotos.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>How <span class="up-g">you'll </span><span class="up-o">travel</span></h2><p>Tap a photo to view it larger.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous vehicle photos" [disabled]="!rowNav().travel.prev" (click)="scrollRow('travel', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next vehicle photos" [disabled]="!rowNav().travel.next" (click)="scrollRow('travel', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
+              </div>
+              <div class="hlscroll" #travelScroll (scroll)="updateRow('travel')">
+                @for (p of t.vehiclePhotos; track p.vehiclePhotoId; let i = $index) {
+                  <button type="button" class="hlcard galcard" (click)="openPhotos('How you\'ll travel', vehicleUrls(t), i)" [attr.aria-label]="'View vehicle photo ' + (i + 1)">
+                    <div class="shot">
+                      <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' – travel vehicle photo ' + (i + 1)" loading="lazy" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
+                    </div>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          @if (t.highlights.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head">
+                <div><h2>What <span class="up-g">you'll </span><span class="up-o">see</span></h2><p>Tap a place to read more about it.</p></div>
+                <div class="trend-arrows">
+                  <button type="button" aria-label="Previous places" [disabled]="!rowNav().hl.prev" (click)="scrollRow('hl', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next places" [disabled]="!rowNav().hl.next" (click)="scrollRow('hl', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                </div>
+              </div>
+              <div class="hlscroll" #hlScroll (scroll)="updateRow('hl')">
+                @for (h of t.highlights; track h.tripHighlightId) {
+                  <button type="button" class="hlcard" (click)="openHighlight(h)" [attr.aria-label]="'Read about ' + h.placeName">
+                    <div class="shot">
+                      <img [src]="h.photoUrl | imageUrl" alt="{{ h.placeName }}" />
+                      <b class="place">{{ h.placeName }}</b>
+                    </div>
+                    <div class="body">
+                      <p>{{ h.description }}</p>
+                      <span class="more">Read more</span>
+                    </div>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- Every place the trip visits (admin "Places covered") — also what the site search matches. -->
+          @if (t.placesCovered.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2><span class="up-g">Places </span><span class="up-o">covered</span></h2><p>{{ t.placesCovered.length }} {{ t.placesCovered.length === 1 ? 'place' : 'places' }} on this trip.</p></div></div>
+              <ul class="tdplaces">
+                @for (p of t.placesCovered; track p) {
+                  <li>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                    {{ p }}
+                  </li>
+                }
+              </ul>
+            </section>
           }
 
           @if (includedItems().length > 0) {
@@ -217,165 +458,97 @@
             </section>
           }
 
-          @if (t.highlights.length > 0) {
+          <section class="tdsec tdabout-sec">
+            <div class="tdsec-head"><h2>About <span class="up-g">this </span><span class="up-o">trip</span></h2></div>
+            <p class="tdabout">{{ t.description }}</p>
+            <!-- Safety tags: bigger groups travel with both a lady and a gents coordinator. -->
+            <ul class="tdsafe" aria-label="Safety on this trip">
+              <li class="tdsafe-tag" data-tone="0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                Lady coordinator
+              </li>
+              <li class="tdsafe-tag" data-tone="1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                Gents coordinator
+              </li>
+            </ul>
+            <p class="tdsafe-note">Bigger groups always travel with both a lady coordinator and a gents coordinator.</p>
+          </section>
+
+          @if (t.destinations.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2><span class="up-g">Destinations </span><span class="up-o">on this trip</span></h2><p>Best time to visit, distance from Bhubaneswar and every trip there.</p></div></div>
+              <ul class="tddest">
+                @for (d of t.destinations; track d.slug) {
+                  <li><a [routerLink]="['/destinations', d.slug]">{{ d.name }}<span aria-hidden="true">→</span></a></li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (t.faqs.length > 0) {
+            <section class="tdsec">
+              <div class="tdsec-head"><div><h2><span class="up-g">Good </span><span class="up-o">to know</span></h2><p>Booking, pickup, cancellation and what to carry. Full details in the <a routerLink="/terms">Terms &amp; Conditions</a>.</p></div></div>
+              <app-faq-list [faqs]="t.faqs"></app-faq-list>
+            </section>
+          }
+
+          <!-- Other trips as a small sideways-scrolling row (same pattern as "What you'll see"). -->
+          @if (relatedTrips().length > 0) {
             <section class="tdsec">
               <div class="tdsec-head">
-                <div><h2>What <span class="up-g">you'll </span><span class="up-o">see</span></h2><p>Tap a place to read more about it.</p></div>
+                <div><h2><span class="up-g">More trips </span><span class="up-o">you may like</span></h2><p><a class="tdrelated-all" routerLink="/" fragment="upcoming-trips">See all trips →</a></p></div>
                 <div class="trend-arrows">
-                  <button type="button" aria-label="Previous places" [disabled]="!rowNav().hl.prev" (click)="scrollRow('hl', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
-                  <button type="button" aria-label="Next places" [disabled]="!rowNav().hl.next" (click)="scrollRow('hl', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+                  <button type="button" aria-label="Previous trips" [disabled]="!rowNav().more.prev" (click)="scrollRow('more', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
+                  <button type="button" aria-label="Next trips" [disabled]="!rowNav().more.next" (click)="scrollRow('more', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
                 </div>
               </div>
-              <div class="hlscroll" #hlScroll (scroll)="updateRow('hl')">
-                @for (h of t.highlights; track h.tripHighlightId) {
-                  <button type="button" class="hlcard" (click)="openHighlight(h)" [attr.aria-label]="'Read about ' + h.placeName">
+              <div class="hlscroll" #moreScroll (scroll)="updateRow('more')">
+                @for (r of relatedTrips(); track r.tripId) {
+                  <a class="hlcard morecard" [routerLink]="tripPath(r.tripId, r.title)">
                     <div class="shot">
-                      <img [src]="h.photoUrl | imageUrl" alt="{{ h.placeName }}" />
-                      <b class="place">{{ h.placeName }}</b>
+                      @if (r.coverImageUrl || r.photos[0]) {
+                        <img [src]="(r.coverImageUrl || r.photos[0].imageUrl) | imageUrl" [alt]="r.title" loading="lazy" decoding="async" />
+                      }
+                      <b class="place">{{ r.title }}</b>
                     </div>
                     <div class="body">
-                      <p>{{ h.description }}</p>
-                      <span class="more">Read more</span>
+                      <span class="morecard-price">From ₹{{ r.amountPerPerson | number:'1.0-0' }}</span>
+                      @if (r.durationLabel) { <span class="morecard-dur">{{ r.durationLabel }}</span> }
                     </div>
-                  </button>
+                  </a>
                 }
               </div>
             </section>
           }
 
-          @if (t.itineraryDays.length > 0) {
-            <section class="tdsec">
-              <div class="tdsec-head"><div><h2><span class="up-g">Day-wise </span><span class="up-o">itinerary</span></h2><p>{{ t.itineraryDays.length }} day{{ t.itineraryDays.length === 1 ? '' : 's' }} · timings may shift slightly with weather and traffic.</p></div></div>
-              <!-- Day strip: each tab shows the day and its title; with many days it scrolls, with ‹ › and faded edges. -->
-              <div class="dayrail" [class.fade-l]="dayRailPrev()" [class.fade-r]="dayRailNext()">
-                @if (dayRailPrev()) {
-                  <button type="button" class="dayrail-nav prev" aria-label="Earlier days" (click)="scrollDays(-1)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
-                  </button>
-                }
-                <div class="daytabs" #dayTabsEl role="tablist" aria-label="Itinerary days" (scroll)="updateDayRail()">
-                  @for (d of t.itineraryDays; track d.itineraryDayId; let i = $index) {
-                    <button #dayTab type="button" role="tab" class="daytab" [class.on]="i === selectedDayIndex()" [class.done]="i < selectedDayIndex()"
-                      [attr.aria-selected]="i === selectedDayIndex()" (click)="selectDay(i)">
-                      <span class="daytab-n">Day {{ d.dayNumber }}</span>
-                      <span class="daytab-t">{{ d.title }}</span>
-                    </button>
-                  }
-                </div>
-                @if (dayRailNext()) {
-                  <button type="button" class="dayrail-nav next" aria-label="Later days" (click)="scrollDays(1)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-                  </button>
-                }
-              </div>
-
-              @if (t.itineraryDays[selectedDayIndex()]; as day) {
-                <div class="tdday">
-                  <div class="tdday-head">
-                    <span class="tdday-n">Day {{ day.dayNumber }}</span>
-                    <b>{{ day.title }}</b>
-                    @if (t.itineraryDays.length > 1) {
-                      <span class="tdday-of">{{ selectedDayIndex() + 1 }} of {{ t.itineraryDays.length }}</span>
-                    }
+          @if (showPickups()) {
+            <div class="modal-backdrop" (click)="showPickups.set(false)">
+              <div class="modal pkmodal" role="dialog" aria-modal="true" aria-labelledby="pk-title" (click)="$event.stopPropagation()">
+                <div class="pkmodal-head">
+                  <span class="pkmodal-ic" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg>
+                  </span>
+                  <div>
+                    <h4 id="pk-title">Pickup points</h4>
+                    <p>{{ t.pickupPoints.length }} {{ t.pickupPoints.length === 1 ? 'stop' : 'stops' }} on the way — choose yours while booking.</p>
                   </div>
-                  @if (t.itineraryDays.length > 1) {
-                    <div class="tdday-progress" aria-hidden="true">
-                      <span [style.width.%]="((selectedDayIndex() + 1) / t.itineraryDays.length) * 100"></span>
-                    </div>
-                  }
-                  @if (day.description) {
-                    <p class="tdday-desc">{{ day.description }}</p>
-                  }
-                  @if (day.points.length > 0) {
-                    <ol class="tdtl" aria-label="Day {{ day.dayNumber }} schedule">
-                      @for (p of day.points; track p.itineraryPointId; let pi = $index) {
-                        @let tm = splitTime(p.time);
-                        @let kind = activityKind(p.description);
-                        <li>
-                          <time class="tdtl-time"><b>{{ tm.main }}</b>@if (tm.suffix) {<small>{{ tm.suffix }}</small>}</time>
-                          <div class="tdtl-card" [attr.data-tone]="pi % 6">
-                            <span class="tdtl-ic" [attr.data-kind]="kind" aria-hidden="true">
-                              @switch (kind) {
-                              @case ('travel') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M3 11h18M7 17v2M17 17v2"></path><circle cx="7.5" cy="14" r=".6"></circle><circle cx="16.5" cy="14" r=".6"></circle></svg> }
-                              @case ('fun') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M4.2 6.2l2.1 2.1M17.7 15.7l2.1 2.1M3 12h3M18 12h3M4.2 17.8l2.1-2.1M17.7 8.3l2.1-2.1"></path><circle cx="12" cy="12" r="3"></circle></svg> }
-                              @case ('food') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v7a3 3 0 0 0 6 0V3M7 3v18M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"></path></svg> }
-                              @case ('temple') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21V10l7-6 7 6v11M9 21v-5h6v5M12 4V2"></path></svg> }
-                              @case ('water') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5M12 3l5 9H7l5-9z"></path></svg> }
-                              @case ('stay') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18V8M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"></path><circle cx="7" cy="11" r="2"></circle></svg> }
-                              @case ('spot') { <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.9-6.5-11A6.5 6.5 0 0 1 18.5 10c0 5.1-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.3"></circle></svg> }
-                              }
-                            </span>
-                            <span class="tdtl-text">{{ p.description }}</span>
-                          </div>
-                        </li>
-                      }
-                    </ol>
-                  }
-
-                  <!-- Step through the days without scrolling back up to the tabs. -->
-                  @if (t.itineraryDays.length > 1) {
-                    @let prevDay = t.itineraryDays[selectedDayIndex() - 1];
-                    @let nextDay = t.itineraryDays[selectedDayIndex() + 1];
-                    <nav class="tdday-nav" aria-label="Previous and next day">
-                      @if (prevDay) {
-                        <button type="button" class="tdday-step prev" (click)="stepDay(-1)">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
-                          <span><small>Day {{ prevDay.dayNumber }}</small><b>{{ prevDay.title }}</b></span>
-                        </button>
-                      } @else { <span></span> }
-                      @if (nextDay) {
-                        <button type="button" class="tdday-step next" (click)="stepDay(1)">
-                          <span><small>Next · Day {{ nextDay.dayNumber }}</small><b>{{ nextDay.title }}</b></span>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
-                        </button>
-                      }
-                    </nav>
-                  }
+                  <button type="button" class="pkmodal-x" aria-label="Close" (click)="showPickups.set(false)">×</button>
                 </div>
-              }
-            </section>
-          }
-
-          @if (t.roomPhotos.length > 0) {
-            <section class="tdsec">
-              <div class="tdsec-head">
-                <div><h2>Where <span class="up-g">you'll </span><span class="up-o">stay</span></h2><p>Tap a photo to view it larger.</p></div>
-                <div class="trend-arrows">
-                  <button type="button" aria-label="Previous stay photos" [disabled]="!rowNav().stay.prev" (click)="scrollRow('stay', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
-                  <button type="button" aria-label="Next stay photos" [disabled]="!rowNav().stay.next" (click)="scrollRow('stay', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
-                </div>
+                <ol class="pklist">
+                  @for (p of t.pickupPoints; track p.pickupPointId; let i = $index; let last = $last) {
+                    <li [class.last]="last">
+                      <span class="pklist-n">{{ i + 1 }}</span>
+                      <div class="pklist-body">
+                        <b>{{ p.location }}</b>
+                      </div>
+                      <time class="pklist-time">{{ p.time }}</time>
+                    </li>
+                  }
+                </ol>
+                <p class="pkmodal-note">Please reach your pickup point 10 minutes early. Times may shift slightly with traffic.</p>
               </div>
-              <div class="hlscroll" #stayScroll (scroll)="updateRow('stay')">
-                @for (p of t.roomPhotos; track p.roomPhotoId; let i = $index) {
-                  <button type="button" class="hlcard galcard" (click)="openPhotos('Where you\'ll stay', roomUrls(t), i)" [attr.aria-label]="'View stay photo ' + (i + 1)">
-                    <div class="shot">
-                      <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' – stay photo ' + (i + 1)" loading="lazy" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
-                    </div>
-                  </button>
-                }
-              </div>
-            </section>
-          }
-
-          @if (t.vehiclePhotos.length > 0) {
-            <section class="tdsec">
-              <div class="tdsec-head">
-                <div><h2>How <span class="up-g">you'll </span><span class="up-o">travel</span></h2><p>Tap a photo to view it larger.</p></div>
-                <div class="trend-arrows">
-                  <button type="button" aria-label="Previous vehicle photos" [disabled]="!rowNav().travel.prev" (click)="scrollRow('travel', -1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></button>
-                  <button type="button" aria-label="Next vehicle photos" [disabled]="!rowNav().travel.next" (click)="scrollRow('travel', 1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
-                </div>
-              </div>
-              <div class="hlscroll" #travelScroll (scroll)="updateRow('travel')">
-                @for (p of t.vehiclePhotos; track p.vehiclePhotoId; let i = $index) {
-                  <button type="button" class="hlcard galcard" (click)="openPhotos('How you\'ll travel', vehicleUrls(t), i)" [attr.aria-label]="'View vehicle photo ' + (i + 1)">
-                    <div class="shot">
-                      <img [src]="p.imageUrl | imageUrl" [alt]="t.title + ' – travel vehicle photo ' + (i + 1)" loading="lazy" /><span class="gzoom" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg></span>
-                    </div>
-                  </button>
-                }
-              </div>
-            </section>
+            </div>
           }
         </div>
 
@@ -527,7 +700,7 @@
 
                 @for (s of visibleSlots(); track s.tripDateSlotId) {
                   <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut || s.isBookingClosed" [disabled]="s.isSoldOut || s.isBookingClosed" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
-                    <!-- Who's going, not how many seats are left: gents / ladies booked so far (1:1 mix). -->
+                    <!-- Who's going, not how many seats are left: gents / ladies booked so far. -->
                     <span class="depseats" [class.bad]="s.isSoldOut || s.isBookingClosed">
                       @if (s.isSoldOut || s.isBookingClosed) {
                         Seats filled
@@ -708,7 +881,7 @@
               <button type="button" class="bklink" (click)="backToDate()">Change</button>
             </div>
 
-            <!-- Gents and ladies chosen separately: each departure keeps an equal mix (half the seats each). -->
+            <!-- Gents and ladies chosen separately (no gender cap — any open seat); seats are their total. -->
             <div class="bkgender">
               <div class="bkgender-row">
                 <span class="bkgender-ic" aria-hidden="true">
@@ -731,7 +904,7 @@
                 <app-seat-selector label="ladies" [(value)]="ladies" [min]="0" [max]="ladiesMax()"></app-seat-selector>
               </div>
               <p class="bkgender-note">
-                <b>{{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</b> · Every departure keeps an equal mix of gents and ladies.
+                <b>{{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</b>
               </p>
             </div>
 

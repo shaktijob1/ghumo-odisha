@@ -79,6 +79,28 @@
         }
       </div>
 
+      <!-- Every place the trip visits: shown on the trip page and searched, so "Jirang" finds the Mahendragiri trip. -->
+      <div class="fld">
+        <span class="lbl">Places covered</span>
+        <span class="note">Every place visitors might search for — temples, waterfalls, viewpoints, villages. Type a place and press Enter (or paste several separated by commas).</span>
+        @if (placesCovered().length > 0) {
+          <div class="row wrap places-chips">
+            @for (p of placesCovered(); track p) {
+              <span class="chip">{{ p }}
+                <button type="button" class="chipx" (click)="removePlace(p)" [attr.aria-label]="'Remove ' + p">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+              </span>
+            }
+          </div>
+        }
+        <div class="row" style="gap:8px">
+          <input class="inp" placeholder="e.g. Jirang Monastery" [(ngModel)]="newPlace" [ngModelOptions]="{standalone: true}"
+            (keydown.enter)="$event.preventDefault(); addPlaces()" (paste)="onPlacesPaste($event)" />
+          <button type="button" class="btn sm ghost" (click)="addPlaces()">+ Add</button>
+        </div>
+      </div>
+
       <button class="btn" type="submit" [disabled]="saving()">
         {{ tripId ? 'Save basic info' : 'Create trip' }}
       </button>
@@ -148,12 +170,29 @@
 
       @for (s of t.dateSlots; track s.tripDateSlotId) {
         <div class="repeat">
-          <div class="f4">
-            <div><b>{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b><div class="note">{{ s.availableSeats }} / {{ s.totalSeats }} available</div></div>
-            <div></div>
-            <div></div>
-            <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="deleteDateSlot(s.tripDateSlotId)">Remove</button>
-          </div>
+          @if (editingSlotId() === s.tripDateSlotId) {
+            <div class="f4">
+              <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [(ngModel)]="slotDraft.startDate" [ngModelOptions]="{standalone: true}" /></div>
+              <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [(ngModel)]="slotDraft.endDate" [ngModelOptions]="{standalone: true}" /></div>
+              <div class="fld" style="margin:0">
+                <span class="lbl">Total seats</span>
+                <input class="inp" type="number" [min]="bookedSeats(s) || 1" [(ngModel)]="slotDraft.totalSeats" [ngModelOptions]="{standalone: true}" />
+                @if (bookedSeats(s) > 0) { <div class="note">{{ bookedSeats(s) }} already booked — can't go lower</div> }
+              </div>
+              <div></div>
+            </div>
+            <div class="row" style="gap:8px;margin:8px 0 4px">
+              <button type="button" class="btn sm" (click)="saveDateSlot(s)">Save date</button>
+              <button type="button" class="btn sm ghost" (click)="editingSlotId.set(null)">Cancel</button>
+            </div>
+          } @else {
+            <div class="f4">
+              <div><b>{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b><div class="note">{{ s.availableSeats }} / {{ s.totalSeats }} available</div></div>
+              <div></div>
+              <button type="button" class="btn sm ghost" (click)="startEditDateSlot(s)">Edit</button>
+              <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="deleteDateSlot(s.tripDateSlotId)">Remove</button>
+            </div>
+          }
         </div>
       }
 

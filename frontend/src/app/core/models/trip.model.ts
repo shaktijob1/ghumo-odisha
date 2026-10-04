@@ -1,5 +1,16 @@
 import { TripDateSlotStatus, TripStatus } from './enums.model';
 
+/** One question and answer, shown on the page and in its FAQPage structured data. */
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface TripDestinationLink {
+  name: string;
+  slug: string;
+}
+
 export interface TripInclusions {
   breakfast: boolean;
   lunch: boolean;
@@ -73,11 +84,12 @@ export interface DateSlot {
   /** Gents / ladies already booked on this date — shown instead of seats left. */
   gentsBooked: number;
   ladiesBooked: number;
-  /** Places still open for each side under the 1:1 rule (half the seats each, rounded up). */
+  /** Places still open for gents / ladies — no gender cap, so both equal the seats still free. */
   gentsLeft: number;
   ladiesLeft: number;
   /** Online booking has closed (trip day and the 2 days before) — customers see "Seats filled". */
   isBookingClosed: boolean;
+  status: TripDateSlotStatus;
 }
 
 export interface TripSummary {
@@ -96,6 +108,8 @@ export interface TripSummary {
   destinationNames: string[];
   /** Display-only: upcoming active departures for the card's rolling dates strip. */
   upcomingSlots: UpcomingSlot[];
+  /** Bookable departures not already in upcomingSlots — offered when every date on the card is booked. */
+  nextOpenSlots?: UpcomingSlot[];
 }
 
 export interface TripDetail {
@@ -112,6 +126,16 @@ export interface TripDetail {
   pickupPoints: PickupPoint[];
   dateSlots: DateSlot[];
   itineraryPdfUrl: string | null;
+  /** Destination pages this trip covers. */
+  destinations: TripDestinationLink[];
+  /** City the trip leaves from, when its itinerary names it (e.g. Bhubaneswar). */
+  departureCity: string | null;
+  /** "4 Days / 3 Nights", from the next departure. */
+  durationLabel: string | null;
+  /** Every place the trip visits, as entered by the admin. */
+  placesCovered: string[];
+  /** "Good to know" questions built by the API from this trip and the booking rules. */
+  faqs: FaqItem[];
 }
 
 export interface AdminTripListItem {
@@ -146,6 +170,7 @@ export interface AdminTripDetail {
   destinationNames: string[];
   itineraryPdfUrl: string | null;
   allowCoupons: boolean;
+  placesCovered: string[];
 }
 
 export interface CreateTripRequest {
@@ -165,6 +190,8 @@ export interface CreateTripRequest {
   includesSwimmingPool: boolean;
   allowCoupons: boolean;
   destinationIds?: number[];
+  /** Every place the trip visits — shown on the trip page and matched by the site search. */
+  placesCovered?: string[];
 }
 
 export interface UpdateTripRequest extends CreateTripRequest {

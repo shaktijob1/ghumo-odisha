@@ -16,15 +16,11 @@
   @case ('ready') {
     @let d = destination()!;
     <div class="container">
-      <div class="crumb">
-        <a routerLink="/">Home</a>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
-        <span class="now">{{ d.name }}</span>
-      </div>
+      <app-breadcrumbs [items]="[{ label: d.name }]"></app-breadcrumbs>
 
       <section class="lhero">
         @if (d.heroImageUrl) {
-          <img [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" />
+          <img [src]="d.heroImageUrl | imageUrl" alt="{{ d.name }}" fetchpriority="high" />
         }
         <div class="lhero-inner">
           <div>
@@ -149,6 +145,15 @@
                 }
               </div>
             }
+          </div>
+        </section>
+      }
+      @if (d.faqs.length > 0) {
+        <section id="dest-faq" class="sect">
+          <div class="trend-panel">
+            <div class="sechead"><div><h2>{{ d.name }} <span class="up-o">travel FAQs</span></h2></div></div>
+            <app-faq-list [faqs]="d.faqs"></app-faq-list>
+            <p class="dfaq-more"><a routerLink="/" fragment="upcoming-trips">See all trips →</a></p>
           </div>
         </section>
       }

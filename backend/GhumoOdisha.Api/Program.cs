@@ -278,13 +278,26 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var allowLanOrigins = builder.Environment.IsDevelopment();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Default", policy => policy
-        .WithOrigins(corsOrigins)
+        // Development only: the dev site opened from a phone or laptop on the same Wi-Fi
+        // (http://192.168.x.x:4200 and similar private addresses). Production allows just Cors:AllowedOrigins.
+        .SetIsOriginAllowed(origin => corsOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)
+            || (allowLanOrigins && IsPrivateNetworkOrigin(origin)))
         .AllowAnyHeader()
         .AllowAnyMethod());
 });
+
+static bool IsPrivateNetworkOrigin(string origin)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+    if (uri.IsLoopback) return true;
+    if (!System.Net.IPAddress.TryParse(uri.Host, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+    var b = ip.GetAddressBytes();
+    return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
+}
 
 // Compress text responses (the Angular JS/CSS bundles, HTML and API JSON) — they're 3–5× smaller
 // with Brotli/gzip, which is most of the page weight on a phone. Images are already compressed.
@@ -376,6 +389,10 @@ using (var scope = app.Services.CreateScope())
         overwriteExistingAdmin: app.Environment.IsDevelopment(),
         seedDemoContent: app.Configuration.GetValue<bool>("Seed:DemoContent"));
 }
+
+// One official address per page (www, trailing slash, letter case, old trip links → 301), before
+// static files so even a stray www request for a file lands on the main domain.
+app.UseSeoRedirects();
 
 // No UseDefaultFiles: "/" must go through SeoPageRenderer (MapSeo below) rather than being
 // served as the raw index.html, so the home page gets its SEO tags too.

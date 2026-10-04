@@ -4,7 +4,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminDestinationService } from '../../../core/services/admin-destination.service';
-import { AdminTripDetail, ItineraryDay, ItineraryPoint } from '../../../core/models/trip.model';
+import { AdminTripDetail, DateSlot, ItineraryDay, ItineraryPoint } from '../../../core/models/trip.model';
 import { AdminDestinationListItem } from '../../../core/models/destination.model';
 import { TripStatus } from '../../../core/models/enums.model';
 import { ToastService } from '../../../core/services/toast.service';
@@ -16,6 +16,10 @@ import { ImageUrlPipe } from '../../../shared/pipes/image-url.pipe';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatePanelComponent, ImageUrlPipe],
   templateUrl: './trip-form.component.html',
+  styles: `
+    .places-chips { gap: 8px; margin: 4px 0 8px; }
+    .places-chips .chip { padding: 6px 6px 6px 12px; }
+  `,
 })
 export class TripFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -29,6 +33,10 @@ export class TripFormComponent implements OnInit {
 
   readonly destinationOptions = signal<AdminDestinationListItem[]>([]);
   readonly selectedDestinationIds = signal<Set<number>>(new Set());
+
+  // "Places covered" list (saved with the basic info) and the place being typed.
+  readonly placesCovered = signal<string[]>([]);
+  newPlace = '';
 
   // pickup and itinerary-point times, every 15 minutes, e.g. { value: '09:15', label: '9:15 AM' }
   readonly quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
@@ -67,6 +75,10 @@ export class TripFormComponent implements OnInit {
   // add-date-slot draft
   newSlot = { startDate: '', endDate: '', totalSeats: 10 };
 
+  // inline edit of a saved date slot
+  readonly editingSlotId = signal<number | null>(null);
+  slotDraft = { startDate: '', endDate: '', totalSeats: 0 };
+
   // add-itinerary-day draft
   newDay = { dayNumber: 1, title: '', description: '' };
 
@@ -95,6 +107,31 @@ export class TripFormComponent implements OnInit {
     }
   }
 
+  /** Adds what's typed (one place, or several separated by commas), skipping repeats. */
+  addPlaces(text = this.newPlace): void {
+    const typed = text.split(/[,\n]/).map((p) => p.trim()).filter((p) => p.length > 0);
+    if (typed.length === 0) return;
+    this.placesCovered.update((current) => {
+      const next = [...current];
+      for (const place of typed) {
+        if (!next.some((p) => p.toLowerCase() === place.toLowerCase())) next.push(place.slice(0, 80));
+      }
+      return next;
+    });
+    this.newPlace = '';
+  }
+
+  onPlacesPaste(event: ClipboardEvent): void {
+    const text = event.clipboardData?.getData('text') ?? '';
+    if (!/[,\n]/.test(text)) return;
+    event.preventDefault();
+    this.addPlaces(this.newPlace + text);
+  }
+
+  removePlace(place: string): void {
+    this.placesCovered.update((current) => current.filter((p) => p !== place));
+  }
+
   toggleDestination(destinationId: number, checked: boolean): void {
     this.selectedDestinationIds.update((current) => {
       const next = new Set(current);
@@ -114,6 +151,7 @@ export class TripFormComponent implements OnInit {
       next: (t) => {
         this.trip.set(t);
         this.selectedDestinationIds.set(new Set(t.destinationIds));
+        this.placesCovered.set(t.placesCovered ?? []);
         for (const day of t.itineraryDays) {
           this.newPoint[day.itineraryDayId] ??= { time: '', description: '' };
         }
@@ -152,7 +190,8 @@ export class TripFormComponent implements OnInit {
     }
 
     this.saving.set(true);
-    const v = { ...this.form.getRawValue(), destinationIds: Array.from(this.selectedDestinationIds()) };
+    this.addPlaces(); // a place typed but not yet added still counts
+    const v = { ...this.form.getRawValue(), destinationIds: Array.from(this.selectedDestinationIds()), placesCovered: this.placesCovered() };
 
     if (this.tripId) {
       this.tripService.updateTrip(this.tripId, v).subscribe({
@@ -243,6 +282,35 @@ export class TripFormComponent implements OnInit {
       next: () => {
         this.toast.success('Date slot added.');
         this.newSlot = { startDate: '', endDate: '', totalSeats: 10 };
+        this.loadTrip(this.tripId!, true);
+      },
+    });
+  }
+
+  /** Seats held by paid bookings — the backend refuses a total below this. */
+  bookedSeats(s: DateSlot): number {
+    return s.totalSeats - s.availableSeats;
+  }
+
+  startEditDateSlot(s: DateSlot): void {
+    this.slotDraft = { startDate: s.startDate, endDate: s.endDate, totalSeats: s.totalSeats };
+    this.editingSlotId.set(s.tripDateSlotId);
+  }
+
+  saveDateSlot(s: DateSlot): void {
+    if (!this.slotDraft.startDate || !this.slotDraft.endDate || !this.slotDraft.totalSeats || this.slotDraft.totalSeats <= 0) {
+      this.toast.error('Enter a start date, end date and total seats.');
+      return;
+    }
+    if (this.slotDraft.totalSeats < this.bookedSeats(s)) {
+      this.toast.error(`Total seats can't be below the ${this.bookedSeats(s)} already booked.`);
+      return;
+    }
+
+    this.tripService.updateDateSlot(s.tripDateSlotId, { ...this.slotDraft, status: s.status }).subscribe({
+      next: () => {
+        this.toast.success('Date slot updated.');
+        this.editingSlotId.set(null);
         this.loadTrip(this.tripId!, true);
       },
     });
