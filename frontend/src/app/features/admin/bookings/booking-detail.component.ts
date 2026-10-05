@@ -152,7 +152,8 @@ export class BookingDetailComponent implements OnInit {
 
   get canChangeSeats(): boolean {
     const s = this.booking()?.bookingStatus;
-    return s === BookingStatus.AwaitingPayment || s === BookingStatus.Pending || s === BookingStatus.Confirmed;
+    // Unpaid requests hold no seats, so there is nothing to change until the customer pays.
+    return s === BookingStatus.Confirmed;
   }
 
   openSeatsModal(): void {
@@ -309,6 +310,20 @@ export class BookingDetailComponent implements OnInit {
   private errorMessage(err: HttpErrorResponse, fallback: string): string {
     const body = err.error as ApiResponse<unknown> | undefined;
     return body?.errors?.join(' ') || body?.message || fallback;
+  }
+
+  /** Same as BookingService.UnpaidRequestExpiryHours on the API. */
+  readonly requestExpiryHours = 24;
+
+  /** An unpaid checkout ("Requested") — listed for follow-up, holds no seats, expires on its own. */
+  get isRequested(): boolean {
+    const s = this.booking()?.bookingStatus;
+    return s === BookingStatus.AwaitingPayment || s === BookingStatus.Pending;
+  }
+
+  get requestExpiresAt(): Date | null {
+    const b = this.booking();
+    return b ? new Date(new Date(b.requestedAt).getTime() + this.requestExpiryHours * 3600_000) : null;
   }
 
   get canTakePayments(): boolean {

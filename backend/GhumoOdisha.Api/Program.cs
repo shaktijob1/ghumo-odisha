@@ -7,6 +7,7 @@ using GhumoOdisha.Api.Filters;
 using GhumoOdisha.Api.Logging;
 using GhumoOdisha.Api.Middleware;
 using GhumoOdisha.Api.Seo;
+using GhumoOdisha.Application.Blog;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
 using GhumoOdisha.Application.Bookings;
@@ -117,6 +118,7 @@ builder.Services.AddScoped<IBookingEmailService, BookingEmailService>();
 builder.Services.AddScoped<IPinHasher, PinHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IPhoneOtpService, PhoneOtpService>();
+builder.Services.AddScoped<INewCustomerNotifier, NewCustomerNotifier>();
 builder.Services.AddScoped<ICustomerAuthService, CustomerAuthService>();
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
 builder.Services.AddScoped<ITripService, TripService>();
@@ -172,6 +174,8 @@ builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
+builder.Services.AddScoped<ITravelMomentService, TravelMomentService>();
+builder.Services.AddScoped<IBlogService, BlogService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
 builder.Services.AddScoped<IInvoiceService, QuestPdfInvoiceService>();
 builder.Services.Configure<SeoOptions>(builder.Configuration.GetSection(SeoOptions.SectionName));
@@ -192,7 +196,7 @@ if (string.IsNullOrWhiteSpace(storageRootPath))
 
 var uploadsBasePath = Path.Combine(storageRootPath, "Uploads");
 // "driver-documents" is private: not in UploadedFilesController's public list, served only via authorized endpoints.
-foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents", "payment-qr" })
+foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents", "payment-qr", "moments", "blog" })
 {
     Directory.CreateDirectory(Path.Combine(uploadsBasePath, category));
 }

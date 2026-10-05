@@ -364,6 +364,9 @@
   </div>
 </section>
 
+<!-- Admin-uploaded trip photos (Admin dashboard → Real Travel Moments); hidden until there's at least one. -->
+<app-travel-moments></app-travel-moments>
+
 <section id="why-ghumo" class="sect alt">
   <div class="container">
    <!-- Same treatment as the other home sections: white panel on desktop, unchanged pattern on mobile. -->
@@ -385,6 +388,9 @@
    </div>
   </div>
 </section>
+
+<!-- News & Blog: newest travel stories, each opening its /blog page. -->
+<app-home-stories></app-home-stories>
 
 @if (homeContent(); as hc) {
 <!-- What Ghumo Odisha is, how booking works and common questions — real booking rules, served by

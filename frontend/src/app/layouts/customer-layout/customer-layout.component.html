@@ -83,7 +83,7 @@
       </div>
     }
   </div>
-  <div class="footbar">&copy; {{ year }} Ghumo Odisha. All rights reserved. · <a href="/terms" style="color:inherit;text-decoration:underline" (click)="$event.preventDefault(); termsDialog.open()">Terms &amp; Conditions</a></div>
+  <div class="footbar">&copy; {{ year }} Ghumo Odisha. All rights reserved. · <a routerLink="/blog" style="color:inherit;text-decoration:underline">Travel stories</a> · <a href="/terms" style="color:inherit;text-decoration:underline" (click)="$event.preventDefault(); termsDialog.open()">Terms &amp; Conditions</a></div>
 </footer>
 
 @if (loginModal.isOpen()) {

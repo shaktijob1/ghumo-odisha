@@ -37,6 +37,9 @@ public interface IGhumoOdishaDbContext
     DbSet<AdminActivity> AdminActivities { get; }
     DbSet<SearchLog> SearchLogs { get; }
     DbSet<Destination> Destinations { get; }
+    DbSet<TravelMoment> TravelMoments { get; }
+    DbSet<BlogPost> BlogPosts { get; }
+    DbSet<BlogPostPhoto> BlogPostPhotos { get; }
     DbSet<Driver> Drivers { get; }
     DbSet<DriverRefreshToken> DriverRefreshTokens { get; }
     DbSet<DriverDocument> DriverDocuments { get; }

@@ -41,6 +41,9 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<AdminActivity> AdminActivities => Set<AdminActivity>();
     public DbSet<SearchLog> SearchLogs => Set<SearchLog>();
     public DbSet<Destination> Destinations => Set<Destination>();
+    public DbSet<TravelMoment> TravelMoments => Set<TravelMoment>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<BlogPostPhoto> BlogPostPhotos => Set<BlogPostPhoto>();
     public DbSet<Driver> Drivers => Set<Driver>();
     public DbSet<DriverRefreshToken> DriverRefreshTokens => Set<DriverRefreshToken>();
     public DbSet<DriverDocument> DriverDocuments => Set<DriverDocument>();

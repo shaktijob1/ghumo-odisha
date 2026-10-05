@@ -40,6 +40,15 @@ public class BookingService(
     /// </summary>
     private static readonly System.Linq.Expressions.Expression<Func<Booking, bool>> WasPaid = b =>
         b.ConfirmedAt != null || b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Completed;
+
+    /// <summary>
+    /// Admin lists: every paid booking, plus open "Requested" checkouts — a customer who reached the
+    /// payment page but hasn't paid. They hold no seats and can't be confirmed by the admin; they stay
+    /// listed until they're paid or the unpaid-request expiry cancels them, then drop out again.
+    /// </summary>
+    private static readonly System.Linq.Expressions.Expression<Func<Booking, bool>> VisibleToAdmin = b =>
+        b.ConfirmedAt != null || b.BookingStatus == BookingStatus.Confirmed || b.BookingStatus == BookingStatus.Completed
+        || b.BookingStatus == BookingStatus.AwaitingPayment || b.BookingStatus == BookingStatus.Pending;
     // ---------- Customer ----------
 
     public async Task<CreateBookingResult> RequestBookingAsync(int customerId, CreateBookingRequest request, CancellationToken cancellationToken = default)
@@ -268,7 +277,7 @@ public class BookingService(
             .Include(b => b.Customer)
             .Include(b => b.Trip)
             .Include(b => b.TripDateSlot)
-            .Where(WasPaid);
+            .Where(VisibleToAdmin);
 
         if (filter.BookingStatus.HasValue)
         {
@@ -399,7 +408,7 @@ public class BookingService(
             .Include(b => b.Trip)
             .Include(b => b.TripDateSlot)
             .Where(b => b.TripId == tripId)
-            .Where(WasPaid)
+            .Where(VisibleToAdmin)
             .OrderByDescending(b => b.RequestedAt)
             .ToListAsync(cancellationToken);
 
@@ -413,7 +422,7 @@ public class BookingService(
             .Include(b => b.Trip)
             .Include(b => b.TripDateSlot)
             .Where(b => b.TripDateSlotId == dateSlotId)
-            .Where(WasPaid)
+            .Where(VisibleToAdmin)
             .OrderByDescending(b => b.RequestedAt)
             .ToListAsync(cancellationToken);
 

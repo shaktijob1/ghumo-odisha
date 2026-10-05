@@ -10,6 +10,7 @@
   <input class="sel srch" placeholder="Search customer, phone or trip…" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
   <select class="sel" [ngModel]="bookingStatus()" (ngModelChange)="onBookingStatusChange($event)">
     <option [ngValue]="null">Booking status: All</option>
+    <option [ngValue]="BookingStatus.AwaitingPayment">Requested (not paid)</option>
     <option [ngValue]="BookingStatus.Confirmed">Confirmed</option>
     <option [ngValue]="BookingStatus.Cancelled">Cancelled</option>
     <option [ngValue]="BookingStatus.Completed">Completed</option>

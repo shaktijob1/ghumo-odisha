@@ -207,6 +207,96 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.ToTable("AppLogs", (string)null);
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BlogPost", b =>
+                {
+                    b.Property<int>("BlogPostId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("BlogPostId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("mediumtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Excerpt")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("HeroImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Place")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("BlogPostId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("IsPublished", "PublishedAt");
+
+                    b.ToTable("BlogPosts", (string)null);
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BlogPostPhoto", b =>
+                {
+                    b.Property<int>("BlogPostPhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("BlogPostPhotoId"));
+
+                    b.Property<int>("BlogPostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("BlogPostPhotoId");
+
+                    b.HasIndex("BlogPostId", "DisplayOrder");
+
+                    b.ToTable("BlogPostPhotos", (string)null);
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.Booking", b =>
                 {
                     b.Property<int>("BookingId")
@@ -1982,6 +2072,36 @@ namespace GhumoOdisha.Infrastructure.Migrations
                     b.ToTable("TermsAcceptances", (string)null);
                 });
 
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.TravelMoment", b =>
+                {
+                    b.Property<int>("TravelMomentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("TravelMomentId"));
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("TravelMomentId");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.ToTable("TravelMoments", (string)null);
+                });
+
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.Trip", b =>
                 {
                     b.Property<int>("TripId")
@@ -2224,6 +2344,17 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .HasForeignKey("TripsTripId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BlogPostPhoto", b =>
+                {
+                    b.HasOne("GhumoOdisha.Domain.Entities.BlogPost", "BlogPost")
+                        .WithMany("Photos")
+                        .HasForeignKey("BlogPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BlogPost");
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.Booking", b =>
@@ -2589,6 +2720,11 @@ namespace GhumoOdisha.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("GhumoOdisha.Domain.Entities.BlogPost", b =>
+                {
+                    b.Navigation("Photos");
                 });
 
             modelBuilder.Entity("GhumoOdisha.Domain.Entities.Booking", b =>

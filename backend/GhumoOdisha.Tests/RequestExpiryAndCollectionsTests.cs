@@ -147,15 +147,26 @@ public class RequestExpiryAndCollectionsTests
     }
 
     [Fact]
-    public async Task UnpaidCheckouts_AreHiddenFromCustomerAndAdminLists()
+    public async Task UnpaidCheckout_IsHiddenFromCustomer_ListedForAdminAsRequested_UntilExpiryCancelsIt()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedAsync(db);
         var service = CreateService(db);
-        await RequestAsync(service, trip, slot, customer);
+        var bookingId = await RequestAsync(service, trip, slot, customer);
 
         var mine = await service.GetCustomerBookingsAsync(customer.CustomerId, 1, 20);
         Assert.Empty(mine.Items);
+
+        // Admin sees it as Requested, and it holds no seats.
+        var listed = Assert.Single(await service.GetBookingsForTripAsync(trip.TripId));
+        Assert.Equal(BookingStatus.AwaitingPayment, listed.BookingStatus);
+        Assert.Single(await service.GetBookingsForDateSlotAsync(slot.TripDateSlotId));
+        Assert.Equal(10, await db.TripDateSlots.AsNoTracking().Where(s => s.TripDateSlotId == slot.TripDateSlotId).Select(s => s.AvailableSeats).SingleAsync());
+
+        // Once the unpaid-request expiry cancels it, it drops out of the admin lists again.
+        await db.Bookings.Where(b => b.BookingId == bookingId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.RequestedAt, DateTime.UtcNow.AddHours(-(BookingService.UnpaidRequestExpiryHours + 1))));
+        await service.ExpireUnpaidRequestsAsync();
         Assert.Empty(await service.GetBookingsForTripAsync(trip.TripId));
     }
 

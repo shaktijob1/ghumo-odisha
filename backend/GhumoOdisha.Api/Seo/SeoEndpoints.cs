@@ -13,7 +13,7 @@ public sealed record HomeContentDto(string HeadingSub, string Intro, IReadOnlyLi
 public static class SeoEndpoints
 {
     // Public pages whose addresses are all lower case — mixed-case variants are permanently redirected.
-    private static readonly string[] LowerCasePrefixes = ["/trips", "/destinations", "/terms"];
+    private static readonly string[] LowerCasePrefixes = ["/trips", "/destinations", "/terms", "/blog"];
 
     /// <summary>
     /// One official address per page, reached in a single permanent (301) redirect:

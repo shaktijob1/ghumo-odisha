@@ -20,6 +20,8 @@ import { VehicleSearch } from '../../shared/utils/vehicle-search';
 
 import { scrollRowBy } from '../../shared/utils/scroll-row';
 import { FaqListComponent } from '../../shared/components/faq-list.component';
+import { TravelMomentsComponent } from './travel-moments.component';
+import { HomeStoriesComponent } from './home-stories.component';
 import { SiteContentService } from '../../core/services/site-content.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
@@ -71,7 +73,7 @@ interface Feature {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent, FaqListComponent],
+  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent, FaqListComponent, TravelMomentsComponent, HomeStoriesComponent],
   templateUrl: './dashboard.component.html',
   styles: `
     .hx-h1-sub { display: block; margin-top: 12px; font-family: var(--font-body); font-size: clamp(17px, 1.9vw, 24px); font-weight: 600; line-height: 1.3; letter-spacing: 0; color: var(--accent); }

@@ -27,6 +27,9 @@ public static class TestServices
         MaxRequestsPerHour = 5
     };
 
+    /// <summary>Organizer number new-customer alerts go to in tests.</summary>
+    public const string AdminWhatsAppNumber = "910000000001";
+
     public static CustomerAuthService CreateCustomerAuthService(
         GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db,
         FakeWhatsAppService fakeWhatsApp,
@@ -38,6 +41,10 @@ public static class TestServices
             CreatePhoneOtpService(db, fakeWhatsApp, otpSettings),
             new JwtTokenService(Options.Create(JwtSettings)),
             fakeGoogle ?? new FakeGoogleTokenValidator(),
+            new NewCustomerNotifier(
+                fakeWhatsApp,
+                Options.Create(new GhumoOdisha.Application.Contact.OrganizerContactOptions { WhatsAppNumber = AdminWhatsAppNumber }),
+                NullLogger<NewCustomerNotifier>.Instance),
             Options.Create(JwtSettings),
             NullLogger<CustomerAuthService>.Instance);
     }

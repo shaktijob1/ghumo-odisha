@@ -53,6 +53,27 @@ public class SeoService(IGhumoOdishaDbContext db) : ISeoService
             d.UpdatedAt,
             new[] { d.HeroImageUrl, d.CoverImageUrl }.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct().Select(i => i!).ToList())));
         entries.AddRange(trips.Select(t => new SitemapEntry(SeoSlug.TripPath(t.TripId, t.Title), t.UpdatedAt, t.Photos)));
+
+        var posts = await db.BlogPosts.AsNoTracking()
+            .Where(p => p.IsPublished)
+            .OrderByDescending(p => p.PublishedAt)
+            .Select(p => new
+            {
+                p.Slug,
+                p.UpdatedAt,
+                p.HeroImageUrl,
+                Photos = p.Photos.OrderBy(ph => ph.DisplayOrder).Select(ph => ph.ImageUrl).Take(MaxImagesPerPage).ToList(),
+            })
+            .ToListAsync(cancellationToken);
+        if (posts.Count > 0)
+        {
+            entries.Add(new SitemapEntry("/blog", posts.Max(p => p.UpdatedAt)));
+            entries.AddRange(posts.Select(p => new SitemapEntry(
+                $"/blog/{p.Slug}",
+                p.UpdatedAt,
+                new[] { p.HeroImageUrl }.Concat(p.Photos).OfType<string>().Distinct().Take(MaxImagesPerPage).ToList())));
+        }
+
         entries.Add(new SitemapEntry("/terms", null));
         return entries;
     }

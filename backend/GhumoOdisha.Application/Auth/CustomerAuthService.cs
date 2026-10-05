@@ -18,6 +18,7 @@ public class CustomerAuthService(
     IPhoneOtpService phoneOtp,
     IJwtTokenService jwtTokenService,
     IGoogleTokenValidator googleTokenValidator,
+    INewCustomerNotifier newCustomerNotifier,
     IOptions<JwtSettings> jwtOptions,
     ILogger<CustomerAuthService> logger) : ICustomerAuthService
 {
@@ -47,6 +48,9 @@ public class CustomerAuthService(
         var now = DateTime.UtcNow;
 
         var customer = await db.Customers.FirstOrDefaultAsync(c => c.PhoneNumber == phone, cancellationToken);
+        // A brand-new account, or one created earlier as a co-traveller that is now signing in for
+        // the first time — either way a new customer for the organizer.
+        var isNewCustomer = customer is null || !customer.IsVerified;
         if (customer is null)
         {
             customer = new Customer
@@ -71,6 +75,11 @@ public class CustomerAuthService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (isNewCustomer)
+        {
+            await newCustomerNotifier.NotifyAsync(customer, "WhatsApp", cancellationToken);
+        }
 
         return await StartSessionAsync(customer, now, cancellationToken);
     }
@@ -109,7 +118,15 @@ public class CustomerAuthService(
             customer.UpdatedAt = now;
         }
 
+        // Not saved yet = the account was just created by this sign-in.
+        var isNewCustomer = customer.CustomerId == 0;
         await db.SaveChangesAsync(cancellationToken);
+
+        if (isNewCustomer)
+        {
+            await newCustomerNotifier.NotifyAsync(customer, "Google", cancellationToken);
+        }
+
         return await StartSessionAsync(customer, now, cancellationToken);
     }
 

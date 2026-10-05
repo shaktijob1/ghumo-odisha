@@ -4,12 +4,15 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Text.Unicode;
+using GhumoOdisha.Application.Blog;
+using GhumoOdisha.Application.Blog.Dtos;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Company;
 using GhumoOdisha.Application.Contact;
 using GhumoOdisha.Application.Destinations;
 using GhumoOdisha.Application.Destinations.Dtos;
 using GhumoOdisha.Application.Exceptions;
+using GhumoOdisha.Application.Homepage;
 using GhumoOdisha.Application.Legal;
 using GhumoOdisha.Application.Seo;
 using GhumoOdisha.Application.Trips;
@@ -58,6 +61,8 @@ public partial class SeoPageRenderer(
     IWebHostEnvironment env,
     ITripService tripService,
     IDestinationService destinationService,
+    IBlogService blogService,
+    ITravelMomentService travelMomentService,
     IMemoryCache cache,
     IOptions<SeoOptions> seoOptions,
     IOptions<CompanyOptions> companyOptions,
@@ -174,6 +179,16 @@ public partial class SeoPageRenderer(
             return await DestinationPageAsync(lower["/destinations/".Length..], cancellationToken);
         }
 
+        if (lower == "/blog")
+        {
+            return await BlogListPageAsync(cancellationToken);
+        }
+
+        if (lower.StartsWith("/blog/", StringComparison.Ordinal))
+        {
+            return await BlogPostPageAsync(lower["/blog/".Length..], cancellationToken);
+        }
+
         if (lower == "/terms")
         {
             return TermsPage();
@@ -200,6 +215,8 @@ public partial class SeoPageRenderer(
     {
         var trips = await AllTripsAsync(cancellationToken);
         var destinations = await destinationService.GetActiveDestinationsAsync(cancellationToken);
+        var stories = await blogService.GetPublishedAsync(HomeStoryCount, cancellationToken);
+        var moments = await travelMomentService.GetAllAsync(cancellationToken);
         var faqs = TripPageContent.BuildSiteFaqs(TripPageContent.HomeCity);
         var image = destinations.Select(d => d.HeroImageUrl ?? d.CoverImageUrl).FirstOrDefault(i => i is not null) ?? _seo.DefaultImage;
 
@@ -214,7 +231,7 @@ public partial class SeoPageRenderer(
             "/",
             image,
             JsonLd: [WebSiteSchema(), AgencySchema(image), TripListSchema(trips), FaqSchema(faqs)],
-            Body: HomeBody(trips, destinations, faqs));
+            Body: HomeBody(trips, destinations, moments, stories, faqs));
     }
 
     private async Task<SeoPage> TripPageAsync(int tripId, CancellationToken cancellationToken)

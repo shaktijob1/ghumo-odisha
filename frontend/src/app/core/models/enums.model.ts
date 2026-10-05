@@ -120,7 +120,7 @@ export enum PaymentPlan {
 }
 
 export const BookingStatusLabels: Record<BookingStatus, string> = {
-  [BookingStatus.AwaitingPayment]: 'Awaiting payment',
+  [BookingStatus.AwaitingPayment]: 'Requested',
   [BookingStatus.Pending]: 'Pending',
   [BookingStatus.Confirmed]: 'Confirmed',
   [BookingStatus.Rejected]: 'Rejected',

@@ -28,6 +28,19 @@
       </div>
     </div>
 
+    @if (isRequested) {
+      <!-- An unpaid checkout: shown so the organizer can follow up, but it holds no seats. -->
+      <div class="panel" style="margin-bottom:14px;border-color:#E9D3A6;background:#FFF8EA">
+        <h4 style="color:var(--wait)">Requested — not paid yet</h4>
+        <div class="sub" style="margin-bottom:0">
+          The customer went to the payment page but hasn't paid. No seats are held.
+          If they don't pay, this request is cancelled automatically at {{ requestExpiresAt | date:'d MMM y, h:mm a' }}
+          ({{ requestExpiryHours }} hours after the request) and disappears from this list.
+          @if (b.customerPhone) { You can follow up on WhatsApp: {{ b.customerPhone }}. }
+        </div>
+      </div>
+    }
+
     <div class="panels">
       <div class="panel">
         <h4>Booking</h4>

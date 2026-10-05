@@ -47,6 +47,8 @@ export const routes: Routes = [
         canActivate: [carsEnabledGuard],
         loadComponent: () => import('./features/misc/coming-soon.component').then((m) => m.ComingSoonComponent),
       },
+      { path: 'blog', loadComponent: () => import('./features/blog/blog-list.component').then((m) => m.BlogListComponent) },
+      { path: 'blog/:slug', loadComponent: () => import('./features/blog/blog-post.component').then((m) => m.BlogPostComponent) },
       { path: 'terms', title: 'Trip Terms & Conditions | Ghumo Odisha', loadComponent: () => import('./features/misc/terms.component').then((m) => m.TermsComponent) },
       { path: 'login', title: 'Sign in | Ghumo Odisha', data: { noindex: true }, loadComponent: () => import('./features/auth/customer-auth.component').then((m) => m.CustomerAuthComponent) },
       {
@@ -117,6 +119,18 @@ export const routes: Routes = [
       {
         path: 'destinations/:id/edit',
         loadComponent: () => import('./features/admin/destinations/destination-form.component').then((m) => m.DestinationFormComponent),
+      },
+      {
+        path: 'stories',
+        loadComponent: () => import('./features/admin/blog/blog-list.component').then((m) => m.AdminBlogListComponent),
+      },
+      {
+        path: 'stories/add',
+        loadComponent: () => import('./features/admin/blog/blog-form.component').then((m) => m.AdminBlogFormComponent),
+      },
+      {
+        path: 'stories/:id/edit',
+        loadComponent: () => import('./features/admin/blog/blog-form.component').then((m) => m.AdminBlogFormComponent),
       },
       {
         path: 'bookings',
