@@ -19,6 +19,9 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<VehiclePhoto> VehiclePhotos => Set<VehiclePhoto>();
     public DbSet<PickupPoint> PickupPoints => Set<PickupPoint>();
     public DbSet<OrganizerPhoto> OrganizerPhotos => Set<OrganizerPhoto>();
+    public DbSet<HolidayDestination> HolidayDestinations => Set<HolidayDestination>();
+    public DbSet<HolidayPackage> HolidayPackages => Set<HolidayPackage>();
+    public DbSet<BookingPaymentOrder> BookingPaymentOrders => Set<BookingPaymentOrder>();
     public DbSet<PaymentQrCode> PaymentQrCodes => Set<PaymentQrCode>();
     public DbSet<SiteHeroPhoto> SiteHeroPhotos => Set<SiteHeroPhoto>();
     public DbSet<TermsAcceptance> TermsAcceptances => Set<TermsAcceptance>();
@@ -55,6 +58,12 @@ public class GhumoOdishaDbContext : DbContext, IGhumoOdishaDbContext
     public DbSet<CarTripExecution> CarTripExecutions => Set<CarTripExecution>();
     public DbSet<CarAuditEvent> CarAuditEvents => Set<CarAuditEvent>();
     public DbSet<ServiceArea> ServiceAreas => Set<ServiceArea>();
+    public DbSet<CustomerTripInterest> CustomerTripInterests => Set<CustomerTripInterest>();
+    public DbSet<CrmFollowUp> CrmFollowUps => Set<CrmFollowUp>();
+    public DbSet<CrmWhatsAppTemplate> CrmWhatsAppTemplates => Set<CrmWhatsAppTemplate>();
+    public DbSet<CrmCommunication> CrmCommunications => Set<CrmCommunication>();
+    public DbSet<CrmNote> CrmNotes => Set<CrmNote>();
+    public DbSet<CrmStatusChange> CrmStatusChanges => Set<CrmStatusChange>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

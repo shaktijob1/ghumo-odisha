@@ -1,0 +1,155 @@
+<div class="ahead">
+  <div>
+    <h2>Follow-ups</h2>
+    <div class="sub">Who to contact today, who was missed, and who's next</div>
+  </div>
+</div>
+
+<div class="crm-fu-tabs" role="tablist">
+  @for (b of buckets; track b.bucket) {
+    <button
+      type="button"
+      role="tab"
+      class="crm-fu-tab"
+      [class.on]="bucket === b.bucket"
+      [class.alert]="b.bucket === Bucket.Overdue && (count(b.bucket) ?? 0) > 0"
+      [attr.aria-selected]="bucket === b.bucket"
+      (click)="setBucket(b.bucket)"
+    >
+      @if (b.bucket === Bucket.Today) { <b class="crm-dot today"></b> }
+      @if (b.bucket === Bucket.Overdue) { <b class="crm-dot overdue"></b> }
+      @if (b.bucket === Bucket.Upcoming) { <b class="crm-dot upcoming"></b> }
+      {{ b.label }}
+      @if (count(b.bucket) !== null) { <span class="crm-fu-count">{{ count(b.bucket) }}</span> }
+    </button>
+  }
+</div>
+
+<div class="filters crm-filters">
+  <select class="inp sm" [(ngModel)]="assignedAdminUserId" (ngModelChange)="apply()" aria-label="Assigned to">
+    <option [ngValue]="null">Everyone's follow-ups</option>
+    @if (myId) { <option [ngValue]="myId">Mine</option> }
+    @for (a of admins(); track a.adminUserId) {
+      @if (a.adminUserId !== myId) { <option [ngValue]="a.adminUserId">{{ a.name }}</option> }
+    }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="apply()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+</div>
+
+<div class="panel">
+  @switch (state()) {
+    @case ('loading') { <app-state-panel kind="loading" message="Loading follow-ups…"></app-state-panel> }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load follow-ups."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    }
+    @case ('ready') {
+      @if (items().length === 0) {
+        <app-state-panel kind="empty" [message]="bucket === Bucket.Today ? 'Nothing due today.' : bucket === Bucket.Overdue ? 'Nothing overdue — well done.' : bucket === Bucket.Done ? 'No follow-ups completed yet.' : 'Nothing scheduled.'"></app-state-panel>
+      } @else {
+        @for (g of groups(); track g.date) {
+          @if (bucket !== Bucket.Today) {
+            <h5 class="crm-fu-day">{{ g.date | date: 'EEEE, d MMM y' }}</h5>
+          }
+          <ul class="crm-fu-list">
+            @for (f of g.items; track f.crmFollowUpId) {
+              <li [class.overdue]="f.daysOverdue > 0">
+                <span class="crm-flame" [class.on]="stageOf(f) === CrmStatus.HotLead" aria-hidden="true">🔥</span>
+                <div class="crm-fu-main">
+                  <div class="row wrap" style="gap:6px 10px">
+                    <a class="crm-fu-name" [routerLink]="['/admin/crm/customers', f.customerId]">{{ f.customerName || 'No name yet' }}</a>
+                    <span class="badge" [class]="'badge ' + statusTone[stageOf(f)]">{{ statusLabels[stageOf(f)] }}</span>
+                    @if (bucket !== Bucket.Done) {
+                      <span class="crm-due" [class.overdue]="f.daysOverdue > 0" [class.today]="f.daysOverdue === 0 && bucket === Bucket.Today">{{ dueText(f) }}</span>
+                    }
+                  </div>
+                  <div class="note">
+                    {{ f.tripTitle || 'General' }}@if (f.departureDate) { · {{ f.departureDate | date: 'd MMM y' }} }
+                    @if (f.customerPhone) { · <a [href]="'tel:+91' + f.customerPhone">{{ formatPhone(f.customerPhone) }}</a> }
+                    @if (f.assignedAdminName) { · {{ f.assignedAdminName }} }
+                  </div>
+                  @if (f.note) { <div class="crm-fu-note">{{ f.note }}</div> }
+                  @if (f.outcome) { <div class="crm-fu-note done">✓ {{ f.outcome }}</div> }
+                </div>
+                @if (bucket !== Bucket.Done) {
+                  <div class="crm-fu-actions">
+                    @if (f.customerPhone) {
+                      <button type="button" class="btn sm" (click)="waFor.set(f)">WhatsApp</button>
+                    }
+                    <button type="button" class="btn sm" [class.ghost]="!!f.customerPhone" (click)="completeFor.set(f)">Done</button>
+                    <button type="button" class="btn sm ghost" (click)="rescheduleFor.set(f)">Reschedule</button>
+                    <div class="row" style="gap:10px">
+                      <button type="button" class="linkbtn" style="padding:0" (click)="logFor.set(f)">Log call</button>
+                      <button type="button" class="linkbtn" style="padding:0" (click)="noteFor.set(f)">Note</button>
+                      <button type="button" class="linkbtn" style="padding:0" (click)="stageFor.set(f)">Stage</button>
+                      <button type="button" class="linkbtn crm-del" style="padding:0" (click)="cancelFor.set(f)">Cancel</button>
+                    </div>
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @if (totalPages > 1) {
+          <div class="pager">
+            <span>Page {{ page }} of {{ totalPages }}</span>
+            <div class="pg">
+              <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1" aria-label="Previous page">‹</button>
+              <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages" aria-label="Next page">›</button>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>
+
+<app-crm-whatsapp-dialog
+  [open]="waFor() !== null"
+  [customerId]="waFor()?.customerId ?? null"
+  [customerName]="waFor()?.customerName ?? null"
+  [interestIdPreset]="waFor()?.customerTripInterestId ?? null"
+  [suggestedCategory]="FollowUpCategory"
+  (closed)="waFor.set(null)"
+  (logged)="reload()"
+></app-crm-whatsapp-dialog>
+<app-crm-log-contact-dialog
+  [open]="logFor() !== null"
+  [customerId]="logFor()?.customerId ?? null"
+  [customerName]="logFor()?.customerName ?? null"
+  [interestIdPreset]="logFor()?.customerTripInterestId ?? null"
+  (closed)="logFor.set(null)"
+  (saved)="afterSave('Contact logged.')"
+></app-crm-log-contact-dialog>
+<app-crm-followup-complete-dialog [open]="completeFor() !== null" [followUp]="completeFor()" (closed)="completeFor.set(null)" (saved)="afterSave('Follow-up done.')"></app-crm-followup-complete-dialog>
+<app-crm-followup-reschedule-dialog [open]="rescheduleFor() !== null" [followUp]="rescheduleFor()" (closed)="rescheduleFor.set(null)" (saved)="afterSave('Follow-up rescheduled.')"></app-crm-followup-reschedule-dialog>
+<app-crm-note-dialog
+  [open]="noteFor() !== null"
+  [customerId]="noteFor()?.customerId ?? null"
+  [interestId]="noteFor()?.customerTripInterestId ?? null"
+  [subject]="noteFor()?.customerName ?? null"
+  (closed)="noteFor.set(null)"
+  (saved)="afterSave('Note added.')"
+></app-crm-note-dialog>
+<app-crm-stage-dialog
+  [open]="stageFor() !== null"
+  [customerId]="stageFor()?.customerId ?? null"
+  [interestId]="stageFor()?.customerTripInterestId ?? null"
+  [current]="stageFor() ? stageOf(stageFor()!) : CrmStatus.NewLead"
+  [subject]="stageFor()?.customerName ?? null"
+  (closed)="stageFor.set(null)"
+  (saved)="afterSave('Stage updated.')"
+></app-crm-stage-dialog>
+<app-confirm-dialog
+  [open]="cancelFor() !== null"
+  title="Cancel this follow-up?"
+  [message]="'It won\'t show in the lists any more. ' + (cancelFor()?.customerName ?? '') + '\'s notes and history stay.'"
+  confirmLabel="Cancel follow-up"
+  cancelLabel="Keep it"
+  [destructive]="true"
+  (confirm)="confirmCancel()"
+  (cancel)="cancelFor.set(null)"
+></app-confirm-dialog>

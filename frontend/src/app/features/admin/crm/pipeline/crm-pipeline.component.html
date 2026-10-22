@@ -1,0 +1,102 @@
+<div class="ahead">
+  <div>
+    <h2>Sales pipeline</h2>
+    <div class="sub">Drag a lead to move it on. Booked and Completed follow real bookings.</div>
+  </div>
+</div>
+
+<div class="filters crm-filters">
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="onTripChange()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripDateSlotId" (ngModelChange)="apply()" [disabled]="!tripId" aria-label="Departure">
+    <option [ngValue]="null">All departures</option>
+    @for (d of departures(); track d.tripDateSlotId) { <option [ngValue]="d.tripDateSlotId">{{ d.startDate | date: 'd MMM y' }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="source" (ngModelChange)="apply()" aria-label="Lead source">
+    <option [ngValue]="null">All sources</option>
+    @for (s of sources; track s) { <option [ngValue]="s">{{ sourceLabels[s] }}</option> }
+  </select>
+</div>
+
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading pipeline…"></app-state-panel> }
+  @case ('error') {
+    <div class="panel">
+      <app-state-panel kind="error" message="Could not load the pipeline."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    </div>
+  }
+  @case ('ready') {
+    <div class="crm-board">
+      @for (col of columns(); track col.status) {
+        <section
+          class="crm-col-k"
+          [class.drop]="dropTarget() === col.status"
+          [class.locked]="dragging() && isBookingStage(col.status)"
+          (dragover)="onDragOver($event, col.status)"
+          (dragleave)="dropTarget.set(null)"
+          (drop)="onDrop($event, col.status)"
+          [attr.aria-label]="statusLabels[col.status] + ', ' + col.count + ' leads'"
+        >
+          <header>
+            <span class="badge" [class]="'badge ' + statusTone[col.status]">{{ statusLabels[col.status] }}</span>
+            <b>{{ col.count }}</b>
+          </header>
+          @if (col.items.length === 0) {
+            <p class="note crm-empty">No leads</p>
+          }
+          @for (card of col.items; track card.customerTripInterestId) {
+            <article
+              class="crm-card"
+              [class.busy]="moving() === card.customerTripInterestId"
+              draggable="true"
+              (dragstart)="onDragStart($event, card)"
+              (dragend)="onDragEnd()"
+            >
+              <a class="crm-card-name" [routerLink]="['/admin/crm/customers', card.customerId]">{{ card.customerName || 'No name yet' }}</a>
+              <div class="note">{{ card.tripTitle }}</div>
+              <div class="note">
+                {{ card.startDate ? (card.startDate | date: 'd MMM') : 'No date' }} · {{ card.travellers }} pax
+                @if (card.bookingReference) { · {{ card.bookingReference }} }
+                @else if (card.expectedAmount) { · ₹{{ card.expectedAmount | number: '1.0-0' }} }
+              </div>
+              @if (card.nextFollowUpDate) {
+                <div class="crm-due" [class.overdue]="dueState(card.nextFollowUpDate) === 'overdue'" [class.today]="dueState(card.nextFollowUpDate) === 'today'" style="font-size:11px;margin-top:4px">
+                  Follow up {{ dueState(card.nextFollowUpDate) === 'today' ? 'today' : (card.nextFollowUpDate | date: 'd MMM') }}
+                </div>
+              }
+              @if (card.customerPhone) {
+                <button type="button" class="linkbtn crm-wa-link" style="padding:0;justify-self:start;margin-top:4px" (click)="waFor.set(card)">WhatsApp</button>
+              }
+              <div class="crm-card-foot">
+                @if (!card.bookingId) {
+                  <select class="inp sm" aria-label="Move to stage" (change)="onMoveSelect(card, $any($event.target).value); $any($event.target).value = ''">
+                    <option value="">Move to…</option>
+                    @for (s of moveTargets; track s) {
+                      @if (s !== card.status) { <option [value]="s">{{ statusLabels[s] }}</option> }
+                    }
+                  </select>
+                  <a class="linkbtn" routerLink="/admin/bookings/add" [queryParams]="bookingParams(card)">Convert</a>
+                }
+              </div>
+            </article>
+          }
+          @if (col.count > col.items.length) {
+            <a class="note crm-more" routerLink="/admin/crm/customers" [queryParams]="{ status: col.status, tripId: tripId }">+ {{ col.count - col.items.length }} more</a>
+          }
+        </section>
+      }
+    </div>
+    <p class="note" style="margin-top:10px">Follow-up, Later, Not interested and Cancelled leads are off the board — find them under CRM customers by stage. Completed shows the last 90 days.</p>
+  }
+}
+
+<app-crm-whatsapp-dialog
+  [open]="waFor() !== null"
+  [customerId]="waFor()?.customerId ?? null"
+  [customerName]="waFor()?.customerName ?? null"
+  [interestIdPreset]="waFor()?.customerTripInterestId ?? null"
+  (closed)="waFor.set(null)"
+></app-crm-whatsapp-dialog>

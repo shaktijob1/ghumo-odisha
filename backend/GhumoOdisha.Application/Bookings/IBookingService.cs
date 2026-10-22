@@ -42,7 +42,7 @@ public interface IBookingService
 
     Task<int> PromoteCompletedBookingsAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Cancels website requests still unpaid <see cref="BookingService.UnpaidRequestExpiryHours"/>
-    /// hours after they were made. Seats were never taken, so nothing is restored.</summary>
+    /// <summary>Cancels website requests still unpaid <see cref="BookingService.UnpaidRequestExpiryMinutes"/> minutes
+    /// after they were made (Razorpay is checked first). Seats were never taken, so nothing is restored.</summary>
     Task<int> ExpireUnpaidRequestsAsync(CancellationToken cancellationToken = default);
 }

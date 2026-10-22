@@ -7,7 +7,9 @@ namespace GhumoOdisha.Application.Trips;
 public interface ITripService
 {
     // Public
-    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default, string? destination = null, bool upcomingOnly = false);
+    Task<PagedResult<TripSummaryDto>> GetActiveTripsAsync(int page, int pageSize, string? search = null, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default, string? destination = null, bool upcomingOnly = false, string? category = null);
+
+    Task<IReadOnlyList<TripCategoryCountDto>> GetUpcomingCategoryCountsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<string>> GetUpcomingTripLocationsAsync(DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default);
 
     /// <summary>Places covered by trips with upcoming dates, for the home search suggestions.</summary>
@@ -25,6 +27,8 @@ public interface ITripService
     Task<int> CreateTripAsync(CreateTripRequest request, CancellationToken cancellationToken = default);
 
     Task UpdateTripAsync(int tripId, UpdateTripRequest request, CancellationToken cancellationToken = default);
+
+    Task SetBookingStateAsync(int tripId, TripBookingState bookingState, CancellationToken cancellationToken = default);
 
     Task DeleteTripAsync(int tripId, CancellationToken cancellationToken = default);
 
@@ -46,6 +50,9 @@ public interface ITripService
     Task<int> AddDateSlotAsync(int tripId, AddDateSlotRequest request, CancellationToken cancellationToken = default);
 
     Task UpdateDateSlotAsync(int dateSlotId, UpdateDateSlotRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets one price on every departure of the trip starting in that month; returns how many changed.</summary>
+    Task<int> SetMonthPriceAsync(int tripId, SetMonthPriceRequest request, CancellationToken cancellationToken = default);
 
     Task DeleteDateSlotAsync(int dateSlotId, CancellationToken cancellationToken = default);
 

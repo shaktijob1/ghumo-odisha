@@ -251,6 +251,8 @@ select.inp { appearance: auto; }
 .termsmodal-foot { padding: 12px 20px 16px; border-top: 1px solid var(--line); }
 .warnbox { background: var(--wait-bg); color: var(--wait); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; margin-bottom: 14px; }
 .errorbox { background: var(--danger-bg); color: var(--danger); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; margin-bottom: 14px; }
+.note-ok { display: flex; gap: 10px; align-items: flex-start; background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.45; margin-bottom: 14px; }
+.note-ok .spin { flex: none; margin-top: 2px; border-color: rgba(15,111,92,.25); border-top-color: var(--accent); }
 
 .note { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
 
@@ -1585,7 +1587,8 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
   .tdgallery[data-count="2"] .tdg-main { grid-row: auto; }
 
   .tdg-item:hover img { transform: scale(1.04); filter: brightness(.94); }
-  .tdg-title { padding: 28px 36px; gap: 6px; }
+  /* Wider screens: title, price and next departure sit at the photo's bottom-left, left-aligned. */
+  .tdg-title { padding: 28px 36px; gap: 6px; align-items: flex-start; justify-content: flex-end; text-align: left; }
   .tdg-title h1 { font-size: 50px; }
   .tdg-title .tdg-price { font-size: 16px; }
   .tdg-more { inset: auto 12px 12px auto; display: block; background: rgba(255,255,255,.95); color: var(--ink); font-size: 12.5px; padding: 7px 13px; border-radius: 999px; box-shadow: 0 4px 12px rgba(15,20,22,.18); }
@@ -1634,7 +1637,7 @@ html:has(.modal-backdrop, .lm-backdrop) { overflow: hidden; }
 
 .hx-card { margin: 34px auto 0; max-width: 1240px; background: #fff; border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 22px 50px rgba(15,20,22,.08), 0 2px 6px rgba(15,20,22,.04); }
 
-.hx-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 8px 8px 0; }
+.hx-tabs { display: grid; grid-template-columns: repeat(var(--tabs, 3), minmax(0, 1fr)); gap: 10px; padding: 8px 8px 0; }
 .hx-tab { position: relative; display: flex; align-items: center; gap: 18px; min-width: 0; padding: 22px 30px; border: none; border-radius: 16px; background: #F3F5F5; color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
 .hx-tab:hover:not(.on) { background: #EAEEEE; }
 .hx-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -2418,3 +2421,154 @@ button.pe-x:hover { background: var(--danger-bg); color: var(--danger); }
 .vcard-off .shot img { filter: grayscale(.6); opacity: .8; }
 .vcard .vcard-na { background: #EEF1F2; color: var(--muted); border-color: #DCE1E3; box-shadow: none; }
 .vcard-why { margin: 8px 0 0; font-size: 11.5px; color: var(--danger); }
+
+/* ============ Trip cards 25% shorter (home, Trips page, destination pages): the photo and the
+   content below it both shrink by a quarter, so the photo-to-content ratio stays the same.
+   Plus a deeper black inner shadow around the edge. ============ */
+:is(#upcoming-trips, #dest-trips) .tcard.dash .shot { height: 184px; }
+@media (min-width: 641px) { :is(#upcoming-trips, #dest-trips) .tcard.dash .shot { height: 124px; } }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .heroinfo { left: 12px; bottom: 10px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .heroinfo h3 { font-size: 21px; margin-bottom: 0; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .durbadge { top: 8px; right: 8px; font-size: 11.5px; padding: 4px 10px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricestar { right: 9px; bottom: 9px; width: 48px; height: 48px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricestar-top { font-size: 7px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricestar-amt { font-size: 13px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .depchips { margin-top: 6px; padding: 6px 10px 7px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .depchips-lbl { margin-bottom: 5px; font-size: 10px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .dchip { height: 75px; border-radius: 10px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .dchip-mon { padding: 4px 0; border-radius: 9px 9px 0 0; font-size: 10px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .dchip-day { padding: 7px 0 5px; font-size: 22px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .depchips-row:not([data-count="4"]) .dchip-day { padding-bottom: 1px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .depchips-row:not([data-count="4"]) .dchip-wd { padding: 0 4px 7px; font-size: 11px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .depchips-row[data-count="4"] .dchip-day { padding: 0; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricerow { padding: 7px 12px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricerow .price b { font-size: 19px; }
+:is(#upcoming-trips, #dest-trips) .tcard.dash .pricerow .btn.sm { padding: 9px 16px; border-radius: 10px; font-size: 13.5px; }
+.tcard.dash::after { box-shadow: inset 0 0 0 1px rgba(0,0,0,.30), inset 0 0 28px rgba(0,0,0,.38); }
+
+/* Early-booking price on the booking panel: the regular price struck through, and until when. */
+.bookpanel .bp-was { margin-right: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.bookpanel .bp-early { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--accent); }
+
+/* ---------- Admin sidebar: CRM and Cars as coloured sections (CRM blue, Cars amber — existing tokens) ---------- */
+.aside2 .aside-sec { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; padding: 6px; border-radius: 12px; border: 1px solid transparent; }
+.aside2 .aside-sec .aside-group { display: flex; align-items: center; gap: 6px; margin: 4px 6px 4px; font-weight: 700; }
+.aside2 .aside-sec a:hover { background: rgba(255,255,255,.7); }
+.aside2 .aside-sec a.on { background: #fff; box-shadow: 0 1px 3px rgba(15,20,22,.08); }
+
+.aside2 .aside-sec.crm { background: var(--info-bg); border-color: #D3DFEC; }
+.aside2 .aside-sec.crm .aside-group { color: var(--info); }
+.aside2 .aside-sec.crm a { color: #4A6580; }
+.aside2 .aside-sec.crm a.on { color: var(--info); }
+
+.aside2 .aside-sec.cars { background: var(--wait-bg); border-color: #F1DDB6; }
+.aside2 .aside-sec.cars .aside-group { color: var(--wait); }
+.aside2 .aside-sec.cars a { color: #87622A; }
+.aside2 .aside-sec.cars a.on { color: var(--wait); }
+
+/* Phones / tablets: the sidebar is a sideways-scrolling bar, so each section is a tinted pill of links. */
+@media (max-width: 900px) {
+  .aside2 .aside-sec { flex-direction: row; align-items: center; flex-shrink: 0; margin: 0 4px; padding: 3px 6px; }
+  .aside2 .aside-sec .aside-group { margin: 0 4px; white-space: nowrap; }
+}
+
+/* =====================================================================================
+   Admin refresh: colourful menu, KPI cards and tables; a top bar + slide-in menu on
+   phones and tablets (≤ 1024px). Scoped to .adm so the customer site is untouched.
+   ===================================================================================== */
+.adm { background: linear-gradient(180deg, #EEF6F3 0, var(--canvas) 260px); }
+.adm .atop, .adm .adrawer-bg, .adm .aside-close { display: none; }
+
+/* Sidebar: brand band, then links with their own coloured icon tiles. */
+.adm .aside2 { width: 236px; padding: 14px 12px; gap: 2px; border-right: 1px solid #E3E8E7; }
+.adm .aside-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #0F6F5C 0%, #22A884 55%, #F4B23E 100%); box-shadow: 0 10px 22px -14px rgba(15,111,92,.9); }
+.adm .aside-head .logo { margin: 0; color: #fff; font-size: 16px; }
+.adm .aside-head .logo em { color: #FFF3D6; }
+.adm .aside2 .anav { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; border-radius: 11px; color: #3F4A4E; font-size: 12.5px; font-weight: 500; transition: background .15s, color .15s; }
+.adm .aside2 .anav:hover { background: #F2F5F5; color: var(--ink); }
+.adm .anav-ic { display: grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 9px; background: color-mix(in srgb, var(--ic) 13%, #fff); color: var(--ic); transition: background .15s, color .15s, box-shadow .15s; }
+.adm .aside2 .anav.on { background: color-mix(in srgb, var(--ic) 10%, #fff); color: var(--ic); font-weight: 600; }
+.adm .aside2 .anav.on .anav-ic { background: var(--ic); color: #fff; box-shadow: 0 5px 12px -5px var(--ic); }
+.adm .anav-lbl { min-width: 0; }
+.adm .anav-badge { margin-left: auto; padding: 1px 7px; }
+.adm .aside2 .aside-sec .anav { padding: 5px 8px 5px 5px; }
+.adm .aside2 .aside-sec .anav-ic { width: 24px; height: 24px; border-radius: 8px; background: rgba(255,255,255,.75); }
+.adm .aside2 .who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: auto; padding: 14px 6px 4px; }
+.adm .who-av { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%; background: linear-gradient(135deg, #22A884, #0F6F5C); color: #fff; font-weight: 700; font-size: 14px; }
+.adm .who b { display: block; color: var(--ink); font-size: 12.5px; }
+.adm .who span { font-size: 11px; }
+.adm .aside2 .signout { margin: 0 0 0 auto; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--danger); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+
+/* Page header: a coloured underline under the title. */
+.adm .ahead h2 { position: relative; padding-bottom: 6px; }
+.adm .ahead h2::after { content: ""; position: absolute; left: 0; bottom: 0; width: 42px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #0F6F5C, #22A884 60%, #F4B23E); }
+
+/* KPI cards: each in its own colour. */
+.adm .kpi { --k-fg: #0F6F5C; --k-bg: #E3F3EC; position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--k-fg) 16%, #fff); background: linear-gradient(135deg, var(--k-bg) 0%, #fff 72%); box-shadow: 0 10px 24px -20px var(--k-fg); }
+.adm .kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--k-fg); }
+.adm .kpi .k { color: color-mix(in srgb, var(--k-fg) 70%, #3F4A4E); font-weight: 600; }
+.adm .kpi .v { color: var(--k-fg); }
+.adm .kpi:nth-child(5n+2) { --k-fg: #1565C0; --k-bg: #E3EEFB; }
+.adm .kpi:nth-child(5n+3) { --k-fg: #D9541E; --k-bg: #FDEBDF; }
+.adm .kpi:nth-child(5n+4) { --k-fg: #7B4BC4; --k-bg: #EFE8FA; }
+.adm .kpi:nth-child(5n+5) { --k-fg: #A77A00; --k-bg: #FBF2D5; }
+
+/* Panels and tables: soft shadow, tinted header row, row hover. */
+.adm .panel, .adm .formsec, .adm .slotpanel { border-color: #E3E8E7; box-shadow: 0 1px 2px rgba(15,20,22,.03), 0 12px 28px -24px rgba(15,111,92,.45); }
+.adm .tbl th { background: #F1F6F4; color: #4E5B5F; padding: 9px 10px; border-bottom: none; }
+.adm .tbl th:first-child { border-radius: 10px 0 0 10px; }
+.adm .tbl th:last-child { border-radius: 0 10px 10px 0; }
+.adm .tbl td { padding: 10px; }
+.adm .tbl .num { padding-right: 10px; }
+.adm .tbl tr:hover td { background: #FAFCFB; }
+.adm .filters .sel, .adm .filters .inp { box-shadow: 0 1px 2px rgba(15,20,22,.03); }
+
+/* Phones and tablets: top bar + slide-in menu (replaces the sideways-scrolling bar). */
+@media (max-width: 1024px) {
+  .adm { flex-direction: column; }
+  .adm .atop { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 40; padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top)); background: linear-gradient(135deg, #0F6F5C 0%, #178F76 60%, #22A884 100%); color: #fff; box-shadow: 0 6px 18px -10px rgba(15,111,92,.8); }
+  .adm .atop .logo { font-weight: 700; font-size: 16px; letter-spacing: -0.03em; }
+  .adm .atop .logo em { font-style: normal; color: #FFE2A6; }
+  .adm .atop-tag { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.18); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; }
+  .adm .atop-menu { position: relative; display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 12px; background: rgba(255,255,255,.16); color: #fff; cursor: pointer; }
+  .adm .atop-dot { position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%; background: #F4B23E; box-shadow: 0 0 0 2px #178F76; }
+
+  .adm .aside2 { position: fixed; top: 0; left: 0; bottom: 0; z-index: 60; width: min(300px, 86vw); height: 100vh; height: 100dvh; flex-direction: column; overflow-x: hidden; overflow-y: auto; border-right: 0; border-bottom: 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); transform: translateX(-104%); transition: transform .25s ease, visibility .25s; box-shadow: 0 0 40px rgba(15,20,22,.28); visibility: hidden; }
+  .adm.menu-open .aside2 { transform: none; visibility: visible; }
+  .adm .aside2 .anav, .adm .aside2 a { white-space: normal; }
+  .adm .aside2 .who { display: flex; }
+  .adm .aside2 .aside-sec { flex-direction: column; align-items: stretch; flex-shrink: 0; margin: 12px 0 0; padding: 6px; }
+  .adm .aside2 .aside-sec .aside-group { margin: 4px 6px; align-self: auto; }
+  .adm .aside-close { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 10px; background: rgba(255,255,255,.2); color: #fff; cursor: pointer; }
+  .adm .adrawer-bg { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(15,20,22,.45); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .adm.menu-open .adrawer-bg { opacity: 1; pointer-events: auto; }
+  .adm .amain { padding: 18px 18px 34px; }
+  .adm .panels { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adm .aside2, .adm .adrawer-bg { transition: none; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .adm .kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .adm .amain { padding: 14px 12px 28px; }
+  .adm .ahead { margin-bottom: 14px; }
+  .adm .ahead h2 { font-size: 18px; }
+  .adm .panel, .adm .formsec, .adm .slotpanel { padding: 14px; border-radius: 12px; }
+  .adm .kpi { padding: 12px; }
+  .adm .kpi .v { font-size: 20px; }
+  .adm .filters > .sel, .adm .filters > select { flex: 1 1 140px; }
+  .adm .tbl { font-size: 12.5px; }
+}
+/* Touch screens: bigger targets for the small admin controls. */
+@media (pointer: coarse) {
+  .adm .sel, .adm .btn.sm { min-height: 38px; }
+  .adm .aside2 .anav { padding-top: 8px; padding-bottom: 8px; }
+  .adm .pager button { width: 36px; height: 36px; }
+}
+
+/* Home hero without the "Meet. Travel. Explore." heading: the search card leads the page. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.hx-card.hx-card-top { margin-top: 8px; }
+@media (max-width: 640px) { .hx-card.hx-card-top { margin-top: 4px; } }

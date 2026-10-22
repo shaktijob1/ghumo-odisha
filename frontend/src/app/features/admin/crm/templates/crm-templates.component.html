@@ -1,0 +1,108 @@
+<div class="ahead">
+  <div>
+    <h2>WhatsApp templates</h2>
+    <div class="sub">Messages you send by hand from WhatsApp Web — {{ '{' }}name{{ '}' }}, {{ '{' }}trip{{ '}' }} and the rest are filled in for each customer</div>
+  </div>
+  <button type="button" class="btn sm" (click)="openEditor(null)">+ New template</button>
+</div>
+
+<div class="filters crm-filters">
+  <select class="inp sm" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)" aria-label="Category">
+    <option [ngValue]="null">All categories</option>
+    @for (c of categories; track c) { <option [ngValue]="c">{{ categoryLabels[c] }}</option> }
+  </select>
+  <label class="crm-check"><input type="checkbox" [ngModel]="showInactive()" (ngModelChange)="showInactive.set($event)" /> Show switched-off templates</label>
+</div>
+
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading templates…"></app-state-panel> }
+  @case ('error') {
+    <div class="panel">
+      <app-state-panel kind="error" message="Could not load templates."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    </div>
+  }
+  @case ('ready') {
+    @if (visible().length === 0) {
+      <div class="panel"><app-state-panel kind="empty" message="No templates here yet. Create one with “+ New template”."></app-state-panel></div>
+    } @else {
+      <div class="crm-tplgrid">
+        @for (t of visible(); track t.crmWhatsAppTemplateId) {
+          <div class="panel crm-tpl" [class.off]="!t.isActive">
+            <div class="row sp" style="align-items:flex-start;gap:8px">
+              <div style="min-width:0">
+                <b class="crm-tplname">{{ t.name }}</b>
+                <div class="note">{{ categoryLabels[t.category] }} · updated {{ t.updatedAt | date: 'd MMM y' }}</div>
+              </div>
+              <span class="badge" [class.ok]="t.isActive">{{ t.isActive ? 'Active' : 'Off' }}</span>
+            </div>
+            <pre class="crm-tplbody">{{ t.body }}</pre>
+            <div class="row wrap" style="gap:4px 12px">
+              <button type="button" class="linkbtn" style="padding:0" (click)="openEditor(t)">Edit</button>
+              <button type="button" class="linkbtn" style="padding:0" (click)="duplicate(t)">Duplicate</button>
+              <button type="button" class="linkbtn" style="padding:0" (click)="toggleActive(t)">{{ t.isActive ? 'Switch off' : 'Switch on' }}</button>
+              <button type="button" class="linkbtn crm-del" style="padding:0" (click)="deleteTarget.set(t)">Delete</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+}
+
+@if (editorOpen()) {
+  <div class="modal-backdrop" (click)="editorOpen.set(false)">
+    <div class="modal crm-modal crm-tpleditor" (click)="$event.stopPropagation()">
+      <h4>{{ editing() ? 'Edit template' : 'New template' }}</h4>
+      <div class="f2">
+        <div class="fld">
+          <span class="lbl">Name</span>
+          <input class="inp" [(ngModel)]="name" maxlength="100" placeholder="Follow-up – interested customer" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Category</span>
+          <select class="inp" [(ngModel)]="category">
+            @for (c of categories; track c) { <option [ngValue]="c">{{ categoryLabels[c] }}</option> }
+          </select>
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lbl">Message</span>
+        <textarea #bodyBox class="inp crm-wa-text" rows="10" [(ngModel)]="body" maxlength="2000" placeholder="Hi {name} 👋 You had enquired about our {trip}…"></textarea>
+        <div class="note" style="text-align:right;margin-top:2px">{{ body.length }}/2000</div>
+      </div>
+      <div class="crm-chips" aria-label="Insert a placeholder">
+        @for (p of placeholders(); track p) {
+          <button type="button" class="crm-chip" (click)="insert(p)">{{ '{' + p + '}' }}</button>
+        }
+      </div>
+      @if (unknownPlaceholders().length) {
+        <div class="warnbox" style="margin:10px 0">Not a placeholder: {{ unknownPlaceholders().join(', ') }} — fix the spelling or remove it.</div>
+      }
+      @if (body.trim()) {
+        <div class="crm-sample">
+          <div class="note" style="margin-bottom:4px">Sample preview (example values — real messages use the customer's own trip)</div>
+          <pre>{{ samplePreview(body) }}</pre>
+        </div>
+      }
+      <label class="crm-check" style="margin:12px 0"><input type="checkbox" [(ngModel)]="isActive" /> Active (offered in the WhatsApp dialog)</label>
+      @if (editorError()) { <div class="errorbox" style="margin-bottom:12px">{{ editorError() }}</div> }
+      <div class="row" style="gap:8px">
+        <button type="button" class="btn ghost" style="flex:1" (click)="editorOpen.set(false)">Cancel</button>
+        <button type="button" class="btn" style="flex:1" [disabled]="saving()" (click)="save()">
+          @if (saving()) { <span class="spin"></span> } @else { Save template }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete this template?"
+  [message]="'“' + (deleteTarget()?.name ?? '') + '” will no longer be offered. Messages already sent keep its name in the history.'"
+  confirmLabel="Delete"
+  [destructive]="true"
+  (confirm)="confirmDelete()"
+  (cancel)="deleteTarget.set(null)"
+></app-confirm-dialog>

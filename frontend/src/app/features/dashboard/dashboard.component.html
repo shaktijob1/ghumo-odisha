@@ -11,18 +11,14 @@
   </div>
 
   <div class="container">
-    <!-- Spaces sit inside the spans: Angular drops whitespace-only text between elements. -->
-    <!-- The second line names the site and topic for search; same text as TripPageContent.HomeHeadingSub on the API. -->
-    <h1 id="hx-title" class="hx-title"><span class="hx-meet">Meet. </span><span class="hx-travel">Travel. </span><span class="hx-explore">Explore. </span><span class="hx-h1-sub">Explore Odisha with Ghumo Odisha</span></h1>
-    <p class="hx-sub">
-      @if (tripsOnly()) { Join group trips from Bhubaneswar to the hills, waterfalls, temples and beaches of Odisha. } @else { Join group trips, book vehicles or plan your next holiday with Ghumo Odisha. }
-    </p>
+    <!-- The page heading stays for search engines and screen readers but isn't shown: the search card
+         sits at the top. Same text as TripPageContent.HomeHeadingSub on the API. -->
+    <h1 id="hx-title" class="sr-only">Meet. Travel. Explore. Explore Odisha with Ghumo Odisha</h1>
 
-    <div class="hx-card" #heroCard>
-      <!-- Cars and Holidays are hidden while appsettings Features:HideCarsAndHolidays is on: no tab bar, Trips search only. -->
-      @if (!tripsOnly()) {
-      <div class="hx-tabs" role="tablist" aria-label="What would you like to plan?">
-        @for (tab of searchTabs; track tab.key) {
+    <div class="hx-card hx-card-top" #heroCard>
+      <!-- Trips and Holidays always; Vehicles only once appsettings Features:HideCarsAndHolidays is off. -->
+      <div class="hx-tabs" role="tablist" aria-label="What would you like to plan?" [style.--tabs]="visibleSearchTabs().length">
+        @for (tab of visibleSearchTabs(); track tab.key) {
           <button type="button" role="tab" class="hx-tab" [class.on]="searchTab() === tab.key" [attr.aria-selected]="searchTab() === tab.key"
             aria-controls="hx-panel" (click)="selectSearchTab(tab.key)">
             <span class="hx-tab-ic" aria-hidden="true">
@@ -42,7 +38,6 @@
           </button>
         }
       </div>
-      }
 
       <div id="hx-panel" class="hx-panel" role="tabpanel" (focusin)="onSearchFieldsEngaged($event)" (click)="onSearchFieldsEngaged($event)">
         @switch (searchTab()) {
@@ -194,8 +189,45 @@
   <app-car-results [search]="q"></app-car-results>
 }
 
-<!-- Everything below is trip content; while the Cars tab is open only car results show. -->
+<!-- Everything below is trip / holiday content; while the Cars tab is open only car results show. -->
 @if (searchTab() !== 'cars') {
+<!-- "Find your kind of trip": a chip per category that has upcoming trips (set per trip in admin);
+     picking one filters Upcoming Adventures below. Hidden when no trip has a category yet. -->
+@if (showTripFilter && searchTab() === 'trips' && (categoryChips() === null || categoryChips()!.length > 0)) {
+<section id="trip-filter" class="sect tight" aria-labelledby="tf-title">
+  <div class="container">
+   <div class="trend-panel">
+    <div class="sechead">
+      <div class="sechead-text">
+        <span class="eyebrow">Trip Styles</span>
+        <h2 id="tf-title"><span class="up-g">Find your </span><span class="up-o">kind of trip</span></h2>
+      </div>
+    </div>
+    <div class="tf-row" role="group" aria-label="Filter trips by kind">
+      @if (categoryChips(); as chips) {
+        <button type="button" class="tf-chip" style="--c-bg:#F1F3F3;--c-fg:#0F1416" [class.on]="selectedCategory() === null" [attr.aria-pressed]="selectedCategory() === null" (click)="selectCategory(null)">
+          <span class="tf-ic" aria-hidden="true">🧭</span>
+          <span><b>All trips</b><small>Every departure</small></span>
+        </button>
+        @for (c of chips; track c.key) {
+          <button type="button" class="tf-chip" [style.--c-bg]="c.bg" [style.--c-fg]="c.fg" [class.on]="selectedCategory() === c.key"
+            [attr.aria-pressed]="selectedCategory() === c.key" (click)="selectCategory(c.key)">
+            <span class="tf-ic" aria-hidden="true">{{ c.emoji }}</span>
+            <span><b>{{ c.label }}</b><small>{{ c.tripCount }} {{ c.tripCount === 1 ? 'trip' : 'trips' }}</small></span>
+          </button>
+        }
+      } @else {
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <div class="tf-chip skel" aria-hidden="true"></div>
+        }
+      }
+    </div>
+   </div>
+  </div>
+</section>
+}
+
+@if (searchTab() === 'trips') {
 <section id="trending-destinations" class="sect tight">
   <div class="container">
    <!-- White panel with a horizontal card row + prev/next arrows, on desktop and mobile alike. -->
@@ -364,6 +396,11 @@
   </div>
 </section>
 
+} @else {
+<!-- Holidays tab: its own destinations and packages (Admin → Holidays), nothing from trips. -->
+<app-home-holidays></app-home-holidays>
+}
+
 <!-- Admin-uploaded trip photos (Admin dashboard → Real Travel Moments); hidden until there's at least one. -->
 <app-travel-moments></app-travel-moments>
 
@@ -392,7 +429,7 @@
 <!-- News & Blog: newest travel stories, each opening its /blog page. -->
 <app-home-stories></app-home-stories>
 
-@if (homeContent(); as hc) {
+@if (searchTab() === 'trips' && homeContent(); as hc) {
 <!-- What Ghumo Odisha is, how booking works and common questions — real booking rules, served by
      the API (TripPageContent) so the server-rendered page says exactly the same. -->
 <section id="how-it-works" class="sect">
@@ -442,7 +479,7 @@
         } @else if (heroImage()) {
           <img [src]="heroImage() | imageUrl" alt="" (error)="onHeroImageError()" />
         }
-        <span class="orgcard-caption">Let's plan your next adventure</span>
+        <span class="orgcard-caption">{{ contact()?.photoCaption }}</span>
       </div>
 
       <div class="orgcard-body">
@@ -450,7 +487,7 @@
         <h3 class="orgcard-name">{{ contact()?.name || 'Ghumo Odisha Organizer' }}</h3>
         <span class="orgcard-role">{{ contact()?.role || 'Your Travel Expert' }}</span>
 
-        <blockquote class="orgcard-quote">&ldquo;Ask anything about trips, itineraries or custom plans. I'm here to help!&rdquo;</blockquote>
+        @if (contact()?.quote; as quote) { <blockquote class="orgcard-quote">&ldquo;{{ quote }}&rdquo;</blockquote> }
 
         <div class="orgcard-lines">
           <div class="oc-line">
@@ -464,8 +501,8 @@
         </div>
 
         <div class="orgcard-help">
-          <b>Need help planning your trip?</b>
-          <span>Ask about trips, itineraries or custom plans.</span>
+          <b>{{ contact()?.helpTitle }}</b>
+          <span>{{ contact()?.helpText }}</span>
         </div>
 
         <div class="orgcard-actions">

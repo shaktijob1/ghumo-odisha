@@ -11,7 +11,9 @@ public record AdminTripListItemDto(
     DateOnly? NextSlotStartDate,
     int? NextSlotTotalSeats,
     int? NextSlotAvailableSeats,
-    int ConfirmedBookingCount);
+    int ConfirmedBookingCount,
+    TripBookingState BookingState,
+    IReadOnlyList<string> Categories);
 
 public record AdminTripDetailDto(
     int TripId,
@@ -33,4 +35,8 @@ public record AdminTripDetailDto(
     IReadOnlyList<string> DestinationNames,
     string? ItineraryPdfUrl,
     bool AllowCoupons,
-    IReadOnlyList<string> PlacesCovered);
+    IReadOnlyList<string> PlacesCovered,
+    TripBookingState BookingState,
+    IReadOnlyList<string> Categories,
+    int? DurationDays = null,
+    int? DurationNights = null);

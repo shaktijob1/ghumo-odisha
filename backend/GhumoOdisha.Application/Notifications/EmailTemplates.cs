@@ -151,6 +151,40 @@ public static class EmailTemplates
         return (Layout($"Booking {m.BookingReference} cancelled", body), text);
     }
 
+    public record PaymentReminderModel(
+        string CustomerName,
+        string TripTitle,
+        string TravelDates,
+        int Seats,
+        string AmountDue,
+        int MinutesLeft,
+        string PayUrl);
+
+    /// <summary>"Complete your payment" — an unpaid checkout, before it expires.</summary>
+    public static (string Html, string Text) PaymentReminder(PaymentReminderModel m)
+    {
+        var rows = new StringBuilder()
+            .Append(DetailRow("Trip", m.TripTitle))
+            .Append(DetailRow("Dates", m.TravelDates))
+            .Append(DetailRow("Seats", m.Seats.ToString()))
+            .Append(DetailRow("To pay now", "₹" + m.AmountDue))
+            .ToString();
+
+        var body = $"""
+            <p style="margin:0 0 6px">Hi {E(m.CustomerName)},</p>
+            <p style="margin:0 0 14px">Your seats aren't confirmed yet — the payment for your booking hasn't reached us. Complete it within <b>{m.MinutesLeft} minutes</b> to keep this request.</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse">{rows}</table>
+            <div style="text-align:center;margin:22px 0 4px">
+              <a href="{E(m.PayUrl)}" style="display:inline-block;background:#EE6A2A;color:#FFFFFF;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">Complete payment</a>
+            </div>
+            <p style="margin:14px 0 0;color:{Muted};font-size:13px">Already paid? Money taken from your account is matched to your booking automatically within a few minutes — you don't need to pay again.</p>
+            """;
+
+        var text = $"Hi {m.CustomerName}, your seats for {m.TripTitle} ({m.TravelDates}, {m.Seats} seat(s)) aren't confirmed yet. " +
+                   $"Pay Rs {m.AmountDue} within {m.MinutesLeft} minutes: {m.PayUrl} . Already paid? It's matched automatically within a few minutes — don't pay again.";
+        return (Layout("Complete your payment", body), text);
+    }
+
     public record PaymentReceivedModel(
         string CustomerName,
         string BookingReference,

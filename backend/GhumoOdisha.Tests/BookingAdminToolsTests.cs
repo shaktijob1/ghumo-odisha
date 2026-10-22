@@ -214,6 +214,35 @@ public class BookingAdminToolsTests
     }
 
     [Fact]
+    public async Task PickupPoint_CanBeChangedToAnotherOfTheTripsPoints_ButNeverAnotherTrips()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db);
+        var (otherTrip, _, _) = await SeedAsync(db);
+        var now = DateTime.UtcNow;
+        var first = new PickupPoint { TripId = trip.TripId, Location = "Jaydev Vihar", Time = "6:00 AM", DisplayOrder = 0, CreatedAt = now };
+        var second = new PickupPoint { TripId = trip.TripId, Location = "Master Canteen", Time = "6:30 AM", DisplayOrder = 1, CreatedAt = now };
+        var foreign = new PickupPoint { TripId = otherTrip.TripId, Location = "Elsewhere", Time = "7:00 AM", DisplayOrder = 0, CreatedAt = now };
+        db.PickupPoints.AddRange(first, second, foreign);
+        await db.SaveChangesAsync();
+
+        var service = CreateService(db);
+        var bookingId = await ConfirmedBookingAsync(service, trip, slot, customer, seats: 1, advance: 0m);
+        var travellers = new BookingTravellerService(db);
+
+        await travellers.ChangePickupPointAsync(bookingId, new ChangeBookingPickupPointRequest(second.PickupPointId));
+        Assert.Equal(second.PickupPointId, (await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == bookingId)).PickupPointId);
+        Assert.True(await db.BookingEvents.AnyAsync(e => e.BookingId == bookingId && e.EventType == BookingEventType.PickupPointChanged));
+
+        await Assert.ThrowsAsync<ValidationAppException>(() =>
+            travellers.ChangePickupPointAsync(bookingId, new ChangeBookingPickupPointRequest(foreign.PickupPointId)));
+        Assert.Equal(second.PickupPointId, (await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == bookingId)).PickupPointId);
+
+        await travellers.ChangePickupPointAsync(bookingId, new ChangeBookingPickupPointRequest(null));
+        Assert.Null((await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == bookingId)).PickupPointId);
+    }
+
+    [Fact]
     public async Task GenderCounts_AboveSeats_AreRejected()
     {
         await using var db = TestDb.CreateContext();

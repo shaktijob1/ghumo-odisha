@@ -10,13 +10,14 @@ import { StatePanelComponent } from '../../../shared/components/state-panel.comp
 import { StatusBadgeComponent } from '../../../shared/components/status-badge.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog.component';
 import { ToastService } from '../../../core/services/toast.service';
+import { BookingStateSwitchComponent } from './booking-state-switch.component';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 @Component({
   selector: 'app-trip-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, StatusBadgeComponent, ConfirmDialogComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatePanelComponent, StatusBadgeComponent, ConfirmDialogComponent, BookingStateSwitchComponent],
   templateUrl: './trip-list.component.html',
 })
 export class TripListComponent implements OnInit {

@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, PagedResult } from '../models/api-response.model';
-import { DateSlot, TripDetail, TripSummary } from '../models/trip.model';
+import { DateSlot, TripCategoryCount, TripDetail, TripSummary } from '../models/trip.model';
 
 @Injectable({ providedIn: 'root' })
 export class PublicTripService {
@@ -12,7 +12,7 @@ export class PublicTripService {
   getTrips(
     page = 1,
     pageSize = 20,
-    filters?: { search?: string; fromDate?: string; toDate?: string; destination?: string; upcomingOnly?: boolean },
+    filters?: { search?: string; fromDate?: string; toDate?: string; destination?: string; upcomingOnly?: boolean; category?: string },
   ): Observable<PagedResult<TripSummary>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (filters?.search) params = params.set('search', filters.search);
@@ -20,6 +20,7 @@ export class PublicTripService {
     if (filters?.toDate) params = params.set('toDate', filters.toDate);
     if (filters?.destination) params = params.set('destination', filters.destination);
     if (filters?.upcomingOnly) params = params.set('upcomingOnly', true);
+    if (filters?.category) params = params.set('category', filters.category);
     return this.http.get<ApiResponse<PagedResult<TripSummary>>>(`${environment.apiUrl}/trips`, { params }).pipe(map((r) => r.data!));
   }
 
@@ -34,6 +35,11 @@ export class PublicTripService {
   /** Places covered by upcoming trips — extra home search suggestions (searched as text, not a destination). */
   getPlaces(): Observable<string[]> {
     return this.http.get<ApiResponse<string[]>>(`${environment.apiUrl}/trips/places`).pipe(map((r) => r.data ?? []));
+  }
+
+  /** Categories with at least one upcoming trip — the home page's trip filter chips. */
+  getCategories(): Observable<TripCategoryCount[]> {
+    return this.http.get<ApiResponse<TripCategoryCount[]>>(`${environment.apiUrl}/trips/categories`).pipe(map((r) => r.data ?? []));
   }
 
   getTrip(id: number): Observable<TripDetail> {

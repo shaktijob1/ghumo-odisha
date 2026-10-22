@@ -248,7 +248,7 @@ public partial class SeoPageRenderer(
 
         var path = SeoSlug.TripPath(trip.TripId, trip.Title);
         var name = TripPageContent.DisplayName(trip.Title);
-        var price = TripPageContent.Rupees(trip.AmountPerPerson);
+        var price = TripPageContent.Rupees(trip.FromPrice);
         var allTrips = await AllTripsAsync(cancellationToken);
         var related = RelatedTrips(trip, allTrips);
         var image = trip.Photos.FirstOrDefault()?.ImageUrl ?? _seo.DefaultImage;
@@ -287,7 +287,7 @@ public partial class SeoPageRenderer(
         var trips = (await destinationService.GetDestinationTripsAsync(d.Slug, 1, 50, null, null, cancellationToken)).Items;
         var path = $"/destinations/{d.Slug}";
         var about = Plain(d.AboutText ?? d.Tagline ?? d.KnownFor ?? "");
-        var cheapest = trips.Count > 0 ? $" Trips from {TripPageContent.Rupees(trips.Min(t => t.AmountPerPerson))}." : "";
+        var cheapest = trips.Count > 0 ? $" Trips from {TripPageContent.Rupees(trips.Min(t => t.FromPrice))}." : "";
         var season = string.IsNullOrWhiteSpace(d.BestSeason) ? "" : $" Best time: {d.BestSeason}.";
         var description = Truncate($"{d.Name} group trips from {TripPageContent.HomeCity}.{cheapest}{season} {about}", 160);
         var faqs = d.Faqs;
@@ -467,7 +467,7 @@ public partial class SeoPageRenderer(
             ["offers"] = new Dictionary<string, object?>
             {
                 ["@type"] = "Offer",
-                ["price"] = trip.AmountPerPerson.ToString("0.00", CultureInfo.InvariantCulture),
+                ["price"] = trip.FromPrice.ToString("0.00", CultureInfo.InvariantCulture),
                 ["priceCurrency"] = "INR",
                 ["url"] = Absolute(path),
                 ["availability"] = open.Count > 0 ? "https://schema.org/InStock" : "https://schema.org/SoldOut",

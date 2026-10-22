@@ -17,11 +17,13 @@ import { VehicleSearchFormComponent } from '../../shared/components/vehicle-sear
 import { CarResultsComponent } from '../../shared/components/car-results.component';
 
 import { VehicleSearch } from '../../shared/utils/vehicle-search';
+import { TRIP_CATEGORIES, TripCategoryOption, tripCategory } from '../../shared/utils/trip-categories';
 
 import { scrollRowBy } from '../../shared/utils/scroll-row';
 import { FaqListComponent } from '../../shared/components/faq-list.component';
 import { TravelMomentsComponent } from './travel-moments.component';
 import { HomeStoriesComponent } from './home-stories.component';
+import { HomeHolidaysComponent } from './home-holidays.component';
 import { SiteContentService } from '../../core/services/site-content.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
@@ -73,7 +75,7 @@ interface Feature {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent, FaqListComponent, TravelMomentsComponent, HomeStoriesComponent],
+  imports: [CommonModule, FormsModule, TripCardComponent, DestinationCardComponent, FeatureCardComponent, ImageUrlPipe, VehicleSearchFormComponent, CarResultsComponent, FaqListComponent, TravelMomentsComponent, HomeStoriesComponent, HomeHolidaysComponent],
   templateUrl: './dashboard.component.html',
   styles: `
     .hx-h1-sub { display: block; margin-top: 12px; font-family: var(--font-body); font-size: clamp(17px, 1.9vw, 24px); font-weight: 600; line-height: 1.3; letter-spacing: 0; color: var(--accent); }
@@ -86,9 +88,35 @@ interface Feature {
     .hw-panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-card); padding: 26px 30px; }
     .hw-more { margin: 14px 0 0; font-size: 13px; color: var(--muted); }
     .hw-more a { color: var(--accent); font-weight: 600; }
+
+    /* "Find your kind of trip": colourful category chips between the search and Trending Places
+       (same white panel and heading size as Trending Places). */
+    #trip-filter .trend-panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 10px 30px rgba(15,20,22,.06); padding: 26px 36px 22px; }
+    #trip-filter .sechead { margin-bottom: 14px; }
+    #trip-filter .sechead .eyebrow { display: none; }
+    #trip-filter .sechead h2 { font-size: 30px; margin-bottom: 2px; }
+    @media (max-width: 900px) { #trip-filter .trend-panel { padding: 22px 30px 18px; } }
+    @media (max-width: 640px) {
+      #trip-filter .trend-panel { padding: 16px 14px 10px; }
+      #trip-filter .sechead { margin-bottom: 8px; }
+      #trip-filter .sechead h2 { font-size: 22px; }
+    }
+    #trip-filter .tf-row { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding: 4px 4px 18px; margin: 0 -4px -10px; scrollbar-width: none; }
+    #trip-filter .tf-row::-webkit-scrollbar { display: none; }
+    .tf-chip { flex: 0 0 auto; scroll-snap-align: start; display: flex; align-items: center; gap: 10px; min-width: 148px; padding: 10px 16px 10px 10px; border-radius: 16px; border: 1.5px solid transparent; background: var(--c-bg); color: var(--c-fg); font: inherit; text-align: left; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .tf-chip .tf-ic { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #fff; font-size: 22px; line-height: 1; box-shadow: 0 2px 6px rgba(15,20,22,.08); }
+    .tf-chip b { display: block; font-size: 14px; font-weight: 700; color: var(--c-fg); }
+    .tf-chip small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 500; }
+    .tf-chip.on { border-color: var(--c-fg); box-shadow: 0 6px 14px -8px var(--c-fg); }
+    .tf-chip:focus-visible { outline: 3px solid var(--c-fg); outline-offset: 2px; }
+    @media (hover: hover) { .tf-chip:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -10px var(--c-fg); } }
+    .tf-chip.skel { background: var(--canvas); min-height: 62px; cursor: default; }
     @media (max-width: 640px) {
       .hx-h1-sub { margin-top: 8px; font-size: 17px; }
       .hw-panel { padding: 16px 14px; }
+      .tf-chip { min-width: 128px; padding: 8px 12px 8px 8px; gap: 8px; }
+      .tf-chip .tf-ic { width: 36px; height: 36px; font-size: 19px; }
+      .tf-chip b { font-size: 13px; }
     }
   `,
 })
@@ -184,6 +212,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { key: 'holidays', title: 'Holidays', subtitle: 'Custom holiday packages' },
   ];
   readonly searchTab = signal<SearchTab>('trips');
+  /** Trips and Holidays always; Vehicles only while the Cars switch (Features:HideCarsAndHolidays) is off. */
+  readonly visibleSearchTabs = computed(() => (this.tripsOnly() ? this.searchTabs.filter((t) => t.key !== 'cars') : this.searchTabs));
 
   selectSearchTab(tab: SearchTab): void {
     this.closeSearchPopovers();
@@ -365,6 +395,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly selectedLocation = signal<string | null>(null);
 
+  // ---------- "Find your kind of trip" category filter ----------
+
+  /** Switched off for now (owner's call, 22 Oct 2026); set true to show the chips again. Admin can still tag trips. */
+  readonly showTripFilter = false;
+
+  /** Category chips with at least one upcoming trip (null while loading; empty hides the section). */
+  readonly categoryChips = signal<(TripCategoryOption & { tripCount: number })[] | null>(null);
+  readonly selectedCategory = signal<string | null>(null);
+  readonly selectedCategoryOption = computed(() => tripCategory(this.selectedCategory() ?? ''));
+
+  loadCategories(): void {
+    this.tripService.getCategories().subscribe({
+      next: (counts) =>
+        this.categoryChips.set(
+          TRIP_CATEGORIES.flatMap((c) => {
+            const found = counts.find((x) => x.category === c.key);
+            return found ? [{ ...c, tripCount: found.tripCount }] : [];
+          }),
+        ),
+      // The filter is a shortcut, not the page: on error it simply stays hidden.
+      error: () => this.categoryChips.set([]),
+    });
+  }
+
+  /** Picks a category (again to clear it) and shows the matching trips in Upcoming Adventures. */
+  selectCategory(key: string | null): void {
+    this.selectedCategory.set(this.selectedCategory() === key ? null : key);
+    this.loadTrips();
+    this.jumpToUpcomingTrips();
+  }
+
   // Every place with an upcoming trip (in the searched month, if any), from the server — the cards
   // arrive a page at a time, so they can't tell us every place.
   private readonly locationPool = signal<string[]>([]);
@@ -435,11 +496,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadTrips();
+    if (this.showTripFilter) this.loadCategories();
     this.loadDestinations();
     this.siteFeatures.load().subscribe((f) => {
-      if (f.hideCarsAndHolidays) {
+      if (f.hideCarsAndHolidays && this.searchTab() === 'cars') {
         this.searchTab.set('trips');
-        return;
       }
     });
   }
@@ -468,6 +529,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ...(month ? monthRange(month) : {}),
       destination: this.selectedLocation() ?? undefined,
       search: this.placeQuery().trim() || undefined,
+      category: this.selectedCategory() ?? undefined,
       upcomingOnly: true,
     };
   }
@@ -566,12 +628,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.jumpToUpcomingTrips();
   }
 
-  readonly hasActiveFilters = computed(() => !!this.appliedMonth() || !!this.placeQuery());
+  readonly hasActiveFilters = computed(() => !!this.appliedMonth() || !!this.placeQuery() || !!this.selectedCategory());
 
-  /** Empty-list message after a search, naming what isn't available (place and/or month). */
+  /** Empty-list message after a search, naming what isn't available (category, place and/or month). */
   readonly unavailableMessage = computed(() => {
     const month = this.monthOptions.find((m) => m.value === this.appliedMonth())?.full ?? '';
     const place = this.selectedLocation() ?? this.placeQuery();
+    const kind = this.selectedCategoryOption()?.label;
+    if (kind) return `No ${kind} trips match${place ? ' in ' + place : ''}${month ? ' in ' + month : ''} right now. Try another kind of trip.`;
     if (place && month) return `Trips to ${place} aren't available in ${month} yet. Try another month or explore other destinations.`;
     if (place) return `Trips to ${place} aren't available right now. Explore other destinations or check back soon.`;
     if (month) return `No trips are available in ${month} yet. Try another month.`;
@@ -589,6 +653,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   clearAllFilters(): void {
+    this.selectedCategory.set(null);
     this.selectLocation(null, false);
     this.clearMonthFilter();
   }

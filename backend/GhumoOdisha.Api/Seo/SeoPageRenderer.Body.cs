@@ -126,7 +126,7 @@ public partial class SeoPageRenderer
             w.Raw("<li>").Link(SeoSlug.TripPath(t.TripId, t.Title), t.Title).Raw("<div class=\"ssr-muted\">");
             var bits = new List<string>();
             if (t.DurationLabel is not null) bits.Add(t.DurationLabel);
-            bits.Add($"From {TripPageContent.Rupees(t.AmountPerPerson)} per person");
+            bits.Add($"From {TripPageContent.Rupees(t.FromPrice)} per person");
             if (t.NextSlotStartDate is { } next) bits.Add("Next departure " + next.ToString("d MMM yyyy", India));
             w.Text(string.Join(" · ", bits));
             if (t.DestinationNames.Count > 0) w.Raw("<br>").Text(string.Join(", ", t.DestinationNames));
@@ -219,7 +219,7 @@ public partial class SeoPageRenderer
             w.Raw($"<img class=\"ssr-hero\" src=\"{Html.Encode(photo.ImageUrl)}\" alt=\"{Html.Encode(t.Title)}\" width=\"1280\" height=\"560\" fetchpriority=\"high\">");
         }
         w.Tag("h1", t.Title);
-        w.Raw("<p>").Text($"From {TripPageContent.Rupees(t.AmountPerPerson)} per person").Raw("</p>");
+        w.Raw("<p>").Text($"From {TripPageContent.Rupees(t.FromPrice)} per person").Raw("</p>");
 
         w.Raw("<ul class=\"ssr-facts\">");
         if (t.DurationLabel is not null) w.Raw("<li><span>Duration</span>").Text(t.DurationLabel.Replace(" / ", " · ")).Raw("</li>");
@@ -227,7 +227,7 @@ public partial class SeoPageRenderer
         if (next is not null) w.Raw("<li><span>Next departure</span>").Text(next.StartDate.ToString("ddd, d MMM", India)).Raw("</li>");
         if (t.DepartureCity is not null) w.Raw("<li><span>Departs from</span>").Text(t.DepartureCity).Raw("</li>");
         if (t.PickupPoints.Count > 0) w.Raw("<li><span>Pickup from</span>").Text(t.PickupPoints[0].Location + (t.PickupPoints.Count > 1 ? $" +{t.PickupPoints.Count - 1} more" : "")).Raw("</li>");
-        w.Raw("<li><span>Starting from</span>").Text($"{TripPageContent.Rupees(t.AmountPerPerson)} / person").Raw("</li></ul>");
+        w.Raw("<li><span>Starting from</span>").Text($"{TripPageContent.Rupees(t.FromPrice)} / person").Raw("</li></ul>");
 
         if (t.ItineraryDays.Count > 0)
         {

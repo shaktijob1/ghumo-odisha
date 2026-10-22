@@ -64,7 +64,12 @@ public record CreateManualBookingRequest(
     PaymentMethod PaymentMethod,
     string? PaymentReference,
     BookingSource BookingSource,
-    string? AdminNotes);
+    string? AdminNotes,
+    /// <summary>Flat ₹ off the whole booking, given by the admin. The server subtracts it from the trip total it recomputes.</summary>
+    decimal DiscountAmount = 0);
 
 /// <summary>Customer asks for their booking invoice to be emailed to this address.</summary>
 public record EmailInvoiceRequest(string Email);
+
+/// <summary>Admin: move a booking to another of its trip's pickup points (null clears it).</summary>
+public record ChangeBookingPickupPointRequest(int? PickupPointId);

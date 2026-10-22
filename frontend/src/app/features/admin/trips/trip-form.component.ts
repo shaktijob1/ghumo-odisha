@@ -4,7 +4,10 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminDestinationService } from '../../../core/services/admin-destination.service';
-import { AdminTripDetail, DateSlot, ItineraryDay, ItineraryPoint } from '../../../core/models/trip.model';
+import { AdminTripDetail, DateSlot, ItineraryDay, ItineraryPoint, PickupPoint } from '../../../core/models/trip.model';
+import { TRIP_CATEGORIES } from '../../../shared/utils/trip-categories';
+import { toLocalDateKey } from '../../../shared/utils/date-key';
+import { BookingStateSwitchComponent } from './booking-state-switch.component';
 import { AdminDestinationListItem } from '../../../core/models/destination.model';
 import { TripStatus } from '../../../core/models/enums.model';
 import { ToastService } from '../../../core/services/toast.service';
@@ -14,11 +17,21 @@ import { ImageUrlPipe } from '../../../shared/pipes/image-url.pipe';
 @Component({
   selector: 'app-trip-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatePanelComponent, ImageUrlPipe],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, StatePanelComponent, ImageUrlPipe, BookingStateSwitchComponent],
   templateUrl: './trip-form.component.html',
   styles: `
     .places-chips { gap: 8px; margin: 4px 0 8px; }
     .places-chips .chip { padding: 6px 6px 6px 12px; }
+    .cat-pick { gap: 8px; margin-top: 4px; }
+    .cat-opt { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+    .cat-opt:hover { border-color: var(--c-fg); }
+    .cat-opt.on { background: var(--c-bg); border-color: var(--c-fg); color: var(--c-fg); }
+    .bstate { border-left: 4px solid var(--accent); }
+    .slot-f { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .slot-f.slot-add { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; }
+    @media (max-width: 900px) { .slot-f, .slot-f.slot-add { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .slot-f, .slot-f.slot-add { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .pk-row .sel[style*="width:110px"] { width: auto !important; } }
   `,
 })
 export class TripFormComponent implements OnInit {
@@ -38,6 +51,10 @@ export class TripFormComponent implements OnInit {
   readonly placesCovered = signal<string[]>([]);
   newPlace = '';
 
+  // Home page filter categories (saved with the basic info).
+  readonly tripCategories = TRIP_CATEGORIES;
+  readonly selectedCategories = signal<Set<string>>(new Set());
+
   // pickup and itinerary-point times, every 15 minutes, e.g. { value: '09:15', label: '9:15 AM' }
   readonly quarterHourOptions = Array.from({ length: 96 }, (_, i) => {
     const value = `${Math.floor(i / 4).toString().padStart(2, '0')}:${((i % 4) * 15).toString().padStart(2, '0')}`;
@@ -53,6 +70,9 @@ export class TripFormComponent implements OnInit {
     title: ['', Validators.required],
     description: ['', Validators.required],
     amountPerPerson: [0, [Validators.required, Validators.min(0)]],
+    // Both or neither: the trip's own days / nights (a night departure isn't a day). Empty = counted from the dates.
+    durationDays: this.fb.control<number | null>(null),
+    durationNights: this.fb.control<number | null>(null),
     includesBreakfast: [false],
     includesLunch: [false],
     includesDinner: [false],
@@ -73,11 +93,11 @@ export class TripFormComponent implements OnInit {
   newHighlightFile: File | null = null;
 
   // add-date-slot draft
-  newSlot = { startDate: '', endDate: '', totalSeats: 10 };
+  newSlot: { startDate: string; endDate: string; totalSeats: number; pricePerPerson: number | null } = { startDate: '', endDate: '', totalSeats: 10, pricePerPerson: null };
 
   // inline edit of a saved date slot
   readonly editingSlotId = signal<number | null>(null);
-  slotDraft = { startDate: '', endDate: '', totalSeats: 0 };
+  slotDraft: { startDate: string; endDate: string; totalSeats: number; pricePerPerson: number | null } = { startDate: '', endDate: '', totalSeats: 0, pricePerPerson: null };
 
   // add-itinerary-day draft
   newDay = { dayNumber: 1, title: '', description: '' };
@@ -132,6 +152,15 @@ export class TripFormComponent implements OnInit {
     this.placesCovered.update((current) => current.filter((p) => p !== place));
   }
 
+  toggleCategory(key: string): void {
+    this.selectedCategories.update((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   toggleDestination(destinationId: number, checked: boolean): void {
     this.selectedDestinationIds.update((current) => {
       const next = new Set(current);
@@ -152,8 +181,12 @@ export class TripFormComponent implements OnInit {
         this.trip.set(t);
         this.selectedDestinationIds.set(new Set(t.destinationIds));
         this.placesCovered.set(t.placesCovered ?? []);
+        this.selectedCategories.set(new Set(t.categories ?? []));
         for (const day of t.itineraryDays) {
           this.newPoint[day.itineraryDayId] ??= { time: '', description: '' };
+          // Next point starts just after this day's last one, so the time list opens in the right place.
+          const draft = this.newPoint[day.itineraryDayId];
+          if (!draft.time && !draft.description) draft.time = this.nextPointTime(day);
         }
         // Suggest the next free day number (Day 1 when empty) unless a new day is half-typed.
         if (!this.newDay.title && !this.newDay.description) {
@@ -175,6 +208,8 @@ export class TripFormComponent implements OnInit {
           includesMusicalNight: t.inclusions.musicalNight,
           includesSwimmingPool: t.inclusions.swimmingPool,
           allowCoupons: t.allowCoupons,
+          durationDays: t.durationDays ?? null,
+          durationNights: t.durationNights ?? null,
           status: t.status,
         });
         this.loading.set(false);
@@ -189,9 +224,20 @@ export class TripFormComponent implements OnInit {
       return;
     }
 
+    const raw = this.form.getRawValue();
+    const days = this.countOrNull(raw.durationDays);
+    const nights = this.countOrNull(raw.durationNights);
+    if ((days === null) !== (nights === null)) {
+      this.toast.error('Enter both days and nights, or leave both empty to count them from the dates.');
+      return;
+    }
+
     this.saving.set(true);
     this.addPlaces(); // a place typed but not yet added still counts
-    const v = { ...this.form.getRawValue(), destinationIds: Array.from(this.selectedDestinationIds()), placesCovered: this.placesCovered() };
+    const v = { ...raw, durationDays: days, durationNights: nights,
+      destinationIds: Array.from(this.selectedDestinationIds()), placesCovered: this.placesCovered(),
+      // Kept in the home page filter's order.
+      categories: TRIP_CATEGORIES.map((c) => c.key).filter((k) => this.selectedCategories().has(k)) };
 
     if (this.tripId) {
       this.tripService.updateTrip(this.tripId, v).subscribe({
@@ -272,16 +318,73 @@ export class TripFormComponent implements OnInit {
 
   // ---------- date slots ----------
 
+  /** Today (local) as "yyyy-mm-dd" — the earliest start date the picker offers. */
+  readonly todayKey = toLocalDateKey(new Date());
+
+  /**
+   * Picking a start date fills (or fixes) the end date: start + the itinerary's length, so the end
+   * date's calendar opens on the right month instead of today's and is usually already right.
+   */
+  onStartDateChange(draft: { startDate: string; endDate: string }): void {
+    if (!draft.startDate) return;
+    if (!draft.endDate || draft.endDate < draft.startDate) {
+      const days = Math.max(1, Math.max(0, ...(this.trip()?.itineraryDays ?? []).map((d) => d.dayNumber)));
+      const end = new Date(`${draft.startDate}T00:00:00`);
+      end.setDate(end.getDate() + days - 1);
+      draft.endDate = toLocalDateKey(end);
+    }
+  }
+
+  /** Empty / non-numeric = not set; days and nights are whole numbers. */
+  private countOrNull(value: number | string | null): number | null {
+    if (value === null || value === '') return null;
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  }
+
+  /** Empty / zero / non-numeric price = use the trip's price. */
+  private priceOrNull(value: number | string | null): number | null {
+    const n = Number(value);
+    return value === null || value === '' || !Number.isFinite(n) || n <= 0 ? null : n;
+  }
+
+  // One price for every date in a month.
+  monthPrice: { month: string; price: number | null } = { month: '', price: null };
+
+  /** Months that have dates, for the month price picker: { key: '2026-11', label: 'November 2026', count }. */
+  slotMonthsForPricing(t: AdminTripDetail): { key: string; label: string; count: number }[] {
+    const map = new Map<string, number>();
+    for (const s of t.dateSlots) map.set(s.startDate.slice(0, 7), (map.get(s.startDate.slice(0, 7)) ?? 0) + 1);
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, count]) => ({ key, count, label: new Date(`${key}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) }));
+  }
+
+  applyMonthPrice(): void {
+    if (!this.tripId || !this.monthPrice.month) {
+      this.toast.error('Choose a month.');
+      return;
+    }
+    const price = this.priceOrNull(this.monthPrice.price);
+    this.tripService.setMonthPrice(this.tripId, this.monthPrice.month, price).subscribe({
+      next: (message) => {
+        this.toast.success(message);
+        this.monthPrice = { month: '', price: null };
+        this.loadTrip(this.tripId!, true);
+      },
+    });
+  }
+
   addDateSlot(): void {
     if (!this.tripId || !this.newSlot.startDate || !this.newSlot.endDate || this.newSlot.totalSeats <= 0) {
       this.toast.error('Enter a start date, end date and total seats.');
       return;
     }
 
-    this.tripService.addDateSlot(this.tripId, this.newSlot).subscribe({
+    this.tripService.addDateSlot(this.tripId, { ...this.newSlot, pricePerPerson: this.priceOrNull(this.newSlot.pricePerPerson) }).subscribe({
       next: () => {
         this.toast.success('Date slot added.');
-        this.newSlot = { startDate: '', endDate: '', totalSeats: 10 };
+        this.newSlot = { startDate: '', endDate: '', totalSeats: this.newSlot.totalSeats, pricePerPerson: null };
         this.loadTrip(this.tripId!, true);
       },
     });
@@ -293,7 +396,7 @@ export class TripFormComponent implements OnInit {
   }
 
   startEditDateSlot(s: DateSlot): void {
-    this.slotDraft = { startDate: s.startDate, endDate: s.endDate, totalSeats: s.totalSeats };
+    this.slotDraft = { startDate: s.startDate, endDate: s.endDate, totalSeats: s.totalSeats, pricePerPerson: s.slotPrice ?? null };
     this.editingSlotId.set(s.tripDateSlotId);
   }
 
@@ -307,7 +410,7 @@ export class TripFormComponent implements OnInit {
       return;
     }
 
-    this.tripService.updateDateSlot(s.tripDateSlotId, { ...this.slotDraft, status: s.status }).subscribe({
+    this.tripService.updateDateSlot(s.tripDateSlotId, { ...this.slotDraft, pricePerPerson: this.priceOrNull(this.slotDraft.pricePerPerson), status: s.status }).subscribe({
       next: () => {
         this.toast.success('Date slot updated.');
         this.editingSlotId.set(null);
@@ -316,8 +419,13 @@ export class TripFormComponent implements OnInit {
     });
   }
 
-  deleteDateSlot(id: number): void {
-    this.tripService.deleteDateSlot(id).subscribe(() => this.loadTrip(this.tripId!, true));
+  /** The API refuses (and the error toast says why) while the date has active bookings, a completed paid trip or a pending refund. */
+  deleteDateSlot(s: DateSlot): void {
+    if (!confirm(`Delete the ${s.startDate} departure? This can't be undone.`)) return;
+    this.tripService.deleteDateSlot(s.tripDateSlotId).subscribe(() => {
+      this.toast.success('Date slot deleted.');
+      this.loadTrip(this.tripId!, true);
+    });
   }
 
   // ---------- itinerary ----------
@@ -354,6 +462,15 @@ export class TripFormComponent implements OnInit {
         this.loadTrip(this.tripId!, true);
       },
     });
+  }
+
+  /** 15 minutes after the day's last point ("08:00 PM" → "20:15"); 6:00 AM for an empty day. */
+  private nextPointTime(day: ItineraryDay): string {
+    const times = day.points.map((p) => this.to24Hour(p.time)).filter((t) => t.length > 0);
+    if (times.length === 0) return '06:00';
+    const [h, m] = times[times.length - 1].split(':').map(Number);
+    const next = (h * 60 + m + 15) % (24 * 60);
+    return `${String(Math.floor(next / 60)).padStart(2, '0')}:${String(next % 60).padStart(2, '0')}`;
   }
 
   deletePoint(id: number): void {
@@ -479,6 +596,29 @@ export class TripFormComponent implements OnInit {
       next: () => {
         this.toast.success('Pickup point added.');
         this.newPickupPoint = { location: '', time: '' };
+        this.loadTrip(this.tripId!, true);
+      },
+    });
+  }
+
+  readonly editingPickupId = signal<number | null>(null);
+  pickupDraft = { location: '', time: '' };
+
+  startEditPickupPoint(p: PickupPoint): void {
+    this.pickupDraft = { location: p.location, time: this.to24Hour(p.time) };
+    this.editingPickupId.set(p.pickupPointId);
+  }
+
+  savePickupPoint(id: number, displayOrder: number): void {
+    const location = this.pickupDraft.location.trim();
+    if (!location || !this.pickupDraft.time) {
+      this.toast.error('Enter a pickup location and time.');
+      return;
+    }
+    this.tripService.updatePickupPoint(id, { location, time: this.to12Hour(this.pickupDraft.time), displayOrder }).subscribe({
+      next: () => {
+        this.toast.success('Pickup point updated.');
+        this.editingPickupId.set(null);
         this.loadTrip(this.tripId!, true);
       },
     });

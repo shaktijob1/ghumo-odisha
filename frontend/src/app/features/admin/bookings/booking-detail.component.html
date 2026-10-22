@@ -35,7 +35,7 @@
         <div class="sub" style="margin-bottom:0">
           The customer went to the payment page but hasn't paid. No seats are held.
           If they don't pay, this request is cancelled automatically at {{ requestExpiresAt | date:'d MMM y, h:mm a' }}
-          ({{ requestExpiryHours }} hours after the request) and disappears from this list.
+          ({{ requestExpiryMinutes }} minutes after the request) and disappears from this list.
           @if (b.customerPhone) { You can follow up on WhatsApp: {{ b.customerPhone }}. }
         </div>
       </div>
@@ -49,6 +49,11 @@
           <span class="k">Trip</span><b>{{ b.tripTitle }}</b>
           <span class="k">Date range</span><b>{{ b.startDate | date:'d MMM y' }} → {{ b.endDate | date:'d MMM y' }}</b>
           <span class="k">Seats</span><b>{{ b.numberOfSeats }}</b>
+          <span class="k">Pickup point</span>
+          <span>
+            <b>{{ b.pickupPointLocation ? b.pickupPointLocation + (b.pickupPointTime ? ' · ' + b.pickupPointTime : '') : 'Not selected' }}</b>
+            @if (canEditTravellers) { <button class="linkbtn" (click)="openPickupModal()">Change</button> }
+          </span>
           <span class="k">Rooms allotted</span><b>{{ b.roomsAllotted }}</b>
           <span class="k">Male / Female</span>
           <span>
@@ -285,6 +290,37 @@
         <button class="btn" style="flex:1" [disabled]="submitting()" (click)="submitSeats()">
           @if (submitting()) { <span class="spin"></span> } @else { Update seats }
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Pickup point modal: any of this trip's pickup points (Trips → Edit → Pickup points). -->
+@if (showPickupModal()) {
+  <div class="modal-backdrop" (click)="showPickupModal.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h4>Change pickup point</h4>
+      @if (pickupOptions() === null) {
+        <p class="note">Loading pickup points…</p>
+      } @else if (pickupOptions()!.length === 0) {
+        <p class="note">This trip has no pickup points yet. Add them from Trips → Edit → Pickup points.</p>
+      } @else {
+        <div class="fld">
+          <span class="lbl">Pickup point</span>
+          <select class="inp" [(ngModel)]="selectedPickupPointId">
+            <option [ngValue]="null">Not selected</option>
+            @for (p of pickupOptions(); track p.pickupPointId) {
+              <option [ngValue]="p.pickupPointId">{{ p.time }} · {{ p.location }}</option>
+            }
+          </select>
+        </div>
+      }
+      @if (pickupError()) {
+        <div class="errorbox">{{ pickupError() }}</div>
+      }
+      <div class="row" style="gap:8px">
+        <button class="btn ghost" style="flex:1" (click)="showPickupModal.set(false)">Close</button>
+        <button class="btn" style="flex:1" [disabled]="submitting() || !pickupOptions()?.length" (click)="submitPickupPoint()">Save</button>
       </div>
     </div>
   </div>

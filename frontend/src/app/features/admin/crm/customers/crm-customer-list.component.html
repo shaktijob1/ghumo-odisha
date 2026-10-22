@@ -1,0 +1,115 @@
+<div class="ahead">
+  <div>
+    <h2>Customers</h2>
+    <div class="sub">Everyone who enquired, booked or signed up — one record per mobile number</div>
+  </div>
+  <div class="row" style="gap:8px">
+    <a class="btn sm ghost" routerLink="/admin/crm/customers/import">Import CSV</a>
+    <a class="btn sm" routerLink="/admin/crm/customers/new">+ Add customer</a>
+  </div>
+</div>
+
+<div class="filters crm-filters">
+  <input class="inp sm search" type="search" [(ngModel)]="search" (ngModelChange)="onSearch()" placeholder="Name, mobile, email, trip or GO-123456" aria-label="Search customers" />
+  <select class="inp sm" [(ngModel)]="status" (ngModelChange)="apply()" aria-label="Stage">
+    <option [ngValue]="null">All stages</option>
+    @for (s of statuses; track s) { <option [ngValue]="s">{{ statusLabels[s] }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="source" (ngModelChange)="apply()" aria-label="Lead source">
+    <option [ngValue]="null">All sources</option>
+    @for (s of sources; track s) { <option [ngValue]="s">{{ sourceLabels[s] }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="apply()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="assignedAdminUserId" (ngModelChange)="apply()" aria-label="Assigned to">
+    <option [ngValue]="null">Anyone</option>
+    @for (a of admins(); track a.adminUserId) { <option [ngValue]="a.adminUserId">{{ a.name }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="year" (ngModelChange)="month = year ? month : null; apply()" aria-label="Added in year">
+    <option [ngValue]="null">Added any time</option>
+    @for (y of years; track y) { <option [ngValue]="y">Added in {{ y }}</option> }
+  </select>
+  @if (year) {
+    <select class="inp sm" [(ngModel)]="month" (ngModelChange)="apply()" aria-label="Added in month">
+      <option [ngValue]="null">Whole year</option>
+      @for (m of monthNames; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+    </select>
+  }
+  <label class="crm-check">
+    <input type="checkbox" [(ngModel)]="activeOnly" (ngModelChange)="apply()" />
+    Only leads &amp; customers with activity
+  </label>
+  @if (hasFilters) { <button type="button" class="linkbtn" (click)="clearFilters()">Clear filters</button> }
+</div>
+
+<div class="panel">
+  @switch (state()) {
+    @case ('loading') {
+      <app-state-panel kind="loading" message="Loading customers…"></app-state-panel>
+    }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load customers."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    }
+    @case ('ready') {
+      @if (items().length === 0) {
+        <app-state-panel kind="empty" [message]="hasFilters ? 'No customers match these filters.' : 'No customers yet. Add your first lead.'"></app-state-panel>
+      } @else {
+        <div class="note" style="margin-bottom:10px">{{ total() | number }} customer{{ total() === 1 ? '' : 's' }}</div>
+        <div class="tblwrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Stage</th>
+                <th>Source</th>
+                <th class="num">Trips</th>
+                <th class="num">Spent</th>
+                <th>Last contact</th>
+                <th>Next follow-up</th>
+                <th>Assigned</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of items(); track c.customerId) {
+                <tr class="click" (click)="open(c)" tabindex="0" (keydown.enter)="open(c)">
+                  <td>
+                    <b>{{ c.name || 'No name yet' }}</b>
+                    <span class="sub2">{{ formatPhone(c.phoneNumber) || c.email || '—' }}{{ c.city ? ' · ' + c.city : '' }}</span>
+                  </td>
+                  <td><span class="badge" [class]="'badge ' + statusTone[c.status]">{{ statusLabels[c.status] }}</span></td>
+                  <td>{{ sourceLabels[c.leadSource] }}</td>
+                  <td class="num">
+                    {{ c.totalBookings }}
+                    <span class="sub2">{{ c.interestCount }} interest{{ c.interestCount === 1 ? '' : 's' }}</span>
+                  </td>
+                  <td class="num">₹{{ c.totalSpent | number: '1.0-0' }}</td>
+                  <td>{{ c.lastContactAt ? (c.lastContactAt | date: 'd MMM y') : '—' }}</td>
+                  <td>
+                    @if (c.nextFollowUpDate) {
+                      <span class="crm-due" [class.overdue]="dueState(c.nextFollowUpDate) === 'overdue'" [class.today]="dueState(c.nextFollowUpDate) === 'today'">
+                        {{ dueState(c.nextFollowUpDate) === 'today' ? 'Today' : (c.nextFollowUpDate | date: 'd MMM') }}
+                      </span>
+                    } @else { <span class="mut">—</span> }
+                  </td>
+                  <td>{{ c.assignedAdminName || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (totalPages > 1) {
+          <div class="pager">
+            <span>Page {{ page }} of {{ totalPages }}</span>
+            <div class="pg">
+              <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1" aria-label="Previous page">‹</button>
+              <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages" aria-label="Next page">›</button>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>

@@ -129,6 +129,7 @@ public class CreateManualBookingRequestValidator : AbstractValidator<CreateManua
         RuleFor(x => x.PaymentMethod).IsInEnum();
         RuleFor(x => x.PaymentReference).MaximumLength(100);
         RuleFor(x => x.AdminNotes).MaximumLength(1000);
+        RuleFor(x => x.DiscountAmount).GreaterThanOrEqualTo(0).WithMessage("Discount cannot be negative.");
     }
 }
 

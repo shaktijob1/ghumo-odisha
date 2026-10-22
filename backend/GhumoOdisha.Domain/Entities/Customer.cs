@@ -1,3 +1,5 @@
+using GhumoOdisha.Domain.Enums;
+
 namespace GhumoOdisha.Domain.Entities;
 
 public class Customer
@@ -21,6 +23,24 @@ public class Customer
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
+
+    // ---- CRM (Admin → CRM). Website sign-ups are CRM customers too, with LeadSource Website. ----
+    public string? AlternatePhoneNumber { get; set; }
+    public bool WhatsAppAvailable { get; set; } = true;
+    public string? City { get; set; }
+    public LeadSource LeadSource { get; set; } = LeadSource.Website;
+    public CrmStatus CrmStatus { get; set; } = CrmStatus.NewLead;
+    /// <summary>Standing notes about the customer; dated notes are <see cref="CrmNotes"/>.</summary>
+    public string? CrmSummary { get; set; }
+    public DateTime? LastContactAt { get; set; }
+    public int? AssignedAdminUserId { get; set; }
+
+    public AdminUser? AssignedAdminUser { get; set; }
+    public ICollection<CustomerTripInterest> TripInterests { get; set; } = new List<CustomerTripInterest>();
+    public ICollection<CrmFollowUp> CrmFollowUps { get; set; } = new List<CrmFollowUp>();
+    public ICollection<CrmCommunication> CrmCommunications { get; set; } = new List<CrmCommunication>();
+    public ICollection<CrmNote> CrmNotes { get; set; } = new List<CrmNote>();
+    public ICollection<CrmStatusChange> CrmStatusChanges { get; set; } = new List<CrmStatusChange>();
 
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CustomerRefreshToken> RefreshTokens { get; set; } = new List<CustomerRefreshToken>();

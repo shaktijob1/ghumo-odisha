@@ -58,7 +58,10 @@ public record AdminBookingDetailDto(
     bool RefundWaived,
     IReadOnlyList<AdminTravellerDto> Travellers,
     IReadOnlyList<BookingEventDto> Timeline,
-    Refunds.Dtos.AdminRefundDto? Refund = null);
+    Refunds.Dtos.AdminRefundDto? Refund = null,
+    string? PickupPointLocation = null,
+    string? PickupPointTime = null,
+    int? PickupPointId = null);
 
 public record AdminTravellerDto(
     int BookingTravellerId,

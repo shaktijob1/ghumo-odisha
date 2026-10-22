@@ -21,22 +21,9 @@ public static class TripPageContent
 {
     private static readonly CultureInfo India = CultureInfo.GetCultureInfo("en-IN");
 
-    /// <summary>Where the business is based and its trips leave from (Company:Address). A trip page only
-    /// says "from Bhubaneswar" when that trip's own itinerary or pickups name the city.</summary>
+    /// <summary>Where the business is based (Company:Address). Every trip leaves from here, so every
+    /// trip page's title, description and FAQ say "from Bhubaneswar".</summary>
     public const string HomeCity = "Bhubaneswar";
-
-    /// <summary>The city a trip leaves from, if its itinerary or pickup points name it ("Departure from Bhubaneswar").</summary>
-    public static string? DetectDepartureCity(string departureCity, IEnumerable<string?> itineraryText)
-    {
-        if (string.IsNullOrWhiteSpace(departureCity))
-        {
-            return null;
-        }
-
-        return itineraryText.Any(text => text is not null && text.Contains(departureCity, StringComparison.OrdinalIgnoreCase))
-            ? departureCity
-            : null;
-    }
 
     /// <summary>Same captions, same order as the trip page's "What's included" tiles.</summary>
     public static IReadOnlyList<string> IncludedItems(Trips.Dtos.TripInclusionsDto inc)
@@ -54,14 +41,6 @@ public static class TripPageContent
         if (inc.SwimmingPool) items.Add("Swimming Pool");
         if (inc.Coordinator) items.Add("Coordinator");
         return items;
-    }
-
-    /// <summary>"4 Days / 3 Nights" — same wording as the trip cards.</summary>
-    public static string DurationLabel(DateOnly start, DateOnly end)
-    {
-        var days = end.DayNumber - start.DayNumber + 1;
-        var nights = days - 1;
-        return $"{days} {(days == 1 ? "Day" : "Days")} / {nights} {(nights == 1 ? "Night" : "Nights")}";
     }
 
     public static string Rupees(decimal amount) => "₹" + amount.ToString("#,##0.##", India);
@@ -85,7 +64,8 @@ public static class TripPageContent
         IReadOnlyList<(string Location, string Time)> pickupPoints,
         IReadOnlyList<string> includedItems,
         string? durationLabel,
-        bool hasUpcomingDates)
+        bool hasUpcomingDates,
+        bool hasStay)
     {
         var name = DisplayName(tripTitle);
         var faqs = new List<FaqItem>();
@@ -118,10 +98,22 @@ public static class TripPageContent
         }
 
         faqs.Add(new FaqItem(
+            "How will we travel?",
+            "The group travels by road in a 7-seater vehicle such as a Maruti Ertiga, Toyota Innova, Mahindra TUV300 or Maruti XL6, or in a Force pushback AC Traveller for bigger groups. " +
+            "The vehicle depends on the group size for your date."));
+
+        if (hasStay)
+        {
+            faqs.Add(new FaqItem(
+                "How are rooms shared?",
+                "Two travellers are allotted one room."));
+        }
+
+        faqs.Add(new FaqItem(
             "How do I book a seat?",
             $"Pick a departure date on this page, choose the number of travellers and your pickup point, and pay the booking amount of {Rupees(BookingPaymentService.PerSeatAdvanceAmount)} per seat online. " +
             $"Your seat is confirmed as soon as the payment goes through, and the balance is paid before departure as our team tells you. " +
-            $"Online booking closes {SlotBookingRules.OnlineCutoffDays} days before departure — for a closer date, message us on WhatsApp."));
+            $"Online booking stays open until {SlotBookingRules.OnlineCloseTimeLabel} on the day of departure — after that, message us on WhatsApp."));
 
         faqs.Add(new FaqItem(
             "Can I cancel my booking?",

@@ -62,6 +62,10 @@ export interface AdminBookingDetail {
   timeline: BookingEvent[];
   /** Present when the booking was cancelled with money paid (not waived). */
   refund: AdminRefund | null;
+  /** The pickup point the customer chose (null when the trip has none or none was chosen). */
+  pickupPointLocation: string | null;
+  pickupPointTime: string | null;
+  pickupPointId: number | null;
 }
 
 export interface AdminTraveller {
@@ -148,6 +152,8 @@ export interface CreateManualBookingRequest {
   paymentReference?: string | null;
   bookingSource: BookingSource;
   adminNotes?: string | null;
+  /** Flat ₹ off the whole booking; the server subtracts it from the total it recomputes. */
+  discountAmount?: number;
 }
 
 export interface CreateBookingRequest {

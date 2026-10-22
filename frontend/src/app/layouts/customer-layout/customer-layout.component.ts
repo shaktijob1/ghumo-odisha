@@ -9,11 +9,12 @@ import { TermsDialogComponent } from '../../shared/components/terms-dialog.compo
 import { TermsDialogService } from '../../core/services/terms-dialog.service';
 import { ImageUrlPipe } from '../../shared/pipes/image-url.pipe';
 import { OdishaMarkComponent } from '../../shared/components/odisha-mark.component';
+import { ContactFabComponent } from '../../shared/components/contact-fab.component';
 
 @Component({
   selector: 'app-customer-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, LoginModalComponent, TermsDialogComponent, ImageUrlPipe, OdishaMarkComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent, LoginModalComponent, TermsDialogComponent, ImageUrlPipe, OdishaMarkComponent, ContactFabComponent],
   templateUrl: './customer-layout.component.html',
   styles: `
     .logo-mark { display: inline-flex; align-items: center; gap: 8px; }

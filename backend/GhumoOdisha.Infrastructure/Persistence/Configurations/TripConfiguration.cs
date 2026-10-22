@@ -27,6 +27,13 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
         builder.Property(t => t.Status)
             .HasConversion<int>();
 
+        // Existing trips get 0 from the migration: Open, no categories.
+        builder.Property(t => t.BookingState)
+            .HasConversion<int>();
+
+        builder.Property(t => t.Categories)
+            .HasConversion<int>();
+
         builder.Property(t => t.PlacesCovered).HasMaxLength(4000);
 
         builder.Property(t => t.ItineraryPdfUrl)

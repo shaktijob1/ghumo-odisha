@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace GhumoOdisha.Tests;
 
-/// <summary>24-hour expiry of unpaid requests, deleting a date whose bookings were never confirmed,
+/// <summary>1-hour expiry of unpaid requests, deleting a date whose bookings were never confirmed,
 /// and the admin Collections sheet.</summary>
 public class RequestExpiryAndCollectionsTests
 {
@@ -58,16 +58,16 @@ public class RequestExpiryAndCollectionsTests
         db.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE Bookings SET RequestedAt = {DateTime.UtcNow - age}, UpdatedAt = {DateTime.UtcNow - age} WHERE BookingId = {bookingId}");
 
-    // ---------- 24-hour expiry ----------
+    // ---------- 1-hour expiry ----------
 
     [Fact]
-    public async Task UnpaidRequest_OlderThan24Hours_IsCancelled_AndSeatsUntouched()
+    public async Task UnpaidRequest_OlderThanAnHour_IsCancelled_AndSeatsUntouched()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedAsync(db);
         var service = CreateService(db);
         var bookingId = await RequestAsync(service, trip, slot, customer);
-        await BackdateAsync(db, bookingId, TimeSpan.FromHours(25));
+        await BackdateAsync(db, bookingId, TimeSpan.FromMinutes(61));
 
         await service.ExpireUnpaidRequestsAsync();
 
@@ -79,13 +79,13 @@ public class RequestExpiryAndCollectionsTests
     }
 
     [Fact]
-    public async Task UnpaidRequest_YoungerThan24Hours_IsLeftAlone()
+    public async Task UnpaidRequest_YoungerThanAnHour_IsLeftAlone()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedAsync(db);
         var service = CreateService(db);
         var bookingId = await RequestAsync(service, trip, slot, customer);
-        await BackdateAsync(db, bookingId, TimeSpan.FromHours(23));
+        await BackdateAsync(db, bookingId, TimeSpan.FromMinutes(50));
 
         await service.ExpireUnpaidRequestsAsync();
 
@@ -133,6 +133,41 @@ public class RequestExpiryAndCollectionsTests
     }
 
     [Fact]
+    public async Task ManualAdminBooking_WithDiscount_LowersTotalAndBalance()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db);
+        var service = CreateService(db);
+
+        var bookingId = await service.CreateManualBookingAsync(new CreateManualBookingRequest(
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 2, 500m, PaymentMethod.Upi, null, BookingSource.Phone, null, 300m));
+
+        var booking = await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == bookingId);
+        Assert.Equal(BookingStatus.Confirmed, booking.BookingStatus);
+        Assert.Equal(300m, booking.DiscountAmount);
+        Assert.Equal(1700m, booking.TotalAmount);
+        Assert.Equal(1200m, booking.RemainingAmount);
+        Assert.Equal(8, await db.TripDateSlots.AsNoTracking().Where(s => s.TripDateSlotId == slot.TripDateSlotId).Select(s => s.AvailableSeats).SingleAsync());
+    }
+
+    [Fact]
+    public async Task ManualAdminBooking_WithDiscountOfWholeTotal_OrPaidAboveDiscountedTotal_CreatesNothing()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db);
+        var service = CreateService(db);
+
+        await Assert.ThrowsAsync<ValidationAppException>(() => service.CreateManualBookingAsync(new CreateManualBookingRequest(
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 100m, PaymentMethod.Cash, null, BookingSource.Phone, null, 1000m)));
+        // ₹1,000 trip − ₹300 discount = ₹700, so ₹800 paid is more than the total.
+        await Assert.ThrowsAsync<ValidationAppException>(() => service.CreateManualBookingAsync(new CreateManualBookingRequest(
+            customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 800m, PaymentMethod.Cash, null, BookingSource.Phone, null, 300m)));
+
+        Assert.False(await db.Bookings.AnyAsync(b => b.TripId == trip.TripId));
+        Assert.Equal(10, await db.TripDateSlots.AsNoTracking().Where(s => s.TripDateSlotId == slot.TripDateSlotId).Select(s => s.AvailableSeats).SingleAsync());
+    }
+
+    [Fact]
     public async Task ManualAdminBooking_WithMorePaidThanTotal_CreatesNothing()
     {
         await using var db = TestDb.CreateContext();
@@ -165,7 +200,7 @@ public class RequestExpiryAndCollectionsTests
 
         // Once the unpaid-request expiry cancels it, it drops out of the admin lists again.
         await db.Bookings.Where(b => b.BookingId == bookingId)
-            .ExecuteUpdateAsync(s => s.SetProperty(b => b.RequestedAt, DateTime.UtcNow.AddHours(-(BookingService.UnpaidRequestExpiryHours + 1))));
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.RequestedAt, DateTime.UtcNow.AddMinutes(-(BookingService.UnpaidRequestExpiryMinutes + 5))));
         await service.ExpireUnpaidRequestsAsync();
         Assert.Empty(await service.GetBookingsForTripAsync(trip.TripId));
     }
@@ -212,6 +247,49 @@ public class RequestExpiryAndCollectionsTests
         await service.ConfirmBookingAsync(bookingId, new ConfirmBookingRequest(500m));
 
         await Assert.ThrowsAsync<ConflictException>(() => new TripService(db, null!).DeleteDateSlotAsync(slot.TripDateSlotId));
+    }
+
+    [Fact]
+    public async Task DeleteDateSlot_WithCompletedPaidBooking_IsRejected()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db);
+        var service = CreateService(db);
+        var bookingId = await RequestAsync(service, trip, slot, customer);
+        await service.ConfirmBookingAsync(bookingId, new ConfirmBookingRequest(500m));
+        await db.Bookings.Where(b => b.BookingId == bookingId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.BookingStatus, BookingStatus.Completed));
+        db.ChangeTracker.Clear();
+
+        await Assert.ThrowsAsync<ConflictException>(() => new TripService(db, null!).DeleteDateSlotAsync(slot.TripDateSlotId));
+    }
+
+    [Fact]
+    public async Task DeleteDateSlot_WithPendingRefund_IsRejected_ButOnceRefunded_Succeeds()
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedAsync(db);
+        var service = CreateService(db);
+        var bookingId = await RequestAsync(service, trip, slot, customer);
+        await service.ConfirmBookingAsync(bookingId, new ConfirmBookingRequest(500m));
+        // Cancelled after paying: no longer active, but money is still owed back.
+        await db.Bookings.Where(b => b.BookingId == bookingId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.BookingStatus, BookingStatus.Cancelled)
+                .SetProperty(b => b.PaymentStatus, PaymentStatus.RefundPending));
+        db.ChangeTracker.Clear();
+
+        var trips = new TripService(db, null!);
+        await Assert.ThrowsAsync<ConflictException>(() => trips.DeleteDateSlotAsync(slot.TripDateSlotId));
+
+        await db.Bookings.Where(b => b.BookingId == bookingId)
+            .ExecuteUpdateAsync(s => s.SetProperty(b => b.PaymentStatus, PaymentStatus.Refunded));
+        db.ChangeTracker.Clear();
+
+        await trips.DeleteDateSlotAsync(slot.TripDateSlotId);
+
+        var booking = await db.Bookings.AsNoTracking().SingleAsync(b => b.BookingId == bookingId);
+        Assert.Null(booking.TripDateSlotId);
+        Assert.Equal(slot.StartDate, booking.RemovedSlotStartDate);
     }
 
     [Fact]

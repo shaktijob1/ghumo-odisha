@@ -1,0 +1,190 @@
+<div class="ahead">
+  <div>
+    <h2>CRM</h2>
+    <div class="sub">Leads, follow-ups and bookings · {{ periodLabel() }}</div>
+  </div>
+  <div class="row" style="gap:8px">
+    <a class="btn sm ghost" routerLink="/admin/crm/reports">Reports</a>
+    <a class="btn sm" routerLink="/admin/crm/customers/new">+ Add customer</a>
+  </div>
+</div>
+
+<div class="filters crm-filters">
+  <select class="inp sm" [(ngModel)]="year" (ngModelChange)="onYearChange()" aria-label="Year">
+    <option [ngValue]="null">All time</option>
+    @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="month" (ngModelChange)="apply()" [disabled]="!year" aria-label="Month">
+    <option [ngValue]="null">Whole year</option>
+    @for (m of monthNames; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="onTripChange()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripDateSlotId" (ngModelChange)="apply()" [disabled]="!tripId" aria-label="Departure date">
+    <option [ngValue]="null">All departures</option>
+    @for (d of departures(); track d.tripDateSlotId) { <option [ngValue]="d.tripDateSlotId">{{ d.startDate | date: 'd MMM y' }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="source" (ngModelChange)="apply()" aria-label="Lead source">
+    <option [ngValue]="null">All sources</option>
+    @for (s of sources; track s) { <option [ngValue]="s">{{ sourceLabels[s] }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="status" (ngModelChange)="apply()" aria-label="Customer status">
+    <option [ngValue]="null">All stages</option>
+    @for (s of statuses; track s) { <option [ngValue]="s">{{ statusLabels[s] }}</option> }
+  </select>
+  <button type="button" class="btn sm ghost" (click)="thisMonth()">This month</button>
+  @if (hasFilters) { <button type="button" class="linkbtn" (click)="clearFilters()">Clear filters</button> }
+</div>
+
+@switch (state()) {
+  @case ('loading') {
+    <app-state-panel kind="loading" message="Loading CRM figures…"></app-state-panel>
+  }
+  @case ('error') {
+    <div class="panel">
+      <app-state-panel kind="error" message="Could not load the CRM dashboard."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    </div>
+  }
+  @case ('ready') {
+    @let d = data()!;
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="k">Total leads · {{ periodLabel() }}</div>
+        <div class="v">{{ d.totalLeads | number }}</div>
+        <div class="d mut">Trip enquiries</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Hot leads</div>
+        <div class="v crm-hot">{{ d.hotLeads | number }}</div>
+        <div class="d mut">{{ d.interested | number }} interested</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Booked</div>
+        <div class="v">{{ d.booked + d.completed | number }}</div>
+        <div class="d mut">{{ d.bookingPending | number }} booking pending</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Booking conversion</div>
+        <div class="v crm-acc">{{ d.conversionRate | number: '1.0-1' }}%</div>
+        <div class="d mut">Booked or completed ÷ leads</div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="k">Total customers</div>
+        <div class="v">{{ d.totalCustomers | number }}</div>
+        <div class="d mut">{{ year ? 'Added in ' + periodLabel() : 'Website sign-ups and CRM leads' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Repeat customers</div>
+        <a class="v crm-ink-link" routerLink="/admin/crm/customers" [queryParams]="{ status: CrmStatus.RepeatCustomer, all: 1 }">{{ d.repeatCustomers | number }}</a>
+        <div class="d mut">2 or more trips booked</div>
+      </div>
+      <div class="kpi crm-fu" [class.alert]="d.followUpsOverdue > 0">
+        <div class="k">Follow-ups</div>
+        <div class="crm-fu-row">
+          <a routerLink="/admin/crm/follow-ups" [queryParams]="{ list: 'today' }"><b class="crm-dot today"></b>{{ d.followUpsToday }} today</a>
+          <a routerLink="/admin/crm/follow-ups" [queryParams]="{ list: 'overdue' }"><b class="crm-dot overdue"></b>{{ d.followUpsOverdue }} overdue</a>
+          <a routerLink="/admin/crm/follow-ups" [queryParams]="{ list: 'upcoming' }"><b class="crm-dot upcoming"></b>{{ d.followUpsUpcoming }} upcoming</a>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="k">Lost</div>
+        <div class="v">{{ d.cancelled + d.notInterested | number }}</div>
+        <div class="d mut">{{ d.cancelled }} cancelled · {{ d.notInterested }} not interested · {{ d.later }} later</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px">
+      <h4>Leads by stage</h4>
+      <div class="sub">{{ d.totalLeads | number }} trip enquiries{{ tripId ? ' for this trip' : '' }} · {{ periodLabel() }}</div>
+      @if (d.totalLeads === 0) {
+        <app-state-panel kind="empty" message="No leads for these filters yet."></app-state-panel>
+      } @else {
+        <div class="crm-funnel" role="img" [attr.aria-label]="'Leads by stage, ' + d.totalLeads + ' in total'">
+          @for (s of stages(); track s.status) {
+            @if (s.count > 0) {
+              <span class="seg" [class]="'seg t' + s.status" [style.flex-grow]="s.count" [attr.title]="statusLabels[s.status] + ': ' + s.count"></span>
+            }
+          }
+        </div>
+        <div class="crm-stages">
+          @for (s of stages(); track s.status) {
+            <div class="crm-stage" [class.zero]="s.count === 0">
+              <span class="badge" [class]="'badge ' + statusTone[s.status]">{{ statusLabels[s.status] }}</span>
+              <b>{{ s.count | number }}</b>
+              <small>{{ s.share }}%</small>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <div class="crm-head" style="margin-bottom:3px">
+          <h4>Today's follow-ups</h4>
+          <a class="linkbtn" style="padding:0" routerLink="/admin/crm/follow-ups">Open follow-ups →</a>
+        </div>
+        <div class="sub">
+          {{ d.followUpsToday }} due today
+          @if (d.followUpsOverdue > 0) { · <span class="crm-overdue">{{ d.followUpsOverdue }} overdue</span> }
+        </div>
+        @if (d.todayFollowUps.length === 0) {
+          <app-state-panel kind="empty" message="Nothing due today."></app-state-panel>
+        } @else {
+          <ul class="crm-list">
+            @for (f of d.todayFollowUps; track f.crmFollowUpId) {
+              <li>
+                <span class="crm-flame" [class.on]="(f.interestStatus ?? f.customerStatus) === CrmStatus.HotLead" aria-hidden="true">🔥</span>
+                <div class="grow">
+                  <a class="crm-ink-link" [routerLink]="['/admin/crm/customers', f.customerId]">{{ f.customerName || 'No name yet' }}</a>
+                  <div class="note">{{ f.tripTitle || 'No trip chosen' }}@if (f.departureDate) { · {{ f.departureDate | date: 'd MMM' }} }@if (f.note) { · {{ f.note }} }</div>
+                </div>
+                <span class="badge" [class]="'badge ' + statusTone[f.interestStatus ?? f.customerStatus]">{{ statusLabels[f.interestStatus ?? f.customerStatus] }}</span>
+              </li>
+            }
+          </ul>
+          @if (d.followUpsToday > d.todayFollowUps.length) {
+            <div class="note" style="margin-top:8px">and {{ d.followUpsToday - d.todayFollowUps.length }} more</div>
+          }
+        }
+      </div>
+
+      <div class="panel">
+        <h4>Upcoming departures</h4>
+        <div class="sub">Seats booked against each departure's minimum</div>
+        @if (d.upcomingDepartures.length === 0) {
+          <app-state-panel kind="empty" message="No upcoming departures open for booking."></app-state-panel>
+        } @else {
+          <ul class="crm-list">
+            @for (dep of d.upcomingDepartures; track dep.tripDateSlotId) {
+              <li class="crm-dep">
+                <div class="grow">
+                  <div class="row sp">
+                    <b>{{ dep.tripTitle }}</b>
+                    <span class="badge" [class]="'badge ' + departureTone[dep.campaignStatus]">{{ departureLabels[dep.campaignStatus] }}</span>
+                  </div>
+                  <div class="note">
+                    {{ dep.startDate | date: 'd MMM y' }} · ₹{{ dep.currentPrice | number: '1.0-0' }}{{ dep.isEarlyBird ? ' early booking' : '' }}
+                    · {{ dep.hotLeads }} hot · {{ dep.leads }} leads
+                  </div>
+                  <div class="crm-seats" [attr.aria-label]="dep.bookedSeats + ' of ' + dep.totalSeats + ' seats booked'">
+                    <span class="fill" [style.width.%]="seatShare(dep)"></span>
+                    @if (minimumMark(dep); as mark) { <span class="min" [style.left.%]="mark" [attr.title]="'Minimum ' + dep.minimumBookedSeats"></span> }
+                  </div>
+                  <div class="note">{{ dep.bookedSeats }}/{{ dep.totalSeats }} booked · {{ dep.availableSeats }} left</div>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+}

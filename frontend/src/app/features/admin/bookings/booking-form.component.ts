@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminBookingService } from '../../../core/services/admin-booking.service';
 import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminCustomerService } from '../../../core/services/admin-customer.service';
@@ -24,6 +24,7 @@ export class BookingFormComponent implements OnInit {
   private readonly tripService = inject(AdminTripService);
   private readonly customerService = inject(AdminCustomerService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
 
   readonly BookingSource = BookingSource;
@@ -48,6 +49,7 @@ export class BookingFormComponent implements OnInit {
   selectedSlotId: number | null = null;
   numberOfSeats = 1;
   amountPaid: number | null = null;
+  discountAmount: number | null = null;
   paymentMethod: PaymentMethod = PaymentMethod.Upi;
   paymentReference = '';
   bookingSource: BookingSource = BookingSource.Phone;
@@ -55,6 +57,45 @@ export class BookingFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.tripService.getTrips(1, 100).subscribe((r) => this.trips.set(r.items));
+    this.applyPrefill();
+  }
+
+  /**
+   * Opened from Admin → CRM ("Create booking" / "Convert to booking"): customer, trip, date and seats
+   * arrive in the URL. Only a convenience — the server still recomputes every price and seat check.
+   */
+  private applyPrefill(): void {
+    const q = this.route.snapshot.queryParamMap;
+    const customerId = Number(q.get('customerId'));
+    const tripId = Number(q.get('tripId'));
+    const slotId = Number(q.get('slotId'));
+    const seats = Number(q.get('seats'));
+
+    if (customerId) {
+      this.customerService.getCustomer(customerId).subscribe({
+        next: (c) => this.pickCustomer({
+          customerId: c.customerId,
+          name: c.name,
+          phoneNumber: c.phoneNumber,
+          email: c.email,
+          tripCount: c.totalBookings,
+          confirmedBookingCount: c.confirmedBookingCount,
+          totalAmount: c.totalAmount,
+          advancePaid: c.advancePaid,
+          remaining: c.remaining,
+        }),
+        error: () => undefined,
+      });
+    }
+
+    if (seats > 0) this.numberOfSeats = seats;
+    if (tripId) {
+      this.selectedTripId = tripId;
+      this.tripService.getTrip(tripId).subscribe((t) => {
+        this.slots.set(t.dateSlots.filter(isUpcomingSlot));
+        if (slotId && t.dateSlots.some((s) => s.tripDateSlotId === slotId)) this.selectedSlotId = slotId;
+      });
+    }
   }
 
   onCustomerSearchChange(): void {
@@ -80,12 +121,23 @@ export class BookingFormComponent implements OnInit {
     this.tripService.getTrip(this.selectedTripId).subscribe((t) => this.slots.set(t.dateSlots.filter(isUpcomingSlot)));
   }
 
+  /** Per-person price for the chosen departure (its own or early-booking price), else the trip's. Preview only. */
   get selectedTripPrice(): number {
-    return this.trips().find((t) => t.tripId === this.selectedTripId)?.amountPerPerson ?? 0;
+    const slot = this.slots().find((s) => s.tripDateSlotId === this.selectedSlotId);
+    return slot?.pricePerPerson ?? this.trips().find((t) => t.tripId === this.selectedTripId)?.amountPerPerson ?? 0;
   }
 
-  get totalAmount(): number {
+  get tripTotal(): number {
     return this.selectedTripPrice * this.numberOfSeats;
+  }
+
+  get discount(): number {
+    return Math.max(0, this.discountAmount ?? 0);
+  }
+
+  // What the customer owes after the admin's discount (preview — the server recomputes it).
+  get totalAmount(): number {
+    return Math.max(0, this.tripTotal - this.discount);
   }
 
   get remaining(): number {
@@ -110,6 +162,16 @@ export class BookingFormComponent implements OnInit {
       return;
     }
 
+    if ((this.discountAmount ?? 0) < 0) {
+      this.errorMessage.set('Discount cannot be negative.');
+      return;
+    }
+
+    if (this.discount >= this.tripTotal) {
+      this.errorMessage.set('Discount must be less than the trip total.');
+      return;
+    }
+
     const paid = this.amountPaid ?? 0;
     if (paid <= 0) {
       this.errorMessage.set('Enter the amount the customer has paid. A booking is only created once it is paid.');
@@ -117,7 +179,7 @@ export class BookingFormComponent implements OnInit {
     }
 
     if (paid > this.totalAmount) {
-      this.errorMessage.set('Amount paid cannot be more than the trip total.');
+      this.errorMessage.set(this.discount > 0 ? 'Amount paid cannot be more than the total after discount.' : 'Amount paid cannot be more than the trip total.');
       return;
     }
 
@@ -137,6 +199,7 @@ export class BookingFormComponent implements OnInit {
         paymentReference: this.paymentReference.trim() || null,
         bookingSource: this.bookingSource,
         adminNotes: this.adminNotes || null,
+        discountAmount: this.discount,
       })
       .subscribe({
         next: (res) => {

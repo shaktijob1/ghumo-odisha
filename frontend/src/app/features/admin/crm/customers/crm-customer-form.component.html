@@ -1,0 +1,179 @@
+<div class="ahead">
+  <div>
+    <h2>{{ isEdit ? 'Edit customer' : 'Add customer' }}</h2>
+    <div class="sub">{{ isEdit ? 'Contact details, source and who looks after them' : 'An enquiry from Instagram, Facebook, WhatsApp, a call or a walk-in' }}</div>
+  </div>
+  <a class="btn sm ghost" [routerLink]="isEdit ? ['/admin/crm/customers', customerId()] : '/admin/crm/customers'">Cancel</a>
+</div>
+
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading customer…"></app-state-panel> }
+  @case ('error') { <app-state-panel kind="error" message="Could not load this customer."></app-state-panel> }
+  @case ('ready') {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="formsec" style="max-width:760px">
+        <h4>Customer</h4>
+        <div class="sub">The mobile number is checked first, so nobody is added twice</div>
+
+        <div class="f2">
+          <div class="fld">
+            <span class="lbl">Mobile number</span>
+            <input class="inp" formControlName="phoneNumber" inputmode="tel" autocomplete="off" placeholder="98765 43210" [class.err]="invalid('phoneNumber')" />
+            @if (phoneLocked()) {
+              <div class="note" style="margin-top:4px">They sign in on the website with this number, so it can't be changed. Add a new number as the alternate.</div>
+            } @else if (invalid('phoneNumber')) {
+              <div class="note crm-err">Enter a 10-digit Indian mobile number.</div>
+            } @else if (checkingPhone()) {
+              <div class="note" style="margin-top:4px">Checking…</div>
+            }
+          </div>
+          <div class="fld">
+            <span class="lbl">Full name</span>
+            <input class="inp" formControlName="name" maxlength="150" [class.err]="invalid('name')" />
+            @if (invalid('name')) { <div class="note crm-err">Enter their name.</div> }
+          </div>
+        </div>
+
+        @if (duplicate(); as d) {
+          <div class="warnbox crm-dup" role="alert">
+            <div>
+              <b>Customer already exists.</b>
+              {{ d.name || 'A customer' }} ({{ formatPhone(d.phoneNumber) }}) has this {{ d.matchedAlternate ? 'number as their alternate number' : 'mobile number' }}
+              · {{ d.status !== null ? statusLabels[d.status] : '' }} · {{ d.interestCount }} trip interest{{ d.interestCount === 1 ? '' : 's' }} · {{ d.totalBookings }} booking{{ d.totalBookings === 1 ? '' : 's' }}
+            </div>
+            <div class="row wrap" style="gap:8px;margin-top:8px">
+              <a class="btn sm" [routerLink]="['/admin/crm/customers', d.customerId]" [queryParams]="{ addInterest: 1 }">Add a trip interest for them</a>
+              <a class="btn sm ghost" [routerLink]="['/admin/crm/customers', d.customerId]">Open profile</a>
+            </div>
+          </div>
+        }
+
+        <div class="f3">
+          <div class="fld">
+            <span class="lbl">Alternate mobile (optional)</span>
+            <input class="inp" formControlName="alternatePhoneNumber" inputmode="tel" autocomplete="off" [class.err]="invalid('alternatePhoneNumber')" />
+            @if (invalid('alternatePhoneNumber')) { <div class="note crm-err">Enter a 10-digit mobile or leave it empty.</div> }
+          </div>
+          <div class="fld">
+            <span class="lbl">Email (optional)</span>
+            <input class="inp" type="email" formControlName="email" [class.err]="invalid('email')" />
+          </div>
+          <div class="fld">
+            <span class="lbl">City</span>
+            <input class="inp" formControlName="city" maxlength="100" placeholder="Bhubaneswar" />
+          </div>
+        </div>
+
+        <div class="f3">
+          <div class="fld">
+            <span class="lbl">Lead source</span>
+            <select class="inp" formControlName="leadSource">
+              @for (s of sources; track s) { <option [ngValue]="s">{{ sourceLabels[s] }}</option> }
+            </select>
+          </div>
+          @if (!isEdit) {
+            <div class="fld">
+              <span class="lbl">Customer stage</span>
+              <select class="inp" formControlName="status">
+                @for (s of stages; track s) { <option [ngValue]="s">{{ statusLabels[s] }}</option> }
+              </select>
+            </div>
+          }
+          <div class="fld">
+            <span class="lbl">Assigned to</span>
+            <select class="inp" formControlName="assignedAdminUserId">
+              <option [ngValue]="null">Nobody yet</option>
+              @for (a of admins(); track a.adminUserId) { <option [ngValue]="a.adminUserId">{{ a.name }}</option> }
+            </select>
+          </div>
+        </div>
+
+        <label class="crm-check" style="margin-bottom:14px">
+          <input type="checkbox" formControlName="whatsAppAvailable" /> On WhatsApp
+        </label>
+
+        <div class="fld" style="margin-bottom:0">
+          <span class="lbl">Notes</span>
+          <textarea class="inp" rows="2" formControlName="summary" maxlength="2000" placeholder="Prefers twin sharing; usually travels with family"></textarea>
+        </div>
+      </div>
+
+      @if (!isEdit) {
+        <div class="formsec" style="max-width:760px">
+          <div class="crm-head">
+            <div>
+              <h4>Trip interest</h4>
+              <div class="note">Which trip they asked about. More can be added from their profile.</div>
+            </div>
+            <label class="crm-check"><input type="checkbox" formControlName="addInterest" /> Add a trip interest</label>
+          </div>
+
+          @if (form.controls.addInterest.value) {
+            <div class="f2">
+              <div class="fld">
+                <span class="lbl">Trip</span>
+                <select class="inp" formControlName="tripId">
+                  <option [ngValue]="null">Choose a trip…</option>
+                  @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+                </select>
+              </div>
+              <div class="fld">
+                <span class="lbl">Departure (optional)</span>
+                <select class="inp" formControlName="tripDateSlotId" [attr.disabled]="form.controls.tripId.value ? null : true">
+                  <option [ngValue]="null">Date not decided</option>
+                  @for (d of departures(); track d.tripDateSlotId) {
+                    <option [ngValue]="d.tripDateSlotId">{{ d.startDate | date: 'd MMM y' }} · {{ d.availableSeats }} seats left</option>
+                  }
+                </select>
+                @if (selectedDeparture(); as dep) {
+                  <div class="note" style="margin-top:4px">₹{{ dep.currentPrice | number: '1.0-0' }}/person{{ dep.isEarlyBird ? ' (early booking until ' + (dep.earlyBirdEndsOn | date: 'd MMM') + ')' : '' }}</div>
+                }
+              </div>
+            </div>
+            <div class="f3">
+              <div class="fld">
+                <span class="lbl">Travellers</span>
+                <input class="inp" type="number" min="1" max="100" formControlName="travellers" />
+              </div>
+              <div class="fld">
+                <span class="lbl">Trip stage</span>
+                <select class="inp" formControlName="interestStatus">
+                  @for (s of stages; track s) { <option [ngValue]="s">{{ statusLabels[s] }}</option> }
+                </select>
+              </div>
+              <div class="fld">
+                <span class="lbl">Expected amount (₹)</span>
+                <input class="inp" type="number" min="0" formControlName="expectedAmount" (input)="onAmountInput()" />
+              </div>
+            </div>
+            <div class="fld" style="margin-bottom:0">
+              <span class="lbl">Trip notes</span>
+              <input class="inp" formControlName="interestNotes" maxlength="2000" placeholder="Asked about pickup from Patia" />
+            </div>
+          }
+        </div>
+
+        <div class="formsec" style="max-width:760px">
+          <h4>Next follow-up</h4>
+          <div class="sub">When to get back to them (optional)</div>
+          <div class="f2">
+            <div class="fld" style="margin-bottom:0">
+              <span class="lbl">Date</span>
+              <input class="inp" type="date" formControlName="nextFollowUpDate" />
+            </div>
+            <div class="fld" style="margin-bottom:0">
+              <span class="lbl">What to do</span>
+              <input class="inp" formControlName="followUpNote" maxlength="1000" placeholder="Send itinerary, confirm dates" />
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (errorMessage()) { <div class="errorbox" style="max-width:760px;margin-bottom:14px">{{ errorMessage() }}</div> }
+
+      <button class="btn" type="submit" [disabled]="saving() || !!duplicate()">
+        @if (saving()) { <span class="spin"></span> } @else { {{ isEdit ? 'Save changes' : 'Add customer' }} }
+      </button>
+    </form>
+  }
+}

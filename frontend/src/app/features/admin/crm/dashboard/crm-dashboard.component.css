@@ -1,0 +1,42 @@
+/* CRM dashboard — the admin tokens (white panels on the #F7F8F8 canvas, hairline borders, one accent). */
+.kpi .d { font-size: 11px; margin-top: 5px; }
+.crm-acc { color: var(--accent); }
+.crm-hot { color: var(--danger); }
+
+/* Follow-up counts with a coloured dot per bucket; the card turns red-edged when anything is overdue. */
+.crm-fu-row { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
+.crm-fu-row span { display: flex; align-items: center; gap: 8px; }
+.crm-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; }
+.crm-dot.today { background: var(--accent); }
+.crm-dot.overdue { background: var(--danger); }
+.crm-dot.upcoming { background: var(--wait); }
+.crm-fu.alert { border-color: #F0CFC9; }
+.crm-overdue { color: var(--danger); font-weight: 600; }
+
+/* Stage share bar, then one tile per stage. */
+.crm-funnel { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--canvas); gap: 2px; margin-bottom: 14px; }
+.crm-funnel .seg { min-width: 4px; background: var(--muted); }
+.crm-funnel .t0, .crm-funnel .t1 { background: var(--info); }
+.crm-funnel .t2 { background: var(--danger); }
+.crm-funnel .t3, .crm-funnel .t4 { background: var(--wait); }
+.crm-funnel .t5, .crm-funnel .t6 { background: var(--accent); }
+.crm-funnel .t7, .crm-funnel .t8, .crm-funnel .t9 { background: #C9CED0; }
+.crm-stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.crm-stage { display: grid; gap: 4px; justify-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.crm-stage b { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.crm-stage small { font-size: 11px; color: var(--muted); }
+.crm-stage.zero b { color: var(--muted); }
+
+/* Seat bar: booked share, with a tick where the departure's minimum sits. */
+.crm-seats { position: relative; height: 6px; border-radius: 999px; background: var(--canvas); margin: 7px 0 4px; }
+.crm-seats .fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
+.crm-seats .min { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--ink); border-radius: 2px; }
+
+@media (max-width: 900px) {
+  .crm-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.crm-fu-row a { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+.crm-fu-row a:hover { color: var(--accent); }
+.crm-ink-link { font-weight: 600; color: var(--ink); }
+.crm-ink-link:hover { color: var(--accent); }

@@ -1,38 +1,69 @@
-<div class="adm">
-  <div class="aside2">
-    <div class="logo">Ghumo <em>Odisha</em></div>
-    <a routerLink="/admin/dashboard" routerLinkActive="on">Dashboard</a>
-    <a routerLink="/admin/trips" routerLinkActive="on">Trips</a>
-    <a routerLink="/admin/destinations" routerLinkActive="on">Destinations</a>
-    <a routerLink="/admin/stories" routerLinkActive="on">Stories</a>
-    <a routerLink="/admin/bookings" routerLinkActive="on">Bookings</a>
-    <a routerLink="/admin/refunds" routerLinkActive="on">
-      Refunds
-      @if (refunds.pendingCount() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px">{{ refunds.pendingCount() }}</span> }
-    </a>
-    <a routerLink="/admin/collections" routerLinkActive="on">Collections</a>
-    <a routerLink="/admin/customers" routerLinkActive="on">Customers</a>
-    <a routerLink="/admin/coupons" routerLinkActive="on">Coupons</a>
-    <a routerLink="/admin/logs" routerLinkActive="on">Logs</a>
-    <div class="aside-group">Cars</div>
-    <a routerLink="/admin/car-bookings" routerLinkActive="on">
-      Car bookings
-      @if (cars.refundsPending() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px" title="Refunds to issue">{{ cars.refundsPending() }}</span> }
-    </a>
-    <a routerLink="/admin/cars" routerLinkActive="on">
-      Cars
-      @if (cars.pendingApprovals() > 0) { <span class="badge wait" style="margin-left:6px;padding:1px 7px" title="Drivers, cars and pricing waiting for approval">{{ cars.pendingApprovals() }}</span> }
-    </a>
-    <a routerLink="/admin/drivers" routerLinkActive="on">Drivers</a>
-    <a routerLink="/admin/service-areas" routerLinkActive="on">Pickup areas</a>
-    <div class="who">
-      Signed in as <b style="color:var(--ink)">{{ auth.currentAdmin()?.username }}</b><br />
-      Administrator
-      <div class="signout mut" (click)="signOut()">Sign out</div>
+<div class="adm" [class.menu-open]="menuOpen()">
+  <!-- Phones and tablets: a top bar with a menu button; the sidebar slides in as a drawer. -->
+  <header class="atop">
+    <button type="button" class="atop-menu" aria-label="Open menu" [attr.aria-expanded]="menuOpen()" aria-controls="admin-nav" (click)="menuOpen.set(true)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      @if (refunds.pendingCount() + cars.pendingApprovals() + cars.refundsPending() > 0) { <span class="atop-dot" aria-hidden="true"></span> }
+    </button>
+    <div class="logo">Ghumo <em>Odisha</em> <span class="atop-tag">Admin</span></div>
+  </header>
+  <div class="adrawer-bg" (click)="menuOpen.set(false)" aria-hidden="true"></div>
+
+  <nav class="aside2" id="admin-nav" aria-label="Admin">
+    <div class="aside-head">
+      <div class="logo">Ghumo <em>Odisha</em></div>
+      <button type="button" class="aside-close" aria-label="Close menu" (click)="menuOpen.set(false)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </button>
     </div>
-  </div>
-  <div class="amain">
+
+    @for (item of mainNav; track item.route) {
+      <a [routerLink]="item.route" routerLinkActive="on" class="anav" [style.--ic]="item.color">
+        <span class="anav-ic"><app-admin-nav-icon [name]="item.icon"></app-admin-nav-icon></span>
+        <span class="anav-lbl">{{ item.label }}</span>
+        @if (item.route === '/admin/refunds' && refunds.pendingCount() > 0) { <span class="badge wait anav-badge">{{ refunds.pendingCount() }}</span> }
+      </a>
+    }
+
+    <!-- CRM and Cars are their own coloured sections, so they're easy to tell apart from the main menu. -->
+    <div class="aside-sec crm" role="group" aria-label="CRM">
+      <div class="aside-group">
+        <app-admin-nav-icon name="customers"></app-admin-nav-icon>
+        CRM
+      </div>
+      @for (item of crmNav; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="anav" [style.--ic]="item.color">
+          <span class="anav-ic"><app-admin-nav-icon [name]="item.icon"></app-admin-nav-icon></span>
+          <span class="anav-lbl">{{ item.label }}</span>
+        </a>
+      }
+    </div>
+    <div class="aside-sec cars" role="group" aria-label="Cars">
+      <div class="aside-group">
+        <app-admin-nav-icon name="car"></app-admin-nav-icon>
+        Cars
+      </div>
+      @for (item of carsNav; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="on" class="anav" [style.--ic]="item.color">
+          <span class="anav-ic"><app-admin-nav-icon [name]="item.icon"></app-admin-nav-icon></span>
+          <span class="anav-lbl">{{ item.label }}</span>
+          @if (item.route === '/admin/car-bookings' && cars.refundsPending() > 0) { <span class="badge wait anav-badge" title="Refunds to issue">{{ cars.refundsPending() }}</span> }
+          @if (item.route === '/admin/cars' && cars.pendingApprovals() > 0) { <span class="badge wait anav-badge" title="Drivers, cars and pricing waiting for approval">{{ cars.pendingApprovals() }}</span> }
+        </a>
+      }
+    </div>
+
+    <div class="who">
+      <span class="who-av" aria-hidden="true">{{ (auth.currentAdmin()?.username ?? 'A').charAt(0).toUpperCase() }}</span>
+      <div>
+        <b>{{ auth.currentAdmin()?.username }}</b>
+        <span>Administrator</span>
+      </div>
+      <button type="button" class="signout" (click)="signOut()">Sign out</button>
+    </div>
+  </nav>
+  <main class="amain">
     <router-outlet></router-outlet>
-  </div>
+  </main>
 </div>
 <app-toast-host></app-toast-host>

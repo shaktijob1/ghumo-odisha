@@ -45,6 +45,20 @@ public class AdminTripsController(ITripService tripService) : ControllerBase
         return Ok(ApiResponse<object>.Ok(new { }, "Trip updated."));
     }
 
+    /// <summary>Mark the whole trip Open, Booked (fully booked) or Closed for online bookings.</summary>
+    [HttpPut("{id:int}/booking-state")]
+    public async Task<ActionResult<ApiResponse<object>>> SetBookingState(int id, SetTripBookingStateRequest request, CancellationToken cancellationToken)
+    {
+        await tripService.SetBookingStateAsync(id, request.BookingState, cancellationToken);
+        var message = request.BookingState switch
+        {
+            Domain.Enums.TripBookingState.Booked => "Trip marked as fully booked.",
+            Domain.Enums.TripBookingState.Closed => "Bookings closed for this trip.",
+            _ => "Trip open for bookings.",
+        };
+        return Ok(ApiResponse<object>.Ok(new { }, message));
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteTrip(int id, CancellationToken cancellationToken)
     {

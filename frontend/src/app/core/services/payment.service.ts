@@ -21,6 +21,12 @@ export interface VerifyPaymentRequest {
   razorpaySignature: string;
 }
 
+export interface PaymentCheck {
+  /** confirmed = paid; pending = no payment yet (checkout open); closed = checkout ended (any payment is refunded). */
+  status: 'confirmed' | 'pending' | 'closed';
+  message: string | null;
+}
+
 export interface CouponValidationResult {
   code: string;
   discountAmount: number;
@@ -43,6 +49,16 @@ export class PaymentService {
     return this.http
       .post<ApiResponse<object>>(`${environment.apiUrl}/customer/bookings/${bookingId}/payments/verify`, request)
       .pipe(map(() => undefined));
+  }
+
+  /**
+   * "Did my payment go through?" — the API asks Razorpay and confirms the booking if it was paid
+   * (covers a refresh mid-payment, or a verify call that never arrived).
+   */
+  checkPayment(bookingId: number): Observable<PaymentCheck> {
+    return this.http
+      .post<ApiResponse<PaymentCheck>>(`${environment.apiUrl}/customer/bookings/${bookingId}/payments/check`, {})
+      .pipe(map((r) => r.data!));
   }
 
   validateCoupon(code: string): Observable<CouponValidationResult> {

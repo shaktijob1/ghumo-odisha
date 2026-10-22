@@ -15,6 +15,9 @@ public interface IGhumoOdishaDbContext
     DbSet<VehiclePhoto> VehiclePhotos { get; }
     DbSet<PickupPoint> PickupPoints { get; }
     DbSet<OrganizerPhoto> OrganizerPhotos { get; }
+    DbSet<HolidayDestination> HolidayDestinations { get; }
+    DbSet<HolidayPackage> HolidayPackages { get; }
+    DbSet<BookingPaymentOrder> BookingPaymentOrders { get; }
     DbSet<PaymentQrCode> PaymentQrCodes { get; }
     DbSet<SiteHeroPhoto> SiteHeroPhotos { get; }
     DbSet<TermsAcceptance> TermsAcceptances { get; }
@@ -51,6 +54,12 @@ public interface IGhumoOdishaDbContext
     DbSet<CarTripExecution> CarTripExecutions { get; }
     DbSet<CarAuditEvent> CarAuditEvents { get; }
     DbSet<ServiceArea> ServiceAreas { get; }
+    DbSet<CustomerTripInterest> CustomerTripInterests { get; }
+    DbSet<CrmFollowUp> CrmFollowUps { get; }
+    DbSet<CrmWhatsAppTemplate> CrmWhatsAppTemplates { get; }
+    DbSet<CrmCommunication> CrmCommunications { get; }
+    DbSet<CrmNote> CrmNotes { get; }
+    DbSet<CrmStatusChange> CrmStatusChanges { get; }
 
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
 

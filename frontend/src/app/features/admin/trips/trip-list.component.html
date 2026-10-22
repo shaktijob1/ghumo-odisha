@@ -30,7 +30,7 @@
       <div class="panel" style="padding:16px">
         <div class="tblwrap">
           <table class="tbl">
-            <tr><th>Trip</th><th>Price / person</th><th>Next date</th><th>Total seats</th><th>Available</th><th>Confirmed bookings</th><th>Status</th><th></th></tr>
+            <tr><th>Trip</th><th>Price / person</th><th>Next date</th><th>Total seats</th><th>Available</th><th>Confirmed bookings</th><th>Status</th><th>Online bookings</th><th></th></tr>
             @for (t of r.items; track t.tripId) {
               <tr>
                 <td><b>{{ t.title }}</b></td>
@@ -40,6 +40,7 @@
                 <td>{{ t.nextSlotAvailableSeats ?? '—' }}</td>
                 <td>{{ t.confirmedBookingCount }}</td>
                 <td><app-status-badge kind="trip" [value]="t.status"></app-status-badge></td>
+                <td><app-booking-state-switch [tripId]="t.tripId" [value]="t.bookingState" [compact]="true"></app-booking-state-switch></td>
                 <td class="num">
                   <div class="row" style="gap:5px;justify-content:flex-end">
                     <a class="sel" style="padding:5px 9px" [routerLink]="['/admin/trips', t.tripId]">View</a>

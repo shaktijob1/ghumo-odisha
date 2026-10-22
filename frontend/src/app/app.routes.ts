@@ -121,6 +121,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/destinations/destination-form.component').then((m) => m.DestinationFormComponent),
       },
       {
+        path: 'holidays',
+        loadComponent: () => import('./features/admin/holidays/admin-holidays.component').then((m) => m.AdminHolidaysComponent),
+      },
+      {
         path: 'stories',
         loadComponent: () => import('./features/admin/blog/blog-list.component').then((m) => m.AdminBlogListComponent),
       },
@@ -202,6 +206,10 @@ export const routes: Routes = [
       {
         path: 'coupons',
         loadComponent: () => import('./features/admin/coupons/coupon-list.component').then((m) => m.CouponListComponent),
+      },
+      {
+        path: 'crm',
+        loadChildren: () => import('./features/admin/crm/crm.routes').then((m) => m.CRM_ROUTES),
       },
       {
         path: 'customers/:id',

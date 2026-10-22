@@ -14,5 +14,6 @@ public enum BookingEventType
     GenderCountsUpdated = 9,
     Created = 10,
     RefundInitiated = 11,
-    RefundSettled = 12
+    RefundSettled = 12,
+    PickupPointChanged = 13
 }

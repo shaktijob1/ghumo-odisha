@@ -3,6 +3,13 @@ export enum TripStatus {
   Inactive = 1,
 }
 
+/** The admin's switch for a whole trip: Booked / Closed trips stay listed but take no online bookings. */
+export enum TripBookingState {
+  Open = 0,
+  Booked = 1,
+  Closed = 2,
+}
+
 export enum TripDateSlotStatus {
   Active = 0,
   Inactive = 1,
@@ -71,6 +78,7 @@ export enum BookingEventType {
   Created = 10,
   RefundInitiated = 11,
   RefundSettled = 12,
+  PickupPointChanged = 13,
 }
 
 /** Colour of the timeline dot for each kind of step. */

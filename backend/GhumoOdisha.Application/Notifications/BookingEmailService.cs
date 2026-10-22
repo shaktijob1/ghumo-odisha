@@ -25,6 +25,9 @@ public interface IBookingEmailService
 
     /// <summary>Best-effort: receipt for a later payment (balance / instalment), with the updated invoice attached.</summary>
     Task SendPaymentReceivedAsync(int bookingId, decimal amount, string methodLabel, CancellationToken cancellationToken = default);
+
+    /// <summary>Best-effort: "complete your payment" for an unpaid checkout. Returns false when nothing was sent (no email / not set up / failed).</summary>
+    Task<bool> SendPaymentReminderAsync(int bookingId, decimal amountDue, int minutesLeft, string payUrl, CancellationToken cancellationToken = default);
 }
 
 public class BookingEmailService(
@@ -189,6 +192,33 @@ public async Task SendBookingCancelledAsync(int bookingId, CancellationToken can
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Payment-received email failed for booking {BookingId} — the payment itself is recorded.", bookingId);
+        }
+    }
+
+    public async Task<bool> SendPaymentReminderAsync(int bookingId, decimal amountDue, int minutesLeft, string payUrl, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var b = await LoadForEmailAsync(bookingId, cancellationToken);
+            if (b is null) return false;
+
+            var (html, text) = EmailTemplates.PaymentReminder(new EmailTemplates.PaymentReminderModel(
+                CustomerName: b.Customer.Name ?? "there",
+                TripTitle: b.Trip.Title,
+                TravelDates: TravelDates(b),
+                Seats: b.NumberOfSeats,
+                AmountDue: Money(amountDue),
+                MinutesLeft: minutesLeft,
+                PayUrl: payUrl));
+
+            await emailSender.SendAsync(new EmailMessage(b.Customer.Email!, b.Customer.Name,
+                $"Complete your payment · {b.Trip.Title}", html, text, []), cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Payment-reminder email failed for booking {BookingId}.", bookingId);
+            return false;
         }
     }
 

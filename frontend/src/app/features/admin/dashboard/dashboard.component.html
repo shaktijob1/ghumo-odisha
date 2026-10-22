@@ -6,21 +6,8 @@
   <a class="btn sm" routerLink="/admin/bookings/add">Create booking</a>
 </div>
 
-<div class="panel" style="margin-bottom:16px">
-  <h4>Organizer photo</h4>
-  <div class="sub">Shown on the customer dashboard's contact section</div>
-  <div class="row" style="gap:14px;align-items:center;margin-top:10px">
-    @if (contact()?.photoUrl) {
-      <img [src]="contact()!.photoUrl! | imageUrl" alt="Organizer" style="width:56px;height:56px;border-radius:999px;object-fit:cover" />
-    } @else {
-      <div style="width:56px;height:56px;border-radius:999px;background:var(--canvas);border:1px dashed var(--line)"></div>
-    }
-    <label class="btn sm ghost" style="cursor:pointer">
-      @if (uploadingPhoto()) { <span class="spin"></span> } @else { {{ contact()?.photoUrl ? 'Change photo' : 'Upload photo' }} }
-      <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" (change)="onOrganizerPhotoSelected($event)" />
-    </label>
-  </div>
-</div>
+<!-- Travel Organizer card: photo, name, role, contact details, Instagram and texts. -->
+<app-organizer-panel></app-organizer-panel>
 
 <div class="panel" style="margin-bottom:16px">
   <h4>Dashboard hero photo</h4>

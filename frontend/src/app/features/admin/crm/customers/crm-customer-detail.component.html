@@ -1,0 +1,289 @@
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading customer…"></app-state-panel> }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load this customer."></app-state-panel>
+    <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load(true)">Try again</button></div>
+  }
+  @case ('not-found') {
+    <app-state-panel kind="empty" message="This customer doesn't exist."></app-state-panel>
+    <div class="row" style="justify-content:center"><a class="btn sm ghost" routerLink="/admin/crm/customers">Back to customers</a></div>
+  }
+  @case ('ready') {
+    @let c = customer()!;
+
+    <div class="ahead">
+      <div>
+        <a class="linkbtn" style="padding:0" routerLink="/admin/crm/customers">← Customers</a>
+        <h2 style="margin-top:6px">{{ c.name || 'No name yet' }}</h2>
+        <div class="row wrap" style="gap:8px">
+          <span class="badge" [class]="'badge ' + statusTone[c.status]">{{ statusLabels[c.status] }}</span>
+          <button type="button" class="linkbtn" style="padding:0" (click)="stageDialog.set({ interest: null })">Change stage</button>
+        </div>
+      </div>
+      <div class="row wrap" style="gap:8px">
+        <button type="button" class="btn sm" (click)="waFor.set({ interestId: null })" [disabled]="!c.phoneNumber || !c.whatsAppAvailable">WhatsApp</button>
+        <button type="button" class="btn sm ghost" (click)="logOpen.set(true)">Log a contact</button>
+        <a class="btn sm ghost" [routerLink]="['/admin/crm/customers', c.customerId, 'edit']">Edit</a>
+        <button type="button" class="btn sm ghost" (click)="interestDialogOpen.set(true)">+ Trip interest</button>
+        <a class="btn sm" routerLink="/admin/bookings/add" [queryParams]="bookingParams(null)">Create booking</a>
+      </div>
+    </div>
+
+    <div class="crm-profile">
+      <!-- Left: who they are, notes -->
+      <div class="crm-col">
+        <div class="panel">
+          <h4>Contact</h4>
+          <dl class="crm-facts">
+            <dt>Mobile</dt>
+            <dd>
+              @if (c.phoneNumber) { <a [href]="'tel:+91' + c.phoneNumber">{{ formatPhone(c.phoneNumber) }}</a> } @else { — }
+              @if (!c.whatsAppAvailable) { <span class="badge" style="margin-left:6px">Not on WhatsApp</span> }
+            </dd>
+            @if (c.alternatePhoneNumber) { <dt>Alternate</dt><dd><a [href]="'tel:+91' + c.alternatePhoneNumber">{{ formatPhone(c.alternatePhoneNumber) }}</a></dd> }
+            <dt>Email</dt><dd>{{ c.email || '—' }}</dd>
+            <dt>City</dt><dd>{{ c.city || '—' }}</dd>
+            <dt>Source</dt><dd>{{ sourceLabels[c.leadSource] }}</dd>
+            <dt>Assigned</dt><dd>{{ c.assignedAdminName || 'Nobody yet' }}</dd>
+            <dt>Added</dt><dd>{{ c.createdAt | date: 'd MMM y' }}</dd>
+            <dt>Last contact</dt><dd>{{ c.lastContactAt ? (c.lastContactAt | date: 'd MMM y, h:mm a') : 'Not yet' }}</dd>
+            <dt>Website</dt><dd>{{ c.isRegistered ? 'Signed in on the website' : 'Not signed in yet' }}</dd>
+          </dl>
+          @if (c.summary) { <p class="crm-summary">{{ c.summary }}</p> }
+        </div>
+
+        <div class="kpis crm-mini">
+          <div class="kpi"><div class="k">Bookings</div><div class="v">{{ c.totalBookings }}</div></div>
+          <div class="kpi"><div class="k">Trips done</div><div class="v">{{ c.totalTrips }}</div></div>
+          <div class="kpi"><div class="k">Paid</div><div class="v">₹{{ c.totalSpent | number: '1.0-0' }}</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="crm-head" style="margin-bottom:4px">
+            <h4>Next follow-up</h4>
+            <button type="button" class="btn sm ghost" (click)="addFollowUpOpen.set(true)">+ Add</button>
+          </div>
+          @if (pendingFollowUps().length === 0) {
+            <p class="note" style="margin-top:6px">No follow-up scheduled.</p>
+          } @else {
+            <ul class="crm-list">
+              @for (f of pendingFollowUps(); track f.crmFollowUpId) {
+                <li>
+                  <span class="crm-due" [class.overdue]="dueState(f.dueDate) === 'overdue'" [class.today]="dueState(f.dueDate) === 'today'" style="min-width:56px">
+                    {{ dueState(f.dueDate) === 'today' ? 'Today' : (f.dueDate | date: 'd MMM') }}
+                  </span>
+                  <div class="grow">
+                    <span>{{ f.note || 'Follow up' }}</span>
+                    <div class="note">{{ f.tripTitle || 'General' }}@if (f.daysOverdue > 0) { · {{ f.daysOverdue }} day{{ f.daysOverdue === 1 ? '' : 's' }} overdue }</div>
+                  </div>
+                  <button type="button" class="linkbtn" style="padding:0" (click)="completeFor.set(f)">Done</button>
+                  <button type="button" class="linkbtn" style="padding:0" (click)="rescheduleFor.set(f)">Move</button>
+                </li>
+              }
+            </ul>
+          }
+          @if (doneFollowUps().length > 0) {
+            <div class="note" style="margin-top:8px">Last done: {{ doneFollowUps()[0].completedAt | date: 'd MMM' }}{{ doneFollowUps()[0].outcome ? ' — ' + doneFollowUps()[0].outcome : '' }}</div>
+          }
+        </div>
+
+        <div class="panel">
+          <h4>Notes</h4>
+          <div class="crm-noteform">
+            <textarea class="inp" rows="2" [(ngModel)]="noteText" maxlength="2000" placeholder="Asked about pickup from Patia"></textarea>
+            <div class="row" style="gap:8px">
+              @if (c.interests.length > 0) {
+                <select class="inp sm" [(ngModel)]="noteInterestId" aria-label="About which trip">
+                  <option [ngValue]="null">General note</option>
+                  @for (i of c.interests; track i.customerTripInterestId) { <option [ngValue]="i.customerTripInterestId">{{ i.tripTitle }}</option> }
+                </select>
+              }
+              <button type="button" class="btn sm" [disabled]="savingNote() || !noteText.trim()" (click)="addNote()">
+                @if (savingNote()) { <span class="spin"></span> } @else { Add note }
+              </button>
+            </div>
+          </div>
+          @if (c.notes.length === 0) {
+            <p class="note" style="margin-top:10px">No notes yet.</p>
+          } @else {
+            <ul class="crm-notes">
+              @for (n of c.notes; track n.crmNoteId) {
+                <li>
+                  <p>{{ n.text }}</p>
+                  <div class="note">{{ n.createdAt | date: 'd MMM y, h:mm a' }}{{ n.adminName ? ' · ' + n.adminName : '' }}{{ interestTitle(n.customerTripInterestId) ? ' · ' + interestTitle(n.customerTripInterestId) : '' }}</div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <!-- Right: trips, bookings, activity -->
+      <div class="crm-col">
+        <div class="panel">
+          <div class="crm-head">
+            <h4>Interested trips</h4>
+            <button type="button" class="btn sm ghost" (click)="interestDialogOpen.set(true)">+ Add</button>
+          </div>
+          @if (c.interests.length === 0) {
+            <app-state-panel kind="empty" message="No trip interests yet."></app-state-panel>
+          } @else {
+            <div class="crm-interests">
+              @for (i of c.interests; track i.customerTripInterestId) {
+                <div class="crm-interest">
+                  <div class="row sp" style="align-items:flex-start">
+                    <div style="min-width:0">
+                      <b>{{ i.tripTitle }}</b>
+                      <div class="note">
+                        {{ i.startDate ? (i.startDate | date: 'd MMM y') : 'Date not decided' }} · {{ i.travellers }} traveller{{ i.travellers === 1 ? '' : 's' }}
+                        @if (i.expectedAmount) { · ₹{{ i.expectedAmount | number: '1.0-0' }} expected }
+                      </div>
+                    </div>
+                    <span class="badge" [class]="'badge ' + statusTone[i.status]">{{ statusLabels[i.status] }}</span>
+                  </div>
+                  @if (i.notes) { <p class="crm-inote">{{ i.notes }}</p> }
+                  @if (i.lostReason) { <p class="crm-inote mut">Lost: {{ i.lostReason }}</p> }
+                  <div class="row wrap crm-iactions">
+                    @if (i.nextFollowUpDate) {
+                      <span class="crm-due" [class.overdue]="dueState(i.nextFollowUpDate) === 'overdue'" [class.today]="dueState(i.nextFollowUpDate) === 'today'">
+                        Follow up {{ dueState(i.nextFollowUpDate) === 'today' ? 'today' : (i.nextFollowUpDate | date: 'd MMM') }}
+                      </span>
+                    }
+                    @if (i.bookingId) {
+                      <a class="linkbtn" style="padding:0" [routerLink]="['/admin/bookings', i.bookingId]">{{ i.bookingReference }} · ₹{{ i.bookingPaid | number: '1.0-0' }} paid</a>
+                    }
+                    <span class="grow"></span>
+                    @if (c.phoneNumber && c.whatsAppAvailable) {
+                      <button type="button" class="linkbtn crm-wa-link" (click)="waFor.set({ interestId: i.customerTripInterestId })">WhatsApp</button>
+                    }
+                    <button type="button" class="linkbtn" (click)="stageDialog.set({ interest: i })">Change stage</button>
+                    @if (isOpenInterest(i)) {
+                      <a class="linkbtn" routerLink="/admin/bookings/add" [queryParams]="bookingParams(i)">Convert to booking</a>
+                    }
+                    @if (!i.bookingId) {
+                      <button type="button" class="linkbtn crm-del" (click)="deleteTarget.set(i)">Remove</button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="panel">
+          <h4>Bookings</h4>
+          @if (c.bookings.length === 0) {
+            <p class="note" style="margin-top:6px">No bookings yet.</p>
+          } @else {
+            <div class="tblwrap" style="margin-top:8px">
+              <table class="tbl">
+                <thead><tr><th>Booking</th><th>Trip</th><th class="num">Seats</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+                <tbody>
+                  @for (b of c.bookings; track b.bookingId) {
+                    <tr>
+                      <td><a class="linkbtn" style="padding:0" [routerLink]="['/admin/bookings', b.bookingId]">{{ b.reference }}</a></td>
+                      <td>{{ b.tripTitle }}<span class="sub2">{{ b.startDate | date: 'd MMM y' }}</span></td>
+                      <td class="num">{{ b.seats }}</td>
+                      <td class="num">₹{{ b.paid | number: '1.0-0' }}</td>
+                      <td class="num">₹{{ b.balance | number: '1.0-0' }}</td>
+                      <td><span class="badge" [class.ok]="b.status === BookingStatus.Confirmed || b.status === BookingStatus.Completed" [class.bad]="b.status === BookingStatus.Cancelled">{{ bookingLabels[b.status] }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        <div class="panel">
+          <div class="crm-head" style="margin-bottom:2px">
+            <h4>Activity</h4>
+            <a class="linkbtn" style="padding:0" routerLink="/admin/crm/communications" [queryParams]="{ search: c.phoneNumber || c.name }">All contacts →</a>
+          </div>
+          <div class="sub">Contacts and stage changes</div>
+          @if (activity().length === 0) {
+            <p class="note">Nothing recorded yet.</p>
+          } @else {
+            <ol class="crm-timeline">
+              @for (a of activity(); track $index) {
+                <li [class.stage]="a.kind === 'stage'">
+                  <span class="when">{{ a.at | date: 'd MMM' }}<small>{{ a.at | date: 'h:mm a' }}</small></span>
+                  <div>
+                    <b>{{ a.title }}</b>
+                    @if (a.detail) { <div class="note">{{ a.detail }}</div> }
+                    @if (a.by) { <div class="note">by {{ a.by }}</div> }
+                    @if (a.unconfirmedId; as id) {
+                      <div class="row" style="gap:10px;margin-top:4px">
+                        <button type="button" class="linkbtn" style="padding:0" [disabled]="confirming() === id" (click)="confirmSent(id, true)">Mark as sent</button>
+                        <button type="button" class="linkbtn crm-del" style="padding:0" [disabled]="confirming() === id" (click)="confirmSent(id, false)">Not sent</button>
+                      </div>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+          }
+        </div>
+      </div>
+    </div>
+
+    <app-crm-interest-dialog
+      [open]="interestDialogOpen()"
+      [customerId]="c.customerId"
+      [customerName]="c.name"
+      (closed)="interestDialogOpen.set(false)"
+      (saved)="onInterestSaved()"
+    ></app-crm-interest-dialog>
+
+    <app-crm-whatsapp-dialog
+      [open]="waFor() !== null"
+      [customerId]="c.customerId"
+      [customerName]="c.name"
+      [interests]="c.interests"
+      [interestIdPreset]="waFor()?.interestId ?? null"
+      (closed)="waFor.set(null)"
+      (logged)="load()"
+    ></app-crm-whatsapp-dialog>
+
+    <app-crm-log-contact-dialog
+      [open]="logOpen()"
+      [customerId]="c.customerId"
+      [customerName]="c.name"
+      [interests]="c.interests"
+      (closed)="logOpen.set(false)"
+      (saved)="onFollowUpSaved('Contact logged.')"
+    ></app-crm-log-contact-dialog>
+
+    <app-crm-followup-add-dialog
+      [open]="addFollowUpOpen()"
+      [customerId]="c.customerId"
+      [customerName]="c.name"
+      [interests]="c.interests"
+      [admins]="admins()"
+      (closed)="addFollowUpOpen.set(false)"
+      (saved)="onFollowUpSaved('Follow-up scheduled.')"
+    ></app-crm-followup-add-dialog>
+    <app-crm-followup-complete-dialog [open]="completeFor() !== null" [followUp]="completeFor()" (closed)="completeFor.set(null)" (saved)="onFollowUpSaved('Follow-up done.')"></app-crm-followup-complete-dialog>
+    <app-crm-followup-reschedule-dialog [open]="rescheduleFor() !== null" [followUp]="rescheduleFor()" (closed)="rescheduleFor.set(null)" (saved)="onFollowUpSaved('Follow-up rescheduled.')"></app-crm-followup-reschedule-dialog>
+
+    <app-crm-stage-dialog
+      [open]="stageDialog() !== null"
+      [customerId]="c.customerId"
+      [interestId]="stageDialog()?.interest?.customerTripInterestId ?? null"
+      [current]="stageDialog()?.interest?.status ?? c.status"
+      [subject]="stageDialog()?.interest?.tripTitle ?? c.name"
+      (closed)="stageDialog.set(null)"
+      (saved)="onStageSaved()"
+    ></app-crm-stage-dialog>
+
+    <app-confirm-dialog
+      [open]="deleteTarget() !== null"
+      title="Remove this trip interest?"
+      [message]="'Removes ' + (deleteTarget()?.tripTitle ?? '') + ' from ' + (c.name || 'this customer') + '\'s interests. Their notes and contact history stay.'"
+      confirmLabel="Remove"
+      [destructive]="true"
+      (confirm)="confirmDelete()"
+      (cancel)="deleteTarget.set(null)"
+    ></app-confirm-dialog>
+  }
+}

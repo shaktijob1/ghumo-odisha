@@ -18,10 +18,19 @@ public class TripsController(ITripService tripService) : ControllerBase
         [FromQuery] DateOnly? toDate = null,
         [FromQuery] string? destination = null,
         [FromQuery] bool upcomingOnly = false,
+        [FromQuery] string? category = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await tripService.GetActiveTripsAsync(page, pageSize, search, fromDate, toDate, cancellationToken, destination, upcomingOnly);
+        var result = await tripService.GetActiveTripsAsync(page, pageSize, search, fromDate, toDate, cancellationToken, destination, upcomingOnly, category);
         return Ok(ApiResponse<PagedResult<TripSummaryDto>>.Ok(result));
+    }
+
+    /// <summary>Categories with at least one upcoming trip, and how many — the home page's trip filter chips.</summary>
+    [HttpGet("categories")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<TripCategoryCountDto>>>> GetUpcomingTripCategories(CancellationToken cancellationToken)
+    {
+        var result = await tripService.GetUpcomingCategoryCountsAsync(cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<TripCategoryCountDto>>.Ok(result));
     }
 
     /// <summary>Every place with an upcoming trip (in the date range, if given) — the home page's location dropdown.</summary>

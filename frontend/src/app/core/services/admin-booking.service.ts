@@ -64,6 +64,11 @@ export class AdminBookingService {
     return this.http.put<ApiResponse<object>>(`${base()}/bookings/${id}/gender-counts`, request).pipe(map(() => undefined));
   }
 
+  /** Move the booking to another of its trip's pickup points (null clears it). */
+  changePickupPoint(id: number, pickupPointId: number | null): Observable<void> {
+    return this.http.put<ApiResponse<object>>(`${base()}/bookings/${id}/pickup-point`, { pickupPointId }).pipe(map(() => undefined));
+  }
+
   downloadInvoice(id: number): Observable<Blob> {
     return this.http.get(`${base()}/bookings/${id}/invoice`, { responseType: 'blob' });
   }

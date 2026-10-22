@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TripSummary, UpcomingSlot } from '../../core/models/trip.model';
+import { TripBookingState } from '../../core/models/enums.model';
 import { ImageUrlPipe } from '../pipes/image-url.pipe';
 import { tripPath } from '../utils/trip-path';
 
@@ -43,7 +44,7 @@ import { tripPath } from '../utils/trip-path';
         }
 
         @if (soldOut) {
-          <span class="bookedribbon">Fully booked</span>
+          <span class="bookedribbon">{{ trip.bookingState === TripBookingState.Closed ? 'Bookings closed' : 'Fully booked' }}</span>
         }
 
         <div class="heroinfo mobiletab-only">
@@ -119,13 +120,13 @@ import { tripPath } from '../utils/trip-path';
                    spell out the month and add the weekday (data-count drives that in styles.css). -->
               <div class="depchips-row" [attr.data-count]="departureChips.length">
                 @for (s of departureChips; track s.startDate) {
-                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Booked' : null" [attr.aria-label]="s.availableSeats === 0 ? 'Booked' : null">
+                  <span class="dchip" [class.full]="s.availableSeats === 0" [attr.title]="s.availableSeats === 0 ? 'Sold' : null" [attr.aria-label]="s.availableSeats === 0 ? 'Sold' : null">
                     <span class="dchip-mon"><span class="m-short">{{ s.startDate | date:'MMM' | uppercase }}</span><span class="m-long">{{ s.startDate | date:'MMMM' | uppercase }}</span></span>
                     <span class="dchip-day">{{ s.startDate | date:'d' }}</span>
                     <span class="dchip-wd">{{ s.startDate | date:'EEEE' }}</span>
                     @if (s.availableSeats === 0) {
-                      <!-- Booked date: a rubber stamp drops onto the chip. -->
-                      <span class="dchip-stamp" aria-hidden="true">Booked</span>
+                      <!-- Sold-out date: a "Sold" rubber stamp drops onto the chip. -->
+                      <span class="dchip-stamp" aria-hidden="true">Sold</span>
                     }
                     @if (s.availableSeats > 0) {
                       <!-- Seats left on this date: a blinking red tag on the box's top-right corner. -->
@@ -179,7 +180,7 @@ import { tripPath } from '../utils/trip-path';
         }
 
         <div class="pricerow">
-          <div class="price"><b>₹{{ trip.amountPerPerson | number:'1.0-0' }}</b><small>/ person</small></div>
+          <div class="price"><b>₹{{ trip.fromPrice | number:'1.0-0' }}</b><small>/ person</small></div>
           @if (soldOut) {
             <span class="btn sm soldout" aria-disabled="true">Sold out</span>
           } @else {
@@ -193,23 +194,25 @@ import { tripPath } from '../utils/trip-path';
     /* ============ Trip card: booked dates ============
        A booked date gets a red rubber stamp that drops onto its chip; when every date on the card is
        booked, a ribbon on the photo and a panel offering the next open dates (naming a searched month). */
-    .dchip-stamp { position: absolute; left: 50%; top: calc(100% - 11px); z-index: 2; padding: 3px 7px; border: 2px solid var(--danger); border-radius: 6px; background: rgba(255,255,255,.88); color: var(--danger); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; line-height: 1.2; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%) rotate(-14deg); box-shadow: 0 0 0 2px rgba(192,72,58,.12); animation: dchip-stamp-in .55s cubic-bezier(.2,.9,.3,1.25) both; }
-    /* The stamp sits across the chip's bottom edge (no extra height), so the date above stays readable;
-       four chips to a row are narrow, so their stamp is smaller. */
-    .depchips-row[data-count="4"] .dchip-stamp { padding: 2px 4px; border-width: 1.5px; font-size: 9px; letter-spacing: .05em; }
+    /* "SOLD" rubber stamp across the bottom edge of the chip (the faded date above stays readable): double red border (the inner line is an inset
+       shadow), heavy wide-spaced letters, tilted like a hand stamp. */
+    .dchip-stamp { position: absolute; left: 50%; top: calc(100% - 12px); z-index: 2; padding: 3px 7px 3px 9px; border: 2px solid var(--danger); border-radius: 5px; background: rgba(255,255,255,.94); color: var(--danger); font-size: 12px; font-weight: 900; letter-spacing: .22em; text-transform: uppercase; line-height: 1.15; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%) rotate(-12deg); box-shadow: inset 0 0 0 1.5px #fff, inset 0 0 0 2.5px var(--danger), 0 2px 6px rgba(192,72,58,.18); animation: dchip-stamp-in .55s cubic-bezier(.2,.9,.3,1.25) both; }
+    /* Four chips to a row are narrow, so their stamp is smaller. */
+    .depchips-row[data-count="4"] .dchip-stamp { padding: 2px 4px 2px 6px; font-size: 10px; letter-spacing: .14em; }
     .dchip:nth-child(2) .dchip-stamp { animation-delay: .12s; }
     .dchip:nth-child(3) .dchip-stamp { animation-delay: .24s; }
     .dchip:nth-child(4) .dchip-stamp { animation-delay: .36s; }
     @keyframes dchip-stamp-in {
-      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-14deg) scale(2.4); }
-      60% { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(.92); }
-      100% { opacity: 1; transform: translate(-50%, -50%) rotate(-14deg) scale(1); }
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.4); }
+      60% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(.92); }
+      100% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
     }
     .tcard .bookedribbon { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 5px 12px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 700; box-shadow: 0 4px 12px rgba(192,72,58,.35); }
     @media (prefers-reduced-motion: reduce) { .dchip-stamp { animation: none; } }
   `,
 })
 export class TripCardComponent implements OnInit, OnDestroy {
+  readonly TripBookingState = TripBookingState;
   @Input({ required: true }) trip!: TripSummary;
   // Dashboard and destination pages: shows the next departure date in place of the inclusions row.
   @Input() showNextDeparture = false;
@@ -283,6 +286,8 @@ export class TripCardComponent implements OnInit, OnDestroy {
   readonly showAdvanceBadge = true;
 
   get shortDuration(): string {
+    // The admin's own figures win (a night departure isn't a day of the trip).
+    if (this.trip.durationDays != null && this.trip.durationNights != null) return `${this.trip.durationDays}D/${this.trip.durationNights}N`;
     if (!this.trip.nextSlotStartDate || !this.trip.nextSlotEndDate) return '';
     const start = new Date(this.trip.nextSlotStartDate);
     const end = new Date(this.trip.nextSlotEndDate);

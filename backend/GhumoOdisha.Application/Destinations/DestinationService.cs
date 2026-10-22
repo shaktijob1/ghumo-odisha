@@ -23,10 +23,11 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
             .Where(d => d.IsActive)
             .OrderBy(d => d.DisplayOrder)
             .ThenBy(d => d.Name)
-            .Include(d => d.Trips)
+            .Include(d => d.Trips).ThenInclude(t => t.TripDateSlots)
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
+        var today = TripCalendar.Today();
         return destinations
             .Select(d =>
             {
@@ -42,7 +43,7 @@ public class DestinationService(IGhumoOdishaDbContext db, IImageStorage imageSto
                 x.Destination.HeroImageUrl,
                 x.Destination.CoverImageUrl,
                 x.ActiveTrips.Count,
-                x.ActiveTrips.Min(t => (decimal?)t.AmountPerPerson)))
+                x.ActiveTrips.Min(t => (decimal?)SlotPricing.FromPrice(t, t.TripDateSlots, today))))
             .ToList();
     }
 

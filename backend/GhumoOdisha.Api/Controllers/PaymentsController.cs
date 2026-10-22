@@ -29,6 +29,18 @@ public class PaymentsController(IBookingPaymentService paymentService) : Control
         return Ok(ApiResponse<object>.Ok(new { }, "Payment verified. Booking confirmed."));
     }
 
+    /// <summary>
+    /// "Did my payment go through?" — after a refresh, or when the browser couldn't report the payment.
+    /// Asks Razorpay and confirms the booking if it was paid.
+    /// </summary>
+    [HttpPost("api/customer/bookings/{id:int}/payments/check")]
+    public async Task<ActionResult<ApiResponse<PaymentCheckResult>>> CheckPayment(int id, CancellationToken cancellationToken)
+    {
+        var customerId = User.GetCustomerId();
+        var result = await paymentService.CheckPaymentAsync(customerId, id, cancellationToken);
+        return Ok(ApiResponse<PaymentCheckResult>.Ok(result));
+    }
+
     [HttpGet("api/customer/bookings/{id:int}/payments/refund-status")]
     public async Task<ActionResult<ApiResponse<object>>> GetRefundStatus(int id, CancellationToken cancellationToken)
     {

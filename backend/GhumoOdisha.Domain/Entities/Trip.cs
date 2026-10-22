@@ -23,6 +23,19 @@ public class Trip
     /// <summary>Whether customers may apply a coupon code when booking this trip. Enforced when the payment order is created.</summary>
     public bool AllowCoupons { get; set; } = true;
     public TripStatus Status { get; set; }
+
+    /// <summary>Open, or marked Booked / Closed by the admin — see <see cref="TripBookingState"/>.</summary>
+    public TripBookingState BookingState { get; set; }
+
+    /// <summary>
+    /// Days / nights as the admin states them ("2 Days / 2 Nights" for a night departure). Null =
+    /// counted from each departure's dates (end − start + 1 days, one night fewer).
+    /// </summary>
+    public int? DurationDays { get; set; }
+    public int? DurationNights { get; set; }
+
+    /// <summary>The home page filter chips this trip appears under (Pool Party, Beach…).</summary>
+    public TripCategory Categories { get; set; }
     public string? ItineraryPdfUrl { get; set; }
 
     /// <summary>

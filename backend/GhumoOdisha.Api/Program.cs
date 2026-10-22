@@ -7,6 +7,7 @@ using GhumoOdisha.Api.Filters;
 using GhumoOdisha.Api.Logging;
 using GhumoOdisha.Api.Middleware;
 using GhumoOdisha.Api.Seo;
+using GhumoOdisha.Application.Crm;
 using GhumoOdisha.Application.Blog;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Auth.Validators;
@@ -141,11 +142,13 @@ builder.Services.AddHttpClient<IRazorpayService, RazorpayService>(client =>
     client.Timeout = TimeSpan.FromSeconds(15);
 });
 builder.Services.AddScoped<IBookingPaymentService, BookingPaymentService>();
+builder.Services.AddScoped<IPaymentReminderService, PaymentReminderService>();
 builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddHostedService<BookingCompletionBackgroundService>();
 builder.Services.AddHostedService<UnpaidRequestExpiryBackgroundService>();
 builder.Services.AddHostedService<LogRetentionBackgroundService>();
+builder.Services.AddHostedService<CrmBookingBackfillBackgroundService>();
 builder.Services.AddScoped<ILogQueryService, LogQueryService>();
 builder.Services.AddScoped<ISearchLogService, SearchLogService>();
 
@@ -171,11 +174,22 @@ builder.Services.AddHostedService<CarBookingHoldExpiryBackgroundService>();
 builder.Services.Configure<OrganizerContactOptions>(builder.Configuration.GetSection(OrganizerContactOptions.SectionName));
 builder.Services.Configure<FeatureOptions>(builder.Configuration.GetSection(FeatureOptions.SectionName));
 builder.Services.AddScoped<IOrganizerProfileService, OrganizerProfileService>();
+builder.Services.AddScoped<GhumoOdisha.Application.Holidays.IHolidayService, GhumoOdisha.Application.Holidays.HolidayService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<ISiteHeroPhotoService, SiteHeroPhotoService>();
 builder.Services.AddScoped<ITravelMomentService, TravelMomentService>();
 builder.Services.AddScoped<IBlogService, BlogService>();
+// Admin → CRM
+builder.Services.Configure<CrmOptions>(builder.Configuration.GetSection(CrmOptions.SectionName));
+builder.Services.AddScoped<ICrmCustomerService, CrmCustomerService>();
+builder.Services.AddScoped<ICrmTripInterestService, CrmTripInterestService>();
+builder.Services.AddScoped<ICrmFollowUpService, CrmFollowUpService>();
+builder.Services.AddScoped<ICrmTemplateService, CrmTemplateService>();
+builder.Services.AddScoped<ICrmMessageService, CrmMessageService>();
+builder.Services.AddScoped<ICrmDepartureService, CrmDepartureService>();
+builder.Services.AddScoped<ICrmReportService, CrmReportService>();
+builder.Services.AddScoped<ICrmImportService, CrmImportService>();
 builder.Services.Configure<CompanyOptions>(builder.Configuration.GetSection(CompanyOptions.SectionName));
 builder.Services.AddScoped<IInvoiceService, QuestPdfInvoiceService>();
 builder.Services.Configure<SeoOptions>(builder.Configuration.GetSection(SeoOptions.SectionName));
@@ -196,7 +210,7 @@ if (string.IsNullOrWhiteSpace(storageRootPath))
 
 var uploadsBasePath = Path.Combine(storageRootPath, "Uploads");
 // "driver-documents" is private: not in UploadedFilesController's public list, served only via authorized endpoints.
-foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents", "payment-qr", "moments", "blog" })
+foreach (var category in new[] { "trips", "highlights", "rooms", "vehicles", "organizer", "destinations", "itineraries", "hero", "cars", "drivers", "driver-documents", "payment-qr", "moments", "blog", "holidays" })
 {
     Directory.CreateDirectory(Path.Combine(uploadsBasePath, category));
 }

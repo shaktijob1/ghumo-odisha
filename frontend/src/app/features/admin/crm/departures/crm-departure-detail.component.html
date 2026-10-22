@@ -1,0 +1,227 @@
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading departure…"></app-state-panel> }
+  @case ('error') {
+    <app-state-panel kind="error" message="Could not load this departure."></app-state-panel>
+    <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load(true)">Try again</button></div>
+  }
+  @case ('not-found') {
+    <app-state-panel kind="empty" message="This departure doesn't exist."></app-state-panel>
+    <div class="row" style="justify-content:center"><a class="btn sm ghost" routerLink="/admin/crm/departures">Back to departures</a></div>
+  }
+  @case ('ready') {
+    @let d = data()!.departure;
+
+    <div class="ahead">
+      <div>
+        <a class="linkbtn" style="padding:0" routerLink="/admin/crm/departures">← Trips / Campaigns</a>
+        <h2 style="margin-top:6px">{{ d.tripTitle }}</h2>
+        <div class="row wrap" style="gap:8px">
+          <span class="sub" style="margin:0">{{ d.startDate | date: 'EEE, d MMM y' }} → {{ d.endDate | date: 'd MMM y' }}{{ d.vehicle ? ' · ' + d.vehicle : '' }}</span>
+          <span class="badge" [class]="'badge ' + departureTone[d.campaignStatus]">{{ departureLabels[d.campaignStatus] }}</span>
+        </div>
+      </div>
+      <div class="row wrap" style="gap:8px">
+        <button type="button" class="btn sm ghost" (click)="editDepartureOpen.set(true)">Edit prices &amp; details</button>
+        <a class="btn sm ghost" [routerLink]="['/admin/trips', d.tripId]">Dates &amp; seats in Trips</a>
+        <button type="button" class="btn sm" (click)="pickerOpen.set(true)">+ Add customer</button>
+      </div>
+    </div>
+
+    <!-- The headline: confirmed only once the minimum is booked. -->
+    @if (d.minimumReached) {
+      <div class="crm-banner ok">🟢 Trip confirmed — {{ d.bookedSeats }} of the {{ d.minimumBookedSeats }} minimum seats booked</div>
+    } @else if (d.campaignStatus === CrmDepartureStatus.FillingFast || d.campaignStatus === CrmDepartureStatus.AlmostFull) {
+      <div class="crm-banner hot">🔥 {{ departureLabels[d.campaignStatus] }} — {{ d.availableSeats }} seat{{ d.availableSeats === 1 ? '' : 's' }} left{{ d.minimumBookedSeats ? ' · ' + (d.minimumBookedSeats - d.bookedSeats) + ' more bookings to confirm the trip' : '' }}</div>
+    }
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="k">Seats</div>
+        <div class="v">{{ d.bookedSeats }}<span class="crm-of">/{{ d.totalSeats }}</span></div>
+        <div class="crm-seats" style="margin:8px 0 6px">
+          <span class="fill" [style.width.%]="seatShare()"></span>
+          @if (minimumMark(); as mark) { <span class="min" [style.left.%]="mark" [attr.title]="'Minimum ' + d.minimumBookedSeats"></span> }
+        </div>
+        <div class="d mut">{{ d.availableSeats }} available{{ d.minimumBookedSeats ? ' · minimum ' + d.minimumBookedSeats : '' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Price per person</div>
+        <div class="v">₹{{ d.currentPrice | number: '1.0-0' }}</div>
+        <div class="d mut">
+          @if (d.isEarlyBird) { Early booking until {{ d.earlyBirdEndsOn | date: 'd MMM' }}, then ₹{{ d.regularPrice | number: '1.0-0' }} }
+          @else { ₹{{ d.bookingAmountPerSeat }} to reserve a seat }
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="k">Leads for this date</div>
+        <div class="v">{{ d.leads }}</div>
+        <div class="d mut">{{ d.interested }} interested · {{ d.bookingPending }} pending</div>
+      </div>
+      <div class="kpi">
+        <div class="k">Hot leads</div>
+        <div class="v" style="color:var(--danger)">{{ d.hotLeads }}</div>
+        <div class="d mut">{{ d.booked }} booked · {{ d.cancelled }} cancelled</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px">
+      <div class="crm-head">
+        <div>
+          <h4>Customers</h4>
+          <div class="note">Everyone interested in this departure</div>
+        </div>
+        <button type="button" class="btn sm ghost" (click)="pickerOpen.set(true)">+ Add customer</button>
+      </div>
+
+      @if (data()!.interests.length === 0) {
+        <app-state-panel kind="empty" message="No customers interested in this date yet."></app-state-panel>
+      } @else {
+        <div class="filters" style="margin-bottom:10px">
+          <button type="button" class="btn sm" [class.ghost]="stageFilter() !== null" (click)="stageFilter.set(null)">All {{ data()!.interests.length }}</button>
+          @for (s of stageCounts(); track s[0]) {
+            <button type="button" class="btn sm" [class.ghost]="stageFilter() !== s[0]" (click)="stageFilter.set(s[0])">{{ statusLabels[s[0]] }} {{ s[1] }}</button>
+          }
+        </div>
+        <div class="tblwrap">
+          <table class="tbl crm-ctable">
+            <thead>
+              <tr><th>Name</th><th>Mobile</th><th class="num">Travellers</th><th>Stage</th><th>Last contact</th><th>Next follow-up</th><th>Source</th><th class="num">Booking</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              @for (i of visibleInterests(); track i.customerTripInterestId) {
+                <tr>
+                  <td><a class="linkbtn" style="padding:0;font-size:12.5px" [routerLink]="['/admin/crm/customers', i.customerId]">{{ i.customerName || 'No name yet' }}</a></td>
+                  <td class="nowrap">@if (i.customerPhone) { <a [href]="'tel:+91' + i.customerPhone">{{ formatPhone(i.customerPhone) }}</a> } @else { — }</td>
+                  <td class="num">{{ i.travellers }}</td>
+                  <td><span class="badge" [class]="'badge ' + statusTone[i.status]">{{ statusLabels[i.status] }}</span></td>
+                  <td>{{ i.lastContactAt ? (i.lastContactAt | date: 'd MMM') : '—' }}</td>
+                  <td>
+                    @if (i.nextFollowUpDate) {
+                      <span class="crm-due" [class.overdue]="dueState(i.nextFollowUpDate) === 'overdue'" [class.today]="dueState(i.nextFollowUpDate) === 'today'">
+                        {{ dueState(i.nextFollowUpDate) === 'today' ? 'Today' : (i.nextFollowUpDate | date: 'd MMM') }}
+                      </span>
+                    } @else { <span class="mut">—</span> }
+                  </td>
+                  <td>{{ sourceLabels[i.customerSource] }}</td>
+                  <td class="num">
+                    @if (i.bookingId) {
+                      <a class="linkbtn" style="padding:0" [routerLink]="['/admin/bookings', i.bookingId]">₹{{ i.bookingPaid | number: '1.0-0' }}</a>
+                      <span class="sub2">{{ i.bookingReference }}</span>
+                    } @else if (i.expectedAmount) {
+                      <span class="mut">₹{{ i.expectedAmount | number: '1.0-0' }} exp.</span>
+                    } @else { <span class="mut">—</span> }
+                  </td>
+                  <td>
+                    <div class="crm-actions">
+                      @if (i.customerPhone) { <button type="button" class="linkbtn crm-wa-link" (click)="waFor.set(i)">WhatsApp</button> }
+                      <button type="button" class="linkbtn" (click)="open(i)">View</button>
+                      <button type="button" class="linkbtn" (click)="editInterest.set(i)">Edit</button>
+                      <button type="button" class="linkbtn" (click)="stageFor.set(i)">Stage</button>
+                      <button type="button" class="linkbtn" (click)="noteFor.set(i)">Note</button>
+                      <button type="button" class="linkbtn" (click)="followUpFor.set(i)">Follow-up</button>
+                      @if (canConvert(i)) {
+                        <a class="linkbtn" routerLink="/admin/bookings/add" [queryParams]="bookingParams(i)">Convert to booking</a>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="panel">
+      <h4>Bookings on this date</h4>
+      <div class="sub">Paid bookings from the website and admin, including ones cancelled later</div>
+      @if (data()!.bookings.length === 0) {
+        <app-state-panel kind="empty" message="No bookings yet."></app-state-panel>
+      } @else {
+        <div class="tblwrap">
+          <table class="tbl">
+            <thead><tr><th>Booking</th><th>Customer</th><th class="num">Seats</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (b of data()!.bookings; track b.bookingId) {
+                <tr>
+                  <td><a class="linkbtn" style="padding:0" [routerLink]="['/admin/bookings', b.bookingId]">{{ b.reference }}</a></td>
+                  <td>
+                    <a class="linkbtn" style="padding:0;font-size:12.5px" [routerLink]="['/admin/crm/customers', b.customerId]">{{ b.customerName || 'No name yet' }}</a>
+                    <span class="sub2">{{ formatPhone(b.customerPhone) }} · {{ sourceLabels[b.customerSource] }}</span>
+                  </td>
+                  <td class="num">{{ b.seats }}</td>
+                  <td class="num">₹{{ b.paid | number: '1.0-0' }}</td>
+                  <td class="num">₹{{ b.balance | number: '1.0-0' }}</td>
+                  <td>
+                    <span class="badge" [class.ok]="b.status !== BookingStatus.Cancelled" [class.bad]="b.status === BookingStatus.Cancelled">
+                      {{ b.status === BookingStatus.Cancelled ? 'Cancelled' : b.status === BookingStatus.Completed ? 'Completed' : 'Confirmed' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <app-crm-departure-dialog [open]="editDepartureOpen()" [departure]="d" (closed)="editDepartureOpen.set(false)" (saved)="afterSave('Departure updated.')"></app-crm-departure-dialog>
+
+    <app-crm-customer-picker
+      [open]="pickerOpen()"
+      [title]="'Add a customer to ' + (d.startDate | date: 'd MMM')"
+      [newCustomerParams]="{ tripId: d.tripId, slotId: d.tripDateSlotId }"
+      (closed)="pickerOpen.set(false)"
+      (picked)="onPicked($event)"
+    ></app-crm-customer-picker>
+
+    <app-crm-interest-dialog
+      [open]="addFor() !== null"
+      [customerId]="addFor()?.customerId ?? 0"
+      [customerName]="addFor()?.name ?? null"
+      [tripId]="d.tripId"
+      [tripDateSlotId]="d.tripDateSlotId"
+      (closed)="addFor.set(null)"
+      (saved)="afterSave('Customer added to this departure.')"
+    ></app-crm-interest-dialog>
+
+    <app-crm-interest-edit-dialog [open]="editInterest() !== null" [interest]="editInterest()" (closed)="editInterest.set(null)" (saved)="afterSave('Saved.')"></app-crm-interest-edit-dialog>
+
+    <app-crm-note-dialog
+      [open]="noteFor() !== null"
+      [customerId]="noteFor()?.customerId ?? null"
+      [interestId]="noteFor()?.customerTripInterestId ?? null"
+      [subject]="noteFor()?.customerName ?? null"
+      (closed)="noteFor.set(null)"
+      (saved)="afterSave('Note added.')"
+    ></app-crm-note-dialog>
+
+    <app-crm-whatsapp-dialog
+      [open]="waFor() !== null"
+      [customerId]="waFor()?.customerId ?? null"
+      [customerName]="waFor()?.customerName ?? null"
+      [interestIdPreset]="waFor()?.customerTripInterestId ?? null"
+      (closed)="waFor.set(null)"
+      (logged)="load()"
+    ></app-crm-whatsapp-dialog>
+
+    <app-crm-followup-add-dialog
+      [open]="followUpFor() !== null"
+      [customerId]="followUpFor()?.customerId ?? null"
+      [customerName]="followUpFor()?.customerName ?? null"
+      [interests]="followUpFor() ? [followUpFor()!] : []"
+      [interestIdPreset]="followUpFor()?.customerTripInterestId ?? null"
+      (closed)="followUpFor.set(null)"
+      (saved)="afterSave('Follow-up scheduled.')"
+    ></app-crm-followup-add-dialog>
+
+    <app-crm-stage-dialog
+      [open]="stageFor() !== null"
+      [interestId]="stageFor()?.customerTripInterestId ?? null"
+      [current]="stageFor()?.status ?? 0"
+      [subject]="stageFor()?.customerName ?? null"
+      (closed)="stageFor.set(null)"
+      (saved)="afterSave('Stage updated.')"
+    ></app-crm-stage-dialog>
+  }
+}

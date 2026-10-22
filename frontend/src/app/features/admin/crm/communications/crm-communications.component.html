@@ -1,0 +1,103 @@
+<div class="ahead">
+  <div>
+    <h2>Communication history</h2>
+    <div class="sub">Every WhatsApp opened from the CRM and every call or email logged. Delivery and reads aren't tracked — WhatsApp is sent by hand.</div>
+  </div>
+  <button type="button" class="btn sm ghost" (click)="showUnconfirmed()">WhatsApp not confirmed yet</button>
+</div>
+
+<div class="filters crm-filters">
+  <input class="inp sm search" type="search" [(ngModel)]="search" (ngModelChange)="onSearch()" placeholder="Customer name or mobile" aria-label="Search" />
+  <select class="inp sm" [(ngModel)]="channel" (ngModelChange)="apply()" aria-label="Channel">
+    <option [ngValue]="null">All channels</option>
+    @for (c of channels; track c) { <option [ngValue]="c">{{ channelLabels[c] }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="status" (ngModelChange)="apply()" aria-label="Status">
+    <option [ngValue]="null">Any status</option>
+    @for (s of statuses; track s) { <option [ngValue]="s">{{ statusLabels[s] }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="apply()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="adminUserId" (ngModelChange)="apply()" aria-label="Admin">
+    <option [ngValue]="null">Any admin</option>
+    @for (a of admins(); track a.adminUserId) { <option [ngValue]="a.adminUserId">{{ a.name }}</option> }
+  </select>
+  <label class="crm-date"><span>From</span><input class="inp sm" type="date" [(ngModel)]="from" (ngModelChange)="apply()" /></label>
+  <label class="crm-date"><span>To</span><input class="inp sm" type="date" [(ngModel)]="to" (ngModelChange)="apply()" /></label>
+  @if (hasFilters) { <button type="button" class="linkbtn" (click)="clearFilters()">Clear filters</button> }
+</div>
+
+<div class="panel">
+  @switch (state()) {
+    @case ('loading') { <app-state-panel kind="loading" message="Loading history…"></app-state-panel> }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load the history."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    }
+    @case ('ready') {
+      @if (items().length === 0) {
+        <app-state-panel kind="empty" [message]="hasFilters ? 'Nothing matches these filters.' : 'No contacts recorded yet. Use WhatsApp or “Log a contact” on a customer.'"></app-state-panel>
+      } @else {
+        <div class="note" style="margin-bottom:10px">{{ total() | number }} record{{ total() === 1 ? '' : 's' }}</div>
+        <div class="tblwrap">
+          <table class="tbl crm-comms">
+            <thead>
+              <tr><th>When</th><th>Customer</th><th>Channel</th><th>What</th><th>Trip</th><th>Status</th><th>By</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (c of items(); track c.crmCommunicationId) {
+                <tr>
+                  <td class="nowrap">{{ c.createdAt | date: 'd MMM y' }}<span class="sub2">{{ c.createdAt | date: 'h:mm a' }}</span></td>
+                  <td>
+                    <a class="linkbtn" style="padding:0;font-size:12.5px" [routerLink]="['/admin/crm/customers', c.customerId]">{{ c.customerName || 'No name yet' }}</a>
+                    <span class="sub2">{{ formatPhone(c.customerPhone) }}</span>
+                  </td>
+                  <td><span class="crm-channel" [class.wa]="c.channel === Channel.WhatsApp">{{ channelLabels[c.channel] }}</span></td>
+                  <td>
+                    {{ c.action }}
+                    @if (c.templateName) { <span class="sub2">{{ c.templateName }}</span> }
+                  </td>
+                  <td>{{ c.tripTitle || '—' }}</td>
+                  <td>
+                    <span class="badge" [class]="'badge ' + statusTone[c.status]">{{ statusLabels[c.status] }}</span>
+                    @if (c.sentConfirmedAt) { <span class="sub2">{{ c.sentConfirmedAt | date: 'd MMM, h:mm a' }}</span> }
+                  </td>
+                  <td>{{ c.adminName || '—' }}</td>
+                  <td class="nowrap">
+                    <div class="crm-actions">
+                      @if (c.messagePreview) {
+                        <button type="button" class="linkbtn" style="padding:0" (click)="toggle(c)">{{ expanded() === c.crmCommunicationId ? 'Hide' : 'Message' }}</button>
+                      }
+                      @if (c.status === MessageStatus.WhatsAppOpened || c.status === MessageStatus.NotConfirmed) {
+                        <button type="button" class="linkbtn" style="padding:0" [disabled]="busy() === c.crmCommunicationId" (click)="confirm(c, true)">Mark as sent</button>
+                      }
+                      @if (c.status === MessageStatus.WhatsAppOpened) {
+                        <button type="button" class="linkbtn crm-del" style="padding:0" [disabled]="busy() === c.crmCommunicationId" (click)="confirm(c, false)">Not sent</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+                @if (expanded() === c.crmCommunicationId) {
+                  <tr class="crm-msgrow">
+                    <td colspan="8"><pre>{{ c.messagePreview }}</pre></td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (totalPages > 1) {
+          <div class="pager">
+            <span>Page {{ page }} of {{ totalPages }}</span>
+            <div class="pg">
+              <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1" aria-label="Previous page">‹</button>
+              <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages" aria-label="Next page">›</button>
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</div>

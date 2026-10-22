@@ -1,0 +1,23 @@
+/* Import: outcome chips, row table with errors/warnings, result counts. */
+.crm-imp-counts { gap: 6px; margin-bottom: 12px; }
+.crm-imp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: 600 12px var(--font-body); color: var(--muted); cursor: pointer; }
+.crm-imp-chip b { color: var(--ink); }
+.crm-imp-chip.on { border-color: var(--ink); color: var(--ink); }
+.crm-imp-chip.ok b { color: var(--accent); }
+.crm-imp-chip.wait b { color: var(--wait); }
+.crm-imp-chip.bad b { color: var(--danger); }
+.crm-imp td { vertical-align: top; }
+.crm-imp tr.bad td { background: var(--danger-bg); }
+.crm-imp-msgs { min-width: 220px; font-size: 11.5px; line-height: 1.45; }
+.crm-imp-err { color: var(--danger); }
+.crm-imp-warn { color: var(--wait); }
+.nowrap { white-space: nowrap; }
+.btn.disabled { opacity: .55; pointer-events: none; }
+.crm-imp-result { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.crm-imp-result div { display: grid; gap: 2px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.crm-imp-result b { font-size: 22px; font-weight: 600; }
+.crm-imp-result span { font-size: 11.5px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .crm-imp-result { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

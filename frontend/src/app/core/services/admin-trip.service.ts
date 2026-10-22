@@ -4,7 +4,7 @@ import { Observable, from, map, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { compressImage } from '../../shared/utils/compress-image';
 import { ApiResponse, PagedResult } from '../models/api-response.model';
-import { TripStatus } from '../models/enums.model';
+import { TripBookingState, TripStatus } from '../models/enums.model';
 import {
   AddDateSlotRequest,
   AddItineraryDayRequest,
@@ -46,6 +46,11 @@ export class AdminTripService {
 
   updateTrip(id: number, request: UpdateTripRequest): Observable<void> {
     return this.http.put<ApiResponse<object>>(`${base()}/trips/${id}`, request).pipe(map(() => undefined));
+  }
+
+  /** Mark the whole trip Open, Booked (fully booked) or Closed for online bookings. */
+  setBookingState(id: number, bookingState: TripBookingState): Observable<string> {
+    return this.http.put<ApiResponse<object>>(`${base()}/trips/${id}/booking-state`, { bookingState }).pipe(map((r) => r.message));
   }
 
   deleteTrip(id: number): Observable<void> {
@@ -106,6 +111,13 @@ export class AdminTripService {
 
   updateDateSlot(id: number, request: UpdateDateSlotRequest): Observable<void> {
     return this.http.put<ApiResponse<object>>(`${base()}/date-slots/${id}`, request).pipe(map(() => undefined));
+  }
+
+  /** One price for every date of the trip starting in `month` ("2026-11"); null = back to the trip's price. Returns the API message. */
+  setMonthPrice(tripId: number, month: string, pricePerPerson: number | null): Observable<string> {
+    return this.http
+      .put<ApiResponse<object>>(`${base()}/trips/${tripId}/date-slots/month-price`, { month, pricePerPerson })
+      .pipe(map((r) => r.message));
   }
 
   deleteDateSlot(id: number): Observable<void> {

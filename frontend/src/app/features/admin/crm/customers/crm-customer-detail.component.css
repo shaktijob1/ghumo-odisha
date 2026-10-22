@@ -1,0 +1,38 @@
+/* Customer profile: contact + notes on the left, trips / bookings / activity on the right. */
+.crm-profile { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); gap: 14px; align-items: start; }
+.crm-col { display: grid; gap: 14px; min-width: 0; }
+
+.crm-facts { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 7px 10px; margin: 10px 0 0; font-size: 12.5px; }
+.crm-facts dt { color: var(--muted); }
+.crm-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.crm-facts a { color: var(--accent); font-weight: 600; }
+.crm-summary { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-control); background: var(--canvas); font-size: 12.5px; line-height: 1.5; white-space: pre-line; }
+
+.crm-mini { grid-template-columns: repeat(3, 1fr); margin: 0; }
+.crm-mini .v { font-size: 18px; }
+
+.crm-noteform { display: grid; gap: 8px; margin-top: 10px; }
+.crm-noteform .inp.sm { flex: 1; min-width: 0; }
+.crm-notes { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.crm-notes li { border-left: 2px solid var(--line); padding-left: 10px; }
+.crm-notes p { margin: 0 0 2px; font-size: 12.5px; line-height: 1.5; white-space: pre-line; }
+
+.crm-interests { display: grid; gap: 10px; }
+.crm-interest { border: 1px solid var(--line); border-radius: var(--radius-control); padding: 12px; }
+.crm-interest b { font-size: 13.5px; }
+.crm-inote { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; }
+.crm-iactions { gap: 6px 10px; margin-top: 10px; font-size: 12px; }
+.crm-iactions .grow { flex: 1; }
+.crm-iactions .linkbtn { padding: 0; }
+.crm-del { color: var(--danger); }
+
+.crm-timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+.crm-timeline li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.crm-timeline li:last-child { border-bottom: none; }
+.crm-timeline .when { font-weight: 600; font-size: 12px; }
+.crm-timeline .when small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+.crm-timeline li.stage b { font-weight: 500; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .crm-profile { grid-template-columns: 1fr; }
+}

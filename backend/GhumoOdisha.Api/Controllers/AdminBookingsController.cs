@@ -79,6 +79,13 @@ public class AdminBookingsController(IBookingService bookingService, IBookingTra
         return Ok(ApiResponse<object>.Ok(new { }, "Male / female count saved."));
     }
 
+    [HttpPut("{id:int}/pickup-point")]
+    public async Task<ActionResult<ApiResponse<object>>> ChangePickupPoint(int id, ChangeBookingPickupPointRequest request, CancellationToken cancellationToken)
+    {
+        await travellerService.ChangePickupPointAsync(id, request, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(new { }, "Pickup point updated."));
+    }
+
     [HttpGet("{id:int}/invoice")]
     public async Task<IActionResult> DownloadInvoice(int id, CancellationToken cancellationToken)
     {

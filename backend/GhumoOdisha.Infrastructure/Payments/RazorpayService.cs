@@ -225,6 +225,90 @@ public class RazorpayService(HttpClient httpClient, IOptions<RazorpayOptions> op
         }
     }
 
+    public async Task<IReadOnlyList<RazorpayPayment>> GetOrderPaymentsAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        var body = await SendAsync(HttpMethod.Get, $"{OrdersUrl}/{Uri.EscapeDataString(orderId)}/payments", null, $"order-payments {orderId}", cancellationToken);
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.GetProperty("items").EnumerateArray().Select(ParsePayment).ToList();
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Razorpay order-payments returned an unexpected response body for order {OrderId}: {Body}", orderId, body);
+            throw new PaymentGatewayException();
+        }
+    }
+
+    public async Task<RazorpayPayment> CapturePaymentAsync(string paymentId, long amountPaise, CancellationToken cancellationToken = default)
+    {
+        var body = await SendAsync(HttpMethod.Post, $"https://api.razorpay.com/v1/payments/{Uri.EscapeDataString(paymentId)}/capture",
+            new { amount = amountPaise, currency = "INR" }, $"capture {paymentId}", cancellationToken);
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var payment = ParsePayment(doc.RootElement);
+            logger.LogInformation("Captured Razorpay payment {PaymentId} ({AmountPaise} paise).", paymentId, amountPaise);
+            return payment;
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            logger.LogError(ex, "Razorpay capture returned an unexpected response body for payment {PaymentId}: {Body}", paymentId, body);
+            throw new PaymentGatewayException();
+        }
+    }
+
+    private static RazorpayPayment ParsePayment(JsonElement p) =>
+        new(p.GetProperty("id").GetString()!, p.GetProperty("status").GetString()!, p.GetProperty("amount").GetInt64());
+
+    /// <summary>One authenticated call; throws PaymentGateway(Auth)Exception on any failure, returns the body.</summary>
+    private async Task<string> SendAsync(HttpMethod method, string url, object? payload, string what, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.KeyId) || string.IsNullOrWhiteSpace(_options.KeySecret))
+        {
+            logger.LogError("Razorpay is not configured (missing key id or key secret) — cannot call {What}.", what);
+            throw new PaymentGatewayException();
+        }
+
+        using var request = new HttpRequestMessage(method, url);
+        if (payload is not null)
+        {
+            request.Content = JsonContent.Create(payload, options: JsonOptions);
+        }
+        request.Headers.Authorization = BasicAuthHeader();
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await httpClient.SendAsync(request, cancellationToken);
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Razorpay {What} request timed out.", what);
+            throw new PaymentGatewayException();
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Razorpay {What} request failed.", what);
+            throw new PaymentGatewayException();
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            logger.LogError("Razorpay rejected our API credentials on {What}.", what);
+            throw new PaymentGatewayAuthException();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogError("Razorpay {What} failed with HTTP {StatusCode}: {Body}", what, (int)response.StatusCode, body);
+            throw new PaymentGatewayException();
+        }
+
+        return body;
+    }
+
     private AuthenticationHeaderValue BasicAuthHeader() =>
         new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_options.KeyId}:{_options.KeySecret}")));
 }

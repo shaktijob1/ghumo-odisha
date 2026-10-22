@@ -19,6 +19,9 @@ public interface IBookingTravellerService
     Task UpdateTravellersAsync(int bookingId, UpdateTravellersRequest request, CancellationToken cancellationToken = default);
 
     Task UpdateGenderCountsAsync(int bookingId, UpdateGenderCountsRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Admin: move the booking to another pickup point of the same trip, or clear it.</summary>
+    Task ChangePickupPointAsync(int bookingId, ChangeBookingPickupPointRequest request, CancellationToken cancellationToken = default);
 }
 
 public partial class BookingTravellerService(IGhumoOdishaDbContext db) : IBookingTravellerService
@@ -174,6 +177,39 @@ public partial class BookingTravellerService(IGhumoOdishaDbContext db) : IBookin
         BookingTimeline.Add(db, booking, BookingEventType.GenderCountsUpdated, "Male / female count updated",
             $"{request.MaleCount ?? 0} male, {request.FemaleCount ?? 0} female of {booking.NumberOfSeats} seat(s)",
             BookingTimeline.Admin, visibleToCustomer: false, at: now);
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ChangePickupPointAsync(int bookingId, ChangeBookingPickupPointRequest request, CancellationToken cancellationToken = default)
+    {
+        var booking = await db.Bookings.Include(b => b.PickupPoint).FirstOrDefaultAsync(b => b.BookingId == bookingId, cancellationToken)
+            ?? throw new NotFoundException("Booking not found.");
+
+        EnsureEditable(booking);
+
+        PickupPoint? point = null;
+        if (request.PickupPointId.HasValue)
+        {
+            // Only one of this booking's own trip's pickup points — never another trip's.
+            point = await db.PickupPoints.FirstOrDefaultAsync(
+                p => p.PickupPointId == request.PickupPointId.Value && p.TripId == booking.TripId, cancellationToken)
+                ?? throw new ValidationAppException(["Choose one of this trip's pickup points."]);
+        }
+
+        if (booking.PickupPointId == point?.PickupPointId)
+        {
+            return;
+        }
+
+        var from = booking.PickupPoint is null ? "Not selected" : $"{booking.PickupPoint.Location} · {booking.PickupPoint.Time}";
+        var to = point is null ? "Not selected" : $"{point.Location} · {point.Time}";
+
+        var now = DateTime.UtcNow;
+        booking.PickupPointId = point?.PickupPointId;
+        booking.UpdatedAt = now;
+        BookingTimeline.Add(db, booking, BookingEventType.PickupPointChanged, "Pickup point changed",
+            $"{from} → {to}", BookingTimeline.Admin, visibleToCustomer: true, at: now);
 
         await db.SaveChangesAsync(cancellationToken);
     }

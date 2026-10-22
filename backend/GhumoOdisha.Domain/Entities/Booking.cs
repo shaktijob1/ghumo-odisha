@@ -53,6 +53,10 @@ public class Booking
     public decimal? PendingDiscountAmount { get; set; }
     public int? PendingCouponCodeId { get; set; }
     public decimal? PendingCouponDiscountAmount { get; set; }
+
+    /// <summary>"Complete your payment" reminders sent for this unpaid checkout (at most 2).</summary>
+    public int PaymentRemindersSent { get; set; }
+    public DateTime? LastPaymentReminderAt { get; set; }
     public DateTime RequestedAt { get; set; }
     public DateTime? ConfirmedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
@@ -71,4 +75,5 @@ public class Booking
     public ICollection<BookingTraveller> Travellers { get; set; } = new List<BookingTraveller>();
     public ICollection<BookingEvent> Events { get; set; } = new List<BookingEvent>();
     public BookingRefund? Refund { get; set; }
+    public ICollection<BookingPaymentOrder> PaymentOrders { get; set; } = new List<BookingPaymentOrder>();
 }

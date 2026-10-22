@@ -4,22 +4,32 @@ using Microsoft.EntityFrameworkCore;
 namespace GhumoOdisha.Tests.Fixtures;
 
 /// <summary>
-/// Connects to the same local MySQL instance the app uses in Development (matches
-/// appsettings.Development.json). This project has no CI/mocking infra — every prior
-/// phase was verified against a real database, and these tests follow that pattern.
+/// Connects to the local MySQL instance the app uses in Development, but to its own
+/// <c>GhumoOdisha_Test</c> database — the tests create thousands of trips, customers and bookings,
+/// which must never land in the database the running site reads. Migrated once per test run.
+/// This project has no CI/mocking infra — every phase was verified against a real database.
 /// </summary>
 public static class TestDb
 {
-    private const string ConnectionString = "server=localhost;port=3306;database=GhumoOdisha;user=shaktijob;password=1111;";
+    private const string ConnectionString = "server=localhost;port=3306;database=GhumoOdisha_Test;user=shaktijob;password=1111;";
+
+    private static readonly Lazy<bool> Migrated = new(() =>
+    {
+        using var context = new GhumoOdishaDbContext(Options());
+        context.Database.Migrate();
+        return true;
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
 
     public static GhumoOdishaDbContext CreateContext()
     {
-        var options = new DbContextOptionsBuilder<GhumoOdishaDbContext>()
+        _ = Migrated.Value;
+        return new GhumoOdishaDbContext(Options());
+    }
+
+    private static DbContextOptions<GhumoOdishaDbContext> Options() =>
+        new DbContextOptionsBuilder<GhumoOdishaDbContext>()
             .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 0, 36)))
             .Options;
-
-        return new GhumoOdishaDbContext(options);
-    }
 
     /// <summary>Random 10-digit Indian mobile number so parallel/repeated test runs never collide.</summary>
     public static string RandomPhoneNumber()

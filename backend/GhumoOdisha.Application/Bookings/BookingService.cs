@@ -3,6 +3,7 @@ using System.Globalization;
 using GhumoOdisha.Application.Bookings.Dtos;
 using GhumoOdisha.Application.Auth;
 using GhumoOdisha.Application.Common;
+using GhumoOdisha.Application.Crm;
 using GhumoOdisha.Application.Contact;
 using GhumoOdisha.Application.Exceptions;
 using GhumoOdisha.Application.Legal;
@@ -26,12 +27,16 @@ public class BookingService(
 {
     private const int CancellationWindowHours = 72;
 
-    /// <summary>A checkout nobody has paid for is closed this long after it was started.</summary>
-    public const int UnpaidRequestExpiryHours = 24;
+    /// <summary>A checkout nobody has paid for is closed this long after it was started (Razorpay is
+    /// checked every minute meanwhile, and the customer is reminded at 15 and 30 minutes).</summary>
+    public const int UnpaidRequestExpiryMinutes = 60;
+
+    /// <summary>"1 hour" — for messages.</summary>
+    public const string UnpaidRequestExpiryLabel = "1 hour";
 
     /// <summary>Don't expire a request whose Razorpay order was touched this recently — the customer
     /// may be on the payment screen right now.</summary>
-    private static readonly TimeSpan PaymentInProgressGrace = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan PaymentInProgressGrace = TimeSpan.FromMinutes(10);
     private readonly OrganizerContactOptions _organizerContact = organizerContactOptions.Value;
 
     /// <summary>
@@ -73,7 +78,7 @@ public class BookingService(
         var slot = await db.TripDateSlots.FirstOrDefaultAsync(s => s.TripDateSlotId == request.TripDateSlotId && s.TripId == request.TripId, cancellationToken)
             ?? throw new NotFoundException("Date slot not found.");
 
-        SlotBookingRules.EnsureBookable(slot, request.NumberOfSeats);
+        SlotBookingRules.EnsureBookable(trip, slot, request.NumberOfSeats);
         if (request.MaleCount is not null || request.FemaleCount is not null)
         {
             if ((request.MaleCount ?? 0) + (request.FemaleCount ?? 0) != request.NumberOfSeats)
@@ -103,7 +108,8 @@ public class BookingService(
         }
 
         var now = DateTime.UtcNow;
-        var totalAmount = trip.AmountPerPerson * request.NumberOfSeats;
+        var pricePerPerson = SlotPricing.PricePerPerson(trip, slot, TripCalendar.DateOf(now));
+        var totalAmount = pricePerPerson * request.NumberOfSeats;
 
         var booking = new Booking
         {
@@ -115,7 +121,7 @@ public class BookingService(
             NumberOfSeats = request.NumberOfSeats,
             MaleCount = request.MaleCount,
             FemaleCount = request.FemaleCount,
-            AmountPerPerson = trip.AmountPerPerson,
+            AmountPerPerson = pricePerPerson,
             TotalAmount = totalAmount,
             AdvanceAmount = 0,
             RemainingAmount = totalAmount,
@@ -334,6 +340,7 @@ public class BookingService(
             .Include(b => b.Customer)
             .Include(b => b.Trip)
             .Include(b => b.TripDateSlot)
+            .Include(b => b.PickupPoint)
             .FirstOrDefaultAsync(b => b.BookingId == bookingId, cancellationToken)
             ?? throw new NotFoundException("Booking not found.");
 
@@ -391,7 +398,10 @@ public class BookingService(
             booking.RefundWaived,
             travellers,
             timeline.Select(MapEvent).ToList(),
-            await db.BookingRefunds.AsNoTracking().Where(r => r.BookingId == bookingId).Select(Refunds.RefundService.ToAdminDto).FirstOrDefaultAsync(cancellationToken));
+            await db.BookingRefunds.AsNoTracking().Where(r => r.BookingId == bookingId).Select(Refunds.RefundService.ToAdminDto).FirstOrDefaultAsync(cancellationToken),
+            booking.PickupPoint?.Location,
+            booking.PickupPoint?.Time,
+            booking.PickupPointId);
     }
 
     private async Task<IReadOnlyList<BookingPaymentDto>> GetPaymentDtosAsync(int bookingId, CancellationToken cancellationToken) =>
@@ -444,12 +454,22 @@ public class BookingService(
         var slot = await db.TripDateSlots.FirstOrDefaultAsync(s => s.TripDateSlotId == request.TripDateSlotId && s.TripId == request.TripId, cancellationToken)
             ?? throw new NotFoundException("Date slot not found.");
 
-        SlotBookingRules.EnsureBookable(slot, request.NumberOfSeats, online: false);
+        SlotBookingRules.EnsureBookableByAdmin(slot, request.NumberOfSeats);
 
-        var totalAmount = trip.AmountPerPerson * request.NumberOfSeats;
+        // The discount comes off the total recomputed here from the stored trip price, and must leave
+        // something to pay (a manual booking is only created once paid).
+        var pricePerPerson = SlotPricing.PricePerPerson(trip, slot, TripCalendar.Today());
+        var tripTotal = pricePerPerson * request.NumberOfSeats;
+        var discount = decimal.Round(request.DiscountAmount, 2);
+        if (discount < 0 || discount >= tripTotal)
+        {
+            throw new ValidationAppException([$"Discount must be at least 0 and less than the trip total of Rs {tripTotal:N2}."]);
+        }
+
+        var totalAmount = tripTotal - discount;
         if (request.AmountPaid <= 0 || request.AmountPaid > totalAmount)
         {
-            throw new ValidationAppException([$"Amount paid must be more than 0 and at most the trip total of Rs {totalAmount:N2}."]);
+            throw new ValidationAppException([$"Amount paid must be more than 0 and at most the total of Rs {totalAmount:N2}."]);
         }
 
         if (!request.CustomerId.HasValue)
@@ -485,6 +505,13 @@ public class BookingService(
                         Name = request.NewCustomerName!,
                         PhoneNumber = request.NewCustomerPhoneNumber!,
                         Email = request.NewCustomerEmail,
+                        LeadSource = request.BookingSource switch
+                        {
+                            BookingSource.Phone => LeadSource.Phone,
+                            BookingSource.WhatsApp => LeadSource.WhatsApp,
+                            BookingSource.Offline => LeadSource.WalkIn,
+                            _ => LeadSource.Website
+                        },
                         IsVerified = false,
                         FailedLoginAttempts = 0,
                         CreatedAt = now,
@@ -505,7 +532,7 @@ public class BookingService(
                     TripId = trip.TripId,
                     TripDateSlotId = slot.TripDateSlotId,
                     NumberOfSeats = request.NumberOfSeats,
-                    AmountPerPerson = trip.AmountPerPerson,
+                    AmountPerPerson = pricePerPerson,
                     TotalAmount = totalAmount,
                     AdvanceAmount = 0,
                     RemainingAmount = totalAmount,
@@ -520,14 +547,15 @@ public class BookingService(
 
                 db.Bookings.Add(booking);
                 BookingTimeline.Add(db, booking, BookingEventType.Created, "Booking created by Ghumo Odisha",
-                    $"{request.NumberOfSeats} seat(s) for {slot.StartDate:d MMM yyyy} · booked via {request.BookingSource}",
+                    $"{request.NumberOfSeats} seat(s) for {slot.StartDate:d MMM yyyy} · booked via {request.BookingSource}" +
+                    (discount > 0 ? $" · {BookingTimeline.Money(discount)} discount" : ""),
                     BookingTimeline.Admin, at: now);
                 await db.SaveChangesAsync(cancellationToken);
                 // Drop the tracked copy so the confirm's locked re-read loads the row fresh.
                 db.ChangeTracker.Clear();
 
                 confirmed = await ConfirmInTransactionAsync(booking.BookingId,
-                    new ConfirmBookingRequest(request.AmountPaid, 0, null, request.PaymentMethod, request.PaymentReference), cancellationToken);
+                    new ConfirmBookingRequest(request.AmountPaid, discount, null, request.PaymentMethod, request.PaymentReference), cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
             catch
@@ -598,7 +626,9 @@ public class BookingService(
             throw new ValidationAppException(["Discount amount cannot be negative."]);
         }
 
-        var totalAmount = trip.AmountPerPerson * booking.NumberOfSeats - request.DiscountAmount;
+        // Recomputed from stored prices: the departure/early-booking price in force when the booking was made.
+        var pricePerPerson = SlotPricing.PricePerPerson(trip, slot, booking);
+        var totalAmount = pricePerPerson * booking.NumberOfSeats - request.DiscountAmount;
         if (totalAmount < 0)
         {
             throw new ValidationAppException(["Discount amount cannot exceed the trip total."]);
@@ -612,7 +642,7 @@ public class BookingService(
         await DeductSeatsAsync(slot, booking.NumberOfSeats, cancellationToken);
 
         var now = DateTime.UtcNow;
-        booking.AmountPerPerson = trip.AmountPerPerson;
+        booking.AmountPerPerson = pricePerPerson;
         booking.TotalAmount = totalAmount;
         booking.DiscountAmount = request.DiscountAmount;
         booking.AdvanceAmount = request.AdvanceAmount;
@@ -658,6 +688,7 @@ public class BookingService(
     // successful, already-committed seat confirmation.
     private async Task NotifyConfirmedAsync(ConfirmedBooking confirmed, CancellationToken cancellationToken)
     {
+        await SyncCrmAsync(confirmed.Booking.BookingId, cancellationToken);
         var customer = await db.Customers.AsNoTracking().FirstOrDefaultAsync(c => c.CustomerId == confirmed.Booking.CustomerId, cancellationToken);
         if (customer is not null)
         {
@@ -843,7 +874,7 @@ public class BookingService(
             else if (delta > 0)
             {
                 // Not confirmed yet, so nothing is deducted — but don't let it grow past what could ever be confirmed.
-                SlotBookingRules.EnsureBookable(slot, newSeats, online: false);
+                SlotBookingRules.EnsureBookableByAdmin(slot, newSeats);
             }
 
             var now = DateTime.UtcNow;
@@ -1112,6 +1143,8 @@ public class BookingService(
             throw;
         }
 
+        await SyncCrmAsync(bookingId, cancellationToken);
+
         // After the commit, best-effort: an email problem never undoes the cancellation.
         if (bookingEmails is not null)
         {
@@ -1157,7 +1190,7 @@ public class BookingService(
 
     public async Task<int> ExpireUnpaidRequestsAsync(CancellationToken cancellationToken = default)
     {
-        var cutoff = DateTime.UtcNow.AddHours(-UnpaidRequestExpiryHours);
+        var cutoff = DateTime.UtcNow.AddMinutes(-UnpaidRequestExpiryMinutes);
 
         // Every source: admin bookings are created paid now, so an unpaid phone/WhatsApp/offline row is
         // a leftover from the old request flow and, being hidden everywhere, can only be closed here.
@@ -1213,12 +1246,12 @@ public class BookingService(
             }
 
             booking.BookingStatus = BookingStatus.Cancelled;
-            booking.CancellationReason = $"Not paid within {UnpaidRequestExpiryHours} hours";
+            booking.CancellationReason = $"Not paid within {UnpaidRequestExpiryLabel}";
             booking.CancelledAt = now;
             booking.UpdatedAt = now;
-            booking.AdminNotes = AppendNote(booking.AdminNotes, $"Cancelled automatically — no payment within {UnpaidRequestExpiryHours} hours of the request.");
+            booking.AdminNotes = AppendNote(booking.AdminNotes, $"Cancelled automatically — no payment within {UnpaidRequestExpiryLabel} of the request.");
             BookingTimeline.Add(db, booking, BookingEventType.Cancelled, "Request expired",
-                $"No payment was received within {UnpaidRequestExpiryHours} hours, so this request was cancelled. Nothing was charged — you're welcome to book again.",
+                $"No payment was received within {UnpaidRequestExpiryLabel}, so this request was cancelled. Nothing was charged — you're welcome to book again.",
                 BookingTimeline.System, at: now);
 
             await db.SaveChangesAsync(cancellationToken);
@@ -1261,7 +1294,29 @@ public class BookingService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        foreach (var booking in bookingsToComplete)
+        {
+            await SyncCrmAsync(booking.BookingId, cancellationToken);
+        }
+
         return bookingsToComplete.Count;
+    }
+
+    /// <summary>
+    /// Mirrors a committed booking change into Admin → CRM (trip interest Booked / Completed / Cancelled).
+    /// Best-effort, after the commit: a CRM problem is logged and never undoes or blocks the booking.
+    /// </summary>
+    private async Task SyncCrmAsync(int bookingId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await CrmBookingSync.SyncAsync(db, bookingId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "CRM update failed for booking {BookingId}; the booking itself is unaffected.", bookingId);
+            db.ChangeTracker.Clear();
+        }
     }
 
     // ---------- Helpers ----------

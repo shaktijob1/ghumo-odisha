@@ -1,0 +1,16 @@
+/* Template cards, the editor's placeholder chips and its sample preview. */
+.crm-tplgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.crm-tpl { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.crm-tpl.off { opacity: .7; }
+.crm-tplname { display: block; font-size: 13.5px; overflow-wrap: anywhere; }
+.crm-tplbody, .crm-sample pre { margin: 0; padding: 10px 12px; border-radius: var(--radius-control); background: var(--canvas); font: 12.5px/1.5 var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow-y: auto; }
+.crm-tpleditor { max-width: 640px; }
+.crm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.crm-chip { border: 1px solid #BFDDD4; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 10px; font: 600 11.5px var(--font-body); cursor: pointer; }
+.crm-chip:hover { background: #DCEEE7; }
+.crm-sample { margin-top: 12px; }
+.crm-sample pre { background: var(--accent-soft); max-height: 240px; }
+
+@media (max-width: 640px) {
+  .crm-tplgrid { grid-template-columns: 1fr; }
+}

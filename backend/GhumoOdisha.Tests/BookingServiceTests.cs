@@ -267,32 +267,45 @@ public class BookingServiceTests
     }
 
     [Fact]
-    public async Task OnlineBooking_ClosesTwoDaysBeforeDeparture_ButTheAdminCanStillAddABooking()
+    public async Task OnlineBooking_StaysOpenUntil6amOnTheTripDay()
     {
         await using var db = TestDb.CreateContext();
         var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
         var service = CreateService(db);
         var today = GhumoOdisha.Application.Common.TripCalendar.Today();
 
-        // Departing the day after tomorrow → inside the cutoff: "Seats filled".
-        slot.StartDate = today.AddDays(SlotBookingRules.OnlineCutoffDays);
+        // Departing tomorrow: always still open online (the old 2-day cutoff is gone).
+        slot.StartDate = today.AddDays(1);
         slot.EndDate = slot.StartDate.AddDays(1);
         await db.SaveChangesAsync();
-        var closed = await Assert.ThrowsAsync<DepartureClosedException>(() =>
-            service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0)));
-        Assert.Equal(SlotBookingRules.OnlineClosedMessage, closed.Message);
+        Assert.False(SlotBookingRules.IsClosedOnline(slot.StartDate));
+        await service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
 
-        // The admin can still add one for a customer who phoned in.
+        // The rule itself: closed exactly once 6 AM India time on the trip day has been reached.
+        Assert.True(SlotBookingRules.IsClosedOnline(today.AddDays(-1)));
+        Assert.Equal(GhumoOdisha.Application.Common.TripCalendar.HasReached(today, new TimeOnly(6, 0)), SlotBookingRules.IsClosedOnline(today));
+    }
+
+    [Theory]
+    [InlineData(TripBookingState.Booked, SlotBookingRules.TripBookedMessage)]
+    [InlineData(TripBookingState.Closed, SlotBookingRules.TripClosedMessage)]
+    public async Task TripMarkedBookedOrClosed_RefusesOnlineBookings_ButTheAdminCanStillAddOne(TripBookingState state, string message)
+    {
+        await using var db = TestDb.CreateContext();
+        var (trip, slot, customer) = await SeedTripSlotAndCustomerAsync(db, totalSeats: 10);
+        var service = CreateService(db);
+        trip.BookingState = state;
+        await db.SaveChangesAsync();
+
+        var refused = await Assert.ThrowsAsync<DepartureClosedException>(() =>
+            service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0)));
+        Assert.Equal(message, refused.Message);
+
+        // Seats untouched; the admin can still add one for a customer who phoned in.
+        Assert.Equal(10, (await db.TripDateSlots.AsNoTracking().SingleAsync(s => s.TripDateSlotId == slot.TripDateSlotId)).AvailableSeats);
         var bookingId = await service.CreateManualBookingAsync(new CreateManualBookingRequest(
             customer.CustomerId, null, null, null, trip.TripId, slot.TripDateSlotId, 1, 500m, PaymentMethod.Cash, null, BookingSource.Phone, null));
         Assert.True(bookingId > 0);
-
-        // One day further out it's open again.
-        var later = today.AddDays(SlotBookingRules.OnlineCutoffDays + 1);
-        await db.TripDateSlots.Where(x => x.TripDateSlotId == slot.TripDateSlotId)
-            .ExecuteUpdateAsync(u => u.SetProperty(x => x.StartDate, later).SetProperty(x => x.EndDate, later.AddDays(1)));
-        db.ChangeTracker.Clear();
-        await service.RequestBookingAsync(customer.CustomerId, GenderRequest(trip, slot, gents: 1, ladies: 0));
     }
 
     [Fact]

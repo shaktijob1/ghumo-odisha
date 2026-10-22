@@ -9,6 +9,18 @@
     <a class="btn sm ghost" routerLink="/admin/trips">Back to trips</a>
   </div>
 
+  @if (tripId && trip(); as t) {
+    <div class="formsec bstate">
+      <div class="row wrap sp" style="gap:12px">
+        <div>
+          <h4>Online bookings</h4>
+          <div class="sub" style="margin-bottom:0">Booked shows every date as sold out; Closed shows "Seats filled". You can still add phone bookings either way.</div>
+        </div>
+        <app-booking-state-switch [tripId]="t.tripId" [value]="t.bookingState"></app-booking-state-switch>
+      </div>
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="saveBasicInfo()">
     <div class="formsec">
       <h4>Basic information</h4>
@@ -36,6 +48,17 @@
             </select>
           </div>
         }
+      </div>
+      <div class="f3">
+        <div class="fld">
+          <span class="lbl">Days</span>
+          <input class="inp" type="number" min="1" max="60" placeholder="From the dates" formControlName="durationDays" />
+        </div>
+        <div class="fld">
+          <span class="lbl">Nights</span>
+          <input class="inp" type="number" min="0" max="60" placeholder="From the dates" formControlName="durationNights" />
+        </div>
+        <p class="note" style="align-self:center;margin:0">Shown as "2 Days / 2 Nights" on the website. Leave both empty to count from each date range — set them when the trip leaves at night or returns early morning.</p>
       </div>
       <div class="fld">
         <span class="lbl">Included</span>
@@ -98,6 +121,20 @@
           <input class="inp" placeholder="e.g. Jirang Monastery" [(ngModel)]="newPlace" [ngModelOptions]="{standalone: true}"
             (keydown.enter)="$event.preventDefault(); addPlaces()" (paste)="onPlacesPaste($event)" />
           <button type="button" class="btn sm ghost" (click)="addPlaces()">+ Add</button>
+        </div>
+      </div>
+
+      <!-- Home page "Find your kind of trip" chips: the trip shows under every category ticked here. -->
+      <div class="fld">
+        <span class="lbl">Trip categories</span>
+        <span class="note">Pick every kind that fits — customers filter trips by these on the home page.</span>
+        <div class="row wrap cat-pick">
+          @for (c of tripCategories; track c.key) {
+            <button type="button" class="cat-opt" [class.on]="selectedCategories().has(c.key)" [style.--c-bg]="c.bg" [style.--c-fg]="c.fg"
+              [attr.aria-pressed]="selectedCategories().has(c.key)" (click)="toggleCategory(c.key)">
+              <span aria-hidden="true">{{ c.emoji }}</span>{{ c.label }}
+            </button>
+          }
         </div>
       </div>
 
@@ -171,15 +208,18 @@
       @for (s of t.dateSlots; track s.tripDateSlotId) {
         <div class="repeat">
           @if (editingSlotId() === s.tripDateSlotId) {
-            <div class="f4">
-              <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [(ngModel)]="slotDraft.startDate" [ngModelOptions]="{standalone: true}" /></div>
-              <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [(ngModel)]="slotDraft.endDate" [ngModelOptions]="{standalone: true}" /></div>
+            <div class="f4 slot-f">
+              <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [(ngModel)]="slotDraft.startDate" (ngModelChange)="onStartDateChange(slotDraft)" [ngModelOptions]="{standalone: true}" /></div>
+              <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [min]="slotDraft.startDate" [(ngModel)]="slotDraft.endDate" [ngModelOptions]="{standalone: true}" /></div>
               <div class="fld" style="margin:0">
                 <span class="lbl">Total seats</span>
                 <input class="inp" type="number" [min]="bookedSeats(s) || 1" [(ngModel)]="slotDraft.totalSeats" [ngModelOptions]="{standalone: true}" />
                 @if (bookedSeats(s) > 0) { <div class="note">{{ bookedSeats(s) }} already booked — can't go lower</div> }
               </div>
-              <div></div>
+              <div class="fld" style="margin:0">
+                <span class="lbl">Price / person (₹)</span>
+                <input class="inp" type="number" min="1" [placeholder]="'Trip price ₹' + (t.amountPerPerson | number:'1.0-0')" [(ngModel)]="slotDraft.pricePerPerson" [ngModelOptions]="{standalone: true}" />
+              </div>
             </div>
             <div class="row" style="gap:8px;margin:8px 0 4px">
               <button type="button" class="btn sm" (click)="saveDateSlot(s)">Save date</button>
@@ -188,9 +228,12 @@
           } @else {
             <div class="f4">
               <div><b>{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }}</b><div class="note">{{ s.availableSeats }} / {{ s.totalSeats }} available</div></div>
-              <div></div>
+              <div>
+                <b [style.color]="s.slotPrice ? 'var(--orange)' : null">₹{{ s.regularPrice | number:'1.0-0' }}</b>
+                <div class="note">{{ s.slotPrice ? 'Price for this date' : 'Trip price' }}@if (s.earlyBirdEndsOn) { · early ₹{{ s.pricePerPerson | number:'1.0-0' }} till {{ s.earlyBirdEndsOn | date:'d MMM' }} }</div>
+              </div>
               <button type="button" class="btn sm ghost" (click)="startEditDateSlot(s)">Edit</button>
-              <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="deleteDateSlot(s.tripDateSlotId)">Remove</button>
+              <button class="btn sm ghost dang" style="color:var(--danger);border-color:#F0CFC9" (click)="deleteDateSlot(s)">Remove</button>
             </div>
           }
         </div>
@@ -198,13 +241,40 @@
 
       <div class="repeat">
         <div class="rh"><b>Add date range</b></div>
-        <div class="f4">
-          <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [(ngModel)]="newSlot.startDate" [ngModelOptions]="{standalone: true}" /></div>
-          <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [(ngModel)]="newSlot.endDate" [ngModelOptions]="{standalone: true}" /></div>
+        <div class="f4 slot-f slot-add">
+          <div class="fld" style="margin:0"><span class="lbl">Start date</span><input class="inp" type="date" [min]="todayKey" [(ngModel)]="newSlot.startDate" (ngModelChange)="onStartDateChange(newSlot)" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0"><span class="lbl">End date</span><input class="inp" type="date" [min]="newSlot.startDate || todayKey" [(ngModel)]="newSlot.endDate" [ngModelOptions]="{standalone: true}" /></div>
           <div class="fld" style="margin:0"><span class="lbl">Total seats</span><input class="inp" type="number" [(ngModel)]="newSlot.totalSeats" [ngModelOptions]="{standalone: true}" /></div>
+          <div class="fld" style="margin:0">
+            <span class="lbl">Price / person (₹)</span>
+            <input class="inp" type="number" min="1" [placeholder]="'Trip price ₹' + (t.amountPerPerson | number:'1.0-0')" [(ngModel)]="newSlot.pricePerPerson" [ngModelOptions]="{standalone: true}" />
+          </div>
           <button class="btn sm" (click)="addDateSlot()">+ Add</button>
         </div>
+        <p class="note" style="margin:8px 0 0">The end date fills in from the itinerary length — change it if needed. Leave the price empty to use the trip's price.</p>
       </div>
+
+      @if (t.dateSlots.length > 0) {
+        @let months = slotMonthsForPricing(t);
+        <div class="repeat">
+          <div class="rh"><b>Same price for a whole month</b></div>
+          <div class="row wrap" style="gap:10px;align-items:flex-end">
+            <div class="fld" style="margin:0;min-width:180px">
+              <span class="lbl">Month</span>
+              <select class="inp" [(ngModel)]="monthPrice.month" [ngModelOptions]="{standalone: true}">
+                <option value="" disabled>Choose month</option>
+                @for (m of months; track m.key) { <option [value]="m.key">{{ m.label }} ({{ m.count }} {{ m.count === 1 ? 'date' : 'dates' }})</option> }
+              </select>
+            </div>
+            <div class="fld" style="margin:0;min-width:160px">
+              <span class="lbl">Price / person (₹)</span>
+              <input class="inp" type="number" min="1" placeholder="Empty = trip price" [(ngModel)]="monthPrice.price" [ngModelOptions]="{standalone: true}" />
+            </div>
+            <button class="btn sm" (click)="applyMonthPrice()">Apply to month</button>
+          </div>
+          <p class="note" style="margin:8px 0 0">Sets the price on every date starting in that month. Confirmed bookings keep the price they paid.</p>
+        </div>
+      }
     </div>
 
     <div class="formsec">
@@ -347,11 +417,27 @@
       @if (t.pickupPoints.length > 0) {
         <div class="repeat">
           @for (p of t.pickupPoints; track p.pickupPointId) {
-            <div class="row" style="gap:10px;margin-bottom:8px">
-              <span class="sel" style="width:110px">{{ p.time }}</span>
-              <span style="flex:1">{{ p.location }}</span>
-              <span class="sel" style="padding:8px 10px;cursor:pointer" (click)="deletePickupPoint(p.pickupPointId)">×</span>
-            </div>
+            @if (editingPickupId() === p.pickupPointId) {
+              <div class="row wrap pk-row" style="gap:10px;margin-bottom:8px">
+                <select class="inp" style="width:130px" [(ngModel)]="pickupDraft.time" [ngModelOptions]="{standalone: true}" aria-label="Pickup time">
+                  <option value="" disabled>Select time</option>
+                  @for (o of quarterHourOptions; track o.value) {
+                    <option [value]="o.value">{{ o.label }}</option>
+                  }
+                </select>
+                <input class="inp" style="flex:1;min-width:160px" placeholder="Pickup location" [(ngModel)]="pickupDraft.location" [ngModelOptions]="{standalone: true}"
+                  (keydown.enter)="$event.preventDefault(); savePickupPoint(p.pickupPointId, p.displayOrder)" aria-label="Pickup location" />
+                <button type="button" class="btn sm" (click)="savePickupPoint(p.pickupPointId, p.displayOrder)">Save</button>
+                <button type="button" class="btn sm ghost" (click)="editingPickupId.set(null)">Cancel</button>
+              </div>
+            } @else {
+              <div class="row pk-row" style="gap:10px;margin-bottom:8px">
+                <span class="sel" style="width:110px">{{ p.time }}</span>
+                <span style="flex:1">{{ p.location }}</span>
+                <button type="button" class="btn sm ghost" (click)="startEditPickupPoint(p)">Edit</button>
+                <span class="sel" style="padding:8px 10px;cursor:pointer" title="Delete pickup point" (click)="deletePickupPoint(p.pickupPointId)">×</span>
+              </div>
+            }
           }
         </div>
       }

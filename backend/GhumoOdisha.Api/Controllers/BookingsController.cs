@@ -4,6 +4,7 @@ using GhumoOdisha.Application.Bookings.Dtos;
 using GhumoOdisha.Application.Common;
 using GhumoOdisha.Application.Invoices;
 using GhumoOdisha.Application.Notifications;
+using GhumoOdisha.Application.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,12 +13,22 @@ namespace GhumoOdisha.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Customer")]
-public class BookingsController(IBookingService bookingService, IInvoiceService invoiceService, IBookingEmailService bookingEmails) : ControllerBase
+public class BookingsController(IBookingService bookingService, IBookingPaymentService paymentService, IInvoiceService invoiceService, IBookingEmailService bookingEmails) : ControllerBase
 {
     [HttpPost("api/bookings/request")]
     public async Task<ActionResult<ApiResponse<CreateBookingResult>>> RequestBooking(CreateBookingRequest request, CancellationToken cancellationToken)
     {
         var customerId = User.GetCustomerId();
+
+        // Booking the same date again after a refresh: if the earlier checkout was in fact paid, that
+        // one is confirmed and returned — instead of replacing it and asking for the money twice.
+        var alreadyPaid = await paymentService.ConfirmPaidCheckoutForSlotAsync(customerId, request.TripDateSlotId, cancellationToken);
+        if (alreadyPaid is { } paidId)
+        {
+            var paid = await bookingService.GetCustomerBookingDetailAsync(customerId, paidId, cancellationToken);
+            return Ok(ApiResponse<CreateBookingResult>.Ok(new CreateBookingResult(paid, string.Empty), BookingPaymentService.AlreadyPaidMessage));
+        }
+
         var result = await bookingService.RequestBookingAsync(customerId, request, cancellationToken);
         return Ok(ApiResponse<CreateBookingResult>.Ok(result, "Booking request submitted."));
     }

@@ -1,0 +1,24 @@
+/* Departure cards (Trips / Campaigns) and the departure page header. */
+.crm-depgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.crm-depcard { display: grid; gap: 10px; color: inherit; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease; min-width: 0; }
+.crm-depcard:hover { border-color: #BFDDD4; box-shadow: 0 8px 20px rgba(15,20,22,.06); }
+.crm-deptitle { font-size: 14px; display: block; overflow-wrap: anywhere; }
+.crm-ink { color: var(--ink); }
+
+.crm-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
+.crm-price b { font-size: 18px; letter-spacing: -0.01em; }
+.crm-early { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 999px; }
+
+.crm-seats { position: relative; height: 8px; border-radius: 999px; background: var(--canvas); }
+.crm-seats .fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
+.crm-seats .min { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--ink); border-radius: 2px; }
+
+.crm-demand { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.crm-demand span { display: grid; font-size: 10.5px; color: var(--muted); text-align: center; }
+.crm-demand b { font-size: 16px; font-weight: 600; color: var(--ink); }
+.crm-demand .hot b { color: var(--danger); }
+.crm-demand .ok b { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .crm-depgrid { grid-template-columns: 1fr; }
+}

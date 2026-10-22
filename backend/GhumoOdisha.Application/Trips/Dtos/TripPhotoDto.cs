@@ -20,9 +20,17 @@ public record ItineraryDayDto(int ItineraryDayId, int DayNumber, string Title, s
 /// <param name="GentsLeft">Places still open for gents / ladies — no gender cap, so both equal the seats still free.</param>
 public record DateSlotDto(int TripDateSlotId, DateOnly StartDate, DateOnly EndDate, int TotalSeats, int AvailableSeats, bool IsSoldOut,
     int GentsBooked, int LadiesBooked, int GentsLeft, int LadiesLeft,
-    /// <summary>Within the online cutoff (trip day and the 2 days before): customers see "Seats filled".</summary>
+    /// <summary>Past the online cutoff (6 AM India time on the trip day) or the trip is marked Closed: customers see "Seats filled".</summary>
     bool IsBookingClosed,
-    TripDateSlotStatus Status);
+    TripDateSlotStatus Status,
+    /// <summary>Per-person price for a booking made today (departure price, or early-booking price while it lasts) — what checkout charges.</summary>
+    decimal PricePerPerson,
+    /// <summary>The departure's normal price (shown struck through while the early price applies).</summary>
+    decimal RegularPrice,
+    /// <summary>Last day of the early-booking price; null when it doesn't apply today.</summary>
+    DateOnly? EarlyBirdEndsOn,
+    /// <summary>This departure's own price as set by the admin; null = it uses the trip's price.</summary>
+    decimal? SlotPrice = null);
 
 public record TripInclusionsDto(
     bool Breakfast, bool Lunch, bool Dinner, bool Stay, bool Coordinator,

@@ -8,7 +8,16 @@ public static class TripCalendar
 {
     private static readonly TimeZoneInfo IndiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
 
-    public static DateOnly Today() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, IndiaTimeZone));
+    public static DateOnly Today() => DateOf(DateTime.UtcNow);
+
+    /// <summary>The India calendar date of a UTC timestamp.</summary>
+    public static DateOnly DateOf(DateTime utc) => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), IndiaTimeZone));
+
+    /// <summary>The India wall-clock time of a UTC timestamp.</summary>
+    public static DateTime IndiaTimeOf(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), IndiaTimeZone);
+
+    /// <summary>True once India time has reached <paramref name="time"/> on <paramref name="date"/>.</summary>
+    public static bool HasReached(DateOnly date, TimeOnly time) => IndiaTimeOf(DateTime.UtcNow) >= date.ToDateTime(time);
 
     /// <summary>A departure on or after today is still bookable; anything earlier has already left.</summary>
     public static bool HasDeparted(DateOnly startDate) => startDate < Today();

@@ -1,0 +1,73 @@
+/* Shared by the Admin → CRM pages (admin tokens only: white panels, hairline borders, one accent). */
+/* Grid columns may shrink below their content, so long one-line notes truncate instead of widening the page. */
+.panels > .panel { min-width: 0; }
+
+/* Follow-up and departure lists. */
+.crm-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.crm-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.crm-list li:last-child { border-bottom: none; }
+.crm-list li { min-width: 0; }
+.crm-list .grow { flex: 1; min-width: 0; }
+.crm-list .badge { flex-shrink: 0; white-space: nowrap; }
+.crm-list .row.sp { align-items: flex-start; }
+.crm-list .row.sp b { min-width: 0; overflow-wrap: anywhere; }
+.crm-list .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crm-flame { width: 18px; text-align: center; opacity: 0; }
+.crm-flame.on { opacity: 1; }
+
+
+/* Filter bars: selects keep their natural width on laptops, share the row on phones. */
+.crm-filters .inp.sm { width: auto; min-width: 130px; }
+.crm-filters .inp.search { min-width: 220px; }
+
+/* Clickable table rows and small two-line cells. */
+.tbl tr.click { cursor: pointer; }
+.tbl tr.click:hover td { background: var(--canvas); }
+.tbl td .sub2 { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.crm-due { font-weight: 600; }
+.crm-due.overdue { color: var(--danger); }
+.crm-due.today { color: var(--accent); }
+
+/* Section headings inside panels, with an action on the right. */
+.crm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.crm-head h4 { margin: 0; }
+
+/* Form check row (checkbox + label). */
+.crm-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+
+/* A wider modal for CRM forms. */
+.modal.crm-modal { max-width: 560px; }
+
+@media (max-width: 900px) {
+  .crm-filters .inp.sm, .crm-filters .inp.search { flex: 1 1 140px; min-width: 0; }
+}
+
+/* Form errors and the duplicate-customer box. */
+.inp.err { border-color: var(--danger); }
+.note.crm-err { color: var(--danger); margin-top: 4px; }
+.crm-dup { margin: -2px 0 14px; font-size: 12.5px; line-height: 1.5; }
+
+/* Customer picker rows. */
+.crm-pick { cursor: pointer; border-radius: 10px; padding-left: 8px !important; padding-right: 8px !important; }
+.crm-pick:hover, .crm-pick:focus-visible { background: var(--canvas); outline: none; }
+
+/* Quick date buttons under a date field. */
+.crm-quick { gap: 6px; margin-top: 6px; }
+.crm-quick .btn.sm { padding: 5px 10px; font-size: 11.5px; }
+
+/* WhatsApp dialog: recipient line, roomy message box, and the buttons (WhatsApp green only on the open button). */
+.crm-wa { max-width: 620px; }
+.crm-wa-to { font-size: 12.5px; color: var(--muted); margin: -2px 0 8px; }
+.crm-wa-to b { color: var(--ink); }
+.crm-wa-text { font-family: var(--font-body); font-size: 13px; line-height: 1.5; resize: vertical; white-space: pre-wrap; }
+.crm-wa-buttons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.btn.crm-wa-go { background: var(--accent); }
+
+/* Phones: WhatsApp Web is awkward there, so the app becomes the main button. */
+@media (max-width: 640px) {
+  .crm-wa-buttons .btn { flex: 1 1 100%; }
+  .crm-wa-buttons .crm-wa-app { order: 3; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .crm-wa-buttons .btn.crm-wa-go { order: 2; background: #fff; color: var(--ink); border: 1px solid var(--line); }
+}
+
+.linkbtn.crm-wa-link { color: var(--accent); font-weight: 700; }

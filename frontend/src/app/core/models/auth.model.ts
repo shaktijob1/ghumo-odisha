@@ -61,4 +61,9 @@ export interface ContactInfo {
   officeMapUrl: string | null;
   /** Admin-uploaded office photo. */
   officePhotoUrl: string | null;
+  /** Travel Organizer card texts (admin-editable; the API fills in defaults). */
+  quote: string;
+  photoCaption: string;
+  helpTitle: string;
+  helpText: string;
 }

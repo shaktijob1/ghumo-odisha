@@ -19,7 +19,11 @@ public record CreateTripRequest(
     bool IncludesMusicalNight = false,
     bool IncludesSwimmingPool = false,
     bool AllowCoupons = true,
-    IReadOnlyList<string>? PlacesCovered = null);
+    IReadOnlyList<string>? PlacesCovered = null,
+    IReadOnlyList<string>? Categories = null,
+    /// <summary>Both or neither: the trip's own days / nights (null = counted from each date range).</summary>
+    int? DurationDays = null,
+    int? DurationNights = null);
 
 public record UpdateTripRequest(
     string Title,
@@ -39,4 +43,11 @@ public record UpdateTripRequest(
     bool IncludesMusicalNight = false,
     bool IncludesSwimmingPool = false,
     bool AllowCoupons = true,
-    IReadOnlyList<string>? PlacesCovered = null);
+    IReadOnlyList<string>? PlacesCovered = null,
+    IReadOnlyList<string>? Categories = null,
+    /// <summary>Both or neither: the trip's own days / nights (null = counted from each date range).</summary>
+    int? DurationDays = null,
+    int? DurationNights = null);
+
+/// <summary>Admin: mark a whole trip Open, Booked or Closed for online bookings.</summary>
+public record SetTripBookingStateRequest(TripBookingState BookingState);

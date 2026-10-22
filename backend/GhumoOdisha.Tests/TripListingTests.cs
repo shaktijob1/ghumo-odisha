@@ -117,4 +117,73 @@ public class TripListingTests
             await db.SaveChangesAsync();
         }
     }
+
+    private static Trip NewTripWithSlot(GhumoOdisha.Infrastructure.Persistence.GhumoOdishaDbContext db, string title, TripCategory categories = TripCategory.None)
+    {
+        var today = TripCalendar.Today();
+        var now = DateTime.UtcNow;
+        var trip = new Trip { Title = title, Description = "State test", AmountPerPerson = 1000m, Status = TripStatus.Active, Categories = categories, CreatedAt = now, UpdatedAt = now };
+        trip.TripDateSlots.Add(new TripDateSlot
+        {
+            StartDate = today.AddDays(10), EndDate = today.AddDays(11), TotalSeats = 10, AvailableSeats = 10,
+            Status = TripDateSlotStatus.Active, CreatedAt = now, UpdatedAt = now
+        });
+        db.Trips.Add(trip);
+        return trip;
+    }
+
+    [Fact]
+    public async Task BookedTrip_ReadsAsSoldOut_ClosedTrip_ReadsAsClosed_OpenRestoresSeats()
+    {
+        await using var db = TestDb.CreateContext();
+        var tag = Guid.NewGuid().ToString("N")[..10];
+        var trip = NewTripWithSlot(db, $"State {tag}");
+        await db.SaveChangesAsync();
+        var service = new TripService(db, null!);
+
+        await service.SetBookingStateAsync(trip.TripId, TripBookingState.Booked);
+        var card = Assert.Single((await service.GetActiveTripsAsync(1, 10, search: tag)).Items);
+        Assert.Equal(TripBookingState.Booked, card.BookingState);
+        Assert.Equal(0, card.NextSlotAvailableSeats);
+        Assert.All(card.UpcomingSlots, s => Assert.Equal(0, s.AvailableSeats));
+        Assert.All((await service.GetTripDetailAsync(trip.TripId)).DateSlots, s => Assert.True(s.IsSoldOut));
+
+        await service.SetBookingStateAsync(trip.TripId, TripBookingState.Closed);
+        Assert.All((await service.GetTripDetailAsync(trip.TripId)).DateSlots, s => Assert.True(s.IsBookingClosed));
+
+        await service.SetBookingStateAsync(trip.TripId, TripBookingState.Open);
+        db.ChangeTracker.Clear();
+        var open = Assert.Single((await service.GetActiveTripsAsync(1, 10, search: tag)).Items);
+        Assert.Equal(10, open.NextSlotAvailableSeats);
+
+        // Seats in the database were never touched by any of this.
+        Assert.Equal(10, db.TripDateSlots.Single(s => s.TripId == trip.TripId).AvailableSeats);
+
+        await Assert.ThrowsAsync<GhumoOdisha.Application.Exceptions.ValidationAppException>(() =>
+            service.SetBookingStateAsync(trip.TripId, (TripBookingState)7));
+    }
+
+    [Fact]
+    public async Task CategoryFilter_ListsOnlyTripsInThatCategory_AndRejectsUnknownNames()
+    {
+        await using var db = TestDb.CreateContext();
+        var tag = Guid.NewGuid().ToString("N")[..10];
+        NewTripWithSlot(db, $"Beach pool {tag}", TripCategory.Beach | TripCategory.PoolParty);
+        NewTripWithSlot(db, $"Trek {tag}", TripCategory.Trekking);
+        await db.SaveChangesAsync();
+        var service = new TripService(db, null!);
+
+        var beach = await service.GetActiveTripsAsync(1, 10, search: tag, upcomingOnly: true, category: "Beach");
+        Assert.Equal([$"Beach pool {tag}"], beach.Items.Select(t => t.Title).ToArray());
+        Assert.Equal(["PoolParty", "Beach"], beach.Items[0].Categories);
+
+        var trekking = await service.GetActiveTripsAsync(1, 10, search: tag, upcomingOnly: true, category: "trekking");
+        Assert.Equal([$"Trek {tag}"], trekking.Items.Select(t => t.Title).ToArray());
+
+        Assert.Empty((await service.GetActiveTripsAsync(1, 10, search: tag, category: "Nope")).Items);
+        Assert.Throws<GhumoOdisha.Application.Exceptions.ValidationAppException>(() => TripCategories.Parse(["Beach", "Nope"]));
+
+        var counts = await service.GetUpcomingCategoryCountsAsync();
+        Assert.Contains(counts, c => c.Category == "Trekking" && c.TripCount >= 1);
+    }
 }

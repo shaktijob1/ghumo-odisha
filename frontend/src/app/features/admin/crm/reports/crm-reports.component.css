@@ -1,0 +1,44 @@
+/* Reports: KPI strip, source table with bars, six-month columns. */
+.crm-rkpis { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.crm-rkpis > div { display: grid; gap: 3px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-control); min-width: 0; }
+.crm-rkpis span { font-size: 11px; color: var(--muted); }
+.crm-rkpis b { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.crm-rkpis small { font-size: 10.5px; color: var(--muted); }
+.acc { color: var(--accent); }
+.crm-rh { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.panels > div { min-width: 0; }
+
+.crm-best { margin-bottom: 12px; padding: 10px 14px; border-radius: var(--radius-control); background: var(--accent-soft); color: var(--accent); font-size: 12.5px; }
+.crm-src td:nth-child(2) { min-width: 160px; }
+.crm-src td:nth-child(2) small { font-size: 11.5px; }
+.crm-src tfoot td { border-top: 1px solid var(--line); padding-top: 10px; }
+.crm-bar { height: 6px; border-radius: 999px; background: var(--canvas); margin-bottom: 3px; }
+.crm-bar span { display: block; height: 100%; border-radius: inherit; background: var(--info); }
+.crm-date { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+.crm-trend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.crm-trend-col { display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border: 1px solid var(--line); border-radius: var(--radius-control); background: #fff; font: inherit; cursor: pointer; }
+.crm-trend-col.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.crm-trend-col b { font-size: 12px; }
+.crm-trend-col small { font-size: 10.5px; color: var(--muted); }
+.crm-trend-bars { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-bottom: 6px; }
+.crm-trend-bars span { width: 12px; min-height: 2px; border-radius: 4px 4px 0 0; }
+.crm-trend-bars .l, .crm-key.l { background: var(--info); }
+.crm-trend-bars .b, .crm-key.b { background: var(--accent); }
+.crm-key { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+@media (max-width: 1100px) {
+  .crm-rkpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .crm-rkpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crm-trend { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.crm-head .inp.sm { width: auto; min-width: 0; }
+
+/* Phones: section headers put their controls under the title. */
+@media (max-width: 640px) {
+  .crm-head { flex-wrap: wrap; }
+  .crm-head > div:first-child { flex: 1 1 100%; }
+}

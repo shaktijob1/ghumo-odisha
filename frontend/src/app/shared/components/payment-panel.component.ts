@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, shareReplay } from 'rxjs';
 import { CustomerAuthService } from '../../core/services/customer-auth.service';
@@ -25,7 +25,7 @@ declare const Razorpay: any;
   imports: [CommonModule, FormsModule, BookingPriceSummaryComponent, CouponFieldComponent],
   templateUrl: './payment-panel.component.html',
 })
-export class PaymentPanelComponent implements OnInit {
+export class PaymentPanelComponent implements OnInit, OnDestroy {
   @Input({ required: true }) booking!: BookingResponse;
   @Input() heading = 'Secure your seats';
   @Input() subheading = 'Your booking is requested. Pay now to lock it in instantly.';
@@ -79,9 +79,38 @@ export class PaymentPanelComponent implements OnInit {
     payNowFor(this.booking.amountPerPerson, this.booking.numberOfSeats, this.couponDiscount()),
   );
 
+  /** True while the API checks with Razorpay whether this checkout was already paid. */
+  readonly checkingPayment = signal(false);
+  /** A payment went through but couldn't be confirmed from the browser — the API is being asked. */
+  readonly awaitingConfirmation = signal(false);
+
   ngOnInit(): void {
     // Warm the checkout script now so it's ready before the customer taps Pay.
     loadRazorpay().catch(() => undefined);
+
+    // Back after a refresh (or from a reminder link)? Ask Razorpay first, so nobody pays twice.
+    this.checkingPayment.set(true);
+    this.paymentService.checkPayment(this.booking.bookingId).subscribe({
+      next: (r) => {
+        this.checkingPayment.set(false);
+        if (r.status === 'confirmed') {
+          this.confirmed.emit();
+          return;
+        }
+        if (r.status === 'closed') {
+          this.paymentError.set(r.message || 'This booking request has closed. Please choose your date again.');
+          return;
+        }
+        this.startCheckout();
+      },
+      error: () => {
+        this.checkingPayment.set(false);
+        this.startCheckout();
+      },
+    });
+  }
+
+  private startCheckout(): void {
     const carried = this.coupon;
     if (!this.couponsAllowed) {
       // Coupons are switched off for this trip — drop any code picked earlier; the API would refuse it anyway.
@@ -238,18 +267,62 @@ export class PaymentPanelComponent implements OnInit {
               this.confirmed.emit();
             },
             error: () => {
-              this.payingNow.set(false);
-              this.paymentError.set('Payment received but could not be verified. Please contact us with your payment ID before retrying.');
+              // The money may well have gone through — Razorpay is asked directly instead of
+              // inviting a second payment.
+              this.waitForConfirmation(response.razorpay_payment_id);
             },
           });
       },
     });
 
     checkout.on('payment.failed', () => {
+      if (this.awaitingConfirmation()) return;
       this.payingNow.set(false);
       this.paymentError.set('Payment failed. Please try again.');
     });
 
     checkout.open();
+  }
+
+  private confirmTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * Razorpay says paid but our verify call failed (network drop, tab in the background…). Ask the
+   * API every 5 seconds for up to 2 minutes; it checks Razorpay itself and confirms the booking.
+   * The minute job keeps checking after that, so the booking is confirmed (or refunded) regardless.
+   */
+  private waitForConfirmation(paymentId: string, attempt = 0): void {
+    this.awaitingConfirmation.set(true);
+    this.payingNow.set(true);
+    this.paymentError.set(null);
+    this.paymentService.checkPayment(this.booking.bookingId).subscribe({
+      next: (r) => {
+        if (r.status === 'confirmed') {
+          this.awaitingConfirmation.set(false);
+          this.payingNow.set(false);
+          this.confirmed.emit();
+          return;
+        }
+        this.retryConfirmation(paymentId, attempt);
+      },
+      error: () => this.retryConfirmation(paymentId, attempt),
+    });
+  }
+
+  private retryConfirmation(paymentId: string, attempt: number): void {
+    if (attempt >= 23) {
+      this.awaitingConfirmation.set(false);
+      this.payingNow.set(false);
+      this.paymentError.set(
+        `We're still confirming your payment (ID ${paymentId}). Please don't pay again — it's matched to your booking automatically within a few minutes, or refunded in full. Questions? Message us on WhatsApp.`,
+      );
+      return;
+    }
+    if (this.confirmTimer) clearTimeout(this.confirmTimer);
+    this.confirmTimer = setTimeout(() => this.waitForConfirmation(paymentId, attempt + 1), 5000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.confirmTimer) clearTimeout(this.confirmTimer);
   }
 }

@@ -37,4 +37,44 @@ public class FakeRazorpayService : IRazorpayService
 
     public Task<string> GetRefundStatusAsync(string refundId, CancellationToken cancellationToken = default) =>
         Task.FromResult(RefundStatusToReturn);
+
+    /// <summary>Payments a test says were made on an order (as Razorpay would list them).</summary>
+    public Dictionary<string, List<RazorpayPayment>> OrderPayments { get; } = new();
+    public int CaptureCallCount { get; private set; }
+    public int GetOrderPaymentsCallCount { get; private set; }
+
+    /// <summary>Simulates the customer paying <paramref name="orderId"/> (captured unless <paramref name="authorizedOnly"/>).</summary>
+    public string Pay(string orderId, long amountPaise, bool authorizedOnly = false)
+    {
+        var id = $"pay_fake_{Guid.NewGuid():N}"[..22];
+        if (!OrderPayments.TryGetValue(orderId, out var list)) OrderPayments[orderId] = list = [];
+        list.Add(new RazorpayPayment(id, authorizedOnly ? "authorized" : "captured", amountPaise));
+        return id;
+    }
+
+    public Task<IReadOnlyList<RazorpayPayment>> GetOrderPaymentsAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        GetOrderPaymentsCallCount++;
+        IReadOnlyList<RazorpayPayment> result = OrderPayments.TryGetValue(orderId, out var list)
+            // A refunded payment reads as "refunded", like Razorpay.
+            ? list.Select(p => p.Id == LastRefundedPaymentId ? p with { Status = "refunded" } : p).ToList()
+            : [];
+        return Task.FromResult(result);
+    }
+
+    public Task<RazorpayPayment> CapturePaymentAsync(string paymentId, long amountPaise, CancellationToken cancellationToken = default)
+    {
+        CaptureCallCount++;
+        foreach (var list in OrderPayments.Values)
+        {
+            var i = list.FindIndex(p => p.Id == paymentId);
+            if (i >= 0)
+            {
+                list[i] = list[i] with { Status = "captured" };
+                return Task.FromResult(list[i]);
+            }
+        }
+
+        throw new PaymentGatewayException();
+    }
 }

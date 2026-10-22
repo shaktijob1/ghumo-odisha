@@ -1,4 +1,6 @@
 import { CommonModule } from '@angular/common';
+import { BookingStatus, TripBookingState } from '../../core/models/enums.model';
+import { LoginModalService } from '../../core/services/login-modal.service';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, effect, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -49,6 +51,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
   styleUrls: ['./trip-detail.component.css', './trip-detail-sections.component.css'],
 })
 export class TripDetailComponent implements OnInit, OnDestroy {
+  readonly TripBookingState = TripBookingState;
   private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
   private readonly tripService = inject(PublicTripService);
@@ -58,6 +61,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
   private readonly profileService = inject(CustomerProfileService);
   private readonly toast = inject(ToastService);
   readonly termsDialog = inject(TermsDialogService);
+  private readonly loginModal = inject(LoginModalService);
 
   readonly contact = this.contactService.get();
 
@@ -187,16 +191,22 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     return items;
   });
 
-  readonly totalAmount = computed(() => (this.trip()?.amountPerPerson ?? 0) * this.seats());
+  /**
+   * Per-person price for the chosen departure (its own or early-booking price, from the API) — the
+   * same price the server charges. Before a date is chosen, the trip's "From" price.
+   */
+  readonly pricePerPerson = computed(() => this.selectedSlot()?.pricePerPerson ?? this.trip()?.fromPrice ?? this.trip()?.amountPerPerson ?? 0);
+
+  readonly totalAmount = computed(() => this.pricePerPerson() * this.seats());
 
   // What's actually collected via Razorpay to confirm the booking — ₹99/seat, same rate the
   // payment panel charges once the booking request exists. Never used to compute what's actually
   // charged; that's recomputed server-side from scratch.
-  readonly bookingAdvance = computed(() => payNowFor(this.trip()?.amountPerPerson ?? 0, this.seats(), this.couponDiscount()));
+  readonly bookingAdvance = computed(() => payNowFor(this.pricePerPerson(), this.seats(), this.couponDiscount()));
 
   /** Booking advance for one seat — what the "PAY ₹99 & CONFIRM BOOKING" button shows before seats are chosen. */
   get perSeatAdvance(): number {
-    return payNowFor(this.trip()?.amountPerPerson ?? 0, 1, 0);
+    return payNowFor(this.pricePerPerson(), 1, 0);
   }
 
   readonly requiresPickupPoint = computed(() => (this.trip()?.pickupPoints.length ?? 0) > 0);
@@ -248,7 +258,55 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     () => this.requiresPickupPoint() && !(this.pickupConfirmed() && this.selectedPickupPointId()) && !this.bookingResult(),
   );
 
+  // ---------- "Complete your payment" reminder link: /trips/123?pay=<bookingId> ----------
+
+  /** A checkout to reopen once the trip has loaded and the customer is signed in. */
+  private pendingResumeId: number | null = null;
+
+  private readonly resumeWhenReady = effect(() => {
+    if (this.pendingResumeId !== null && this.trip() && this.auth.isAuthenticated()) {
+      const id = this.pendingResumeId;
+      this.pendingResumeId = null;
+      this.resumeCheckout(id);
+    }
+  });
+
+  /** Opens the booking popup on that checkout's payment step (the panel asks Razorpay first, so nobody pays twice). */
+  private resumeCheckout(bookingId: number): void {
+    this.bookingService.getMyBooking(bookingId).subscribe({
+      next: (booking) => {
+        if (booking.tripId !== this.tripId) return;
+        if (booking.bookingStatus === BookingStatus.Confirmed || booking.bookingStatus === BookingStatus.Completed) {
+          this.bookingResult.set({ booking, whatsAppMessage: '' });
+          this.confirmedBooking.set(booking);
+          this.paymentConfirmed.set(true);
+          this.showBookingModal.set(true);
+          this.bookingStep.set('flow');
+          return;
+        }
+        if (booking.bookingStatus !== BookingStatus.AwaitingPayment && booking.bookingStatus !== BookingStatus.Pending) {
+          this.toast.info('That booking request has closed. Please choose your date again — any payment made on it is refunded automatically.');
+          return;
+        }
+        this.selectedSlotId.set(booking.tripDateSlotId ?? this.selectedSlotId());
+        this.bookingResult.set({ booking, whatsAppMessage: '' });
+        this.submitError.set(null);
+        this.showBookingModal.set(true);
+        this.bookingStep.set('flow');
+      },
+      error: () => this.toast.info('Please choose your date again to complete the booking.'),
+    });
+  }
+
   ngOnInit(): void {
+    const pay = Number(this.route.snapshot.queryParamMap.get('pay'));
+    if (Number.isInteger(pay) && pay > 0) {
+      this.pendingResumeId = pay;
+      // Drop ?pay= so a refresh doesn't reopen the popup again.
+      const [path] = this.location.path(false).split('?');
+      this.location.replaceState(path);
+      if (!this.auth.isAuthenticated()) this.loginModal.open();
+    }
     this.wideQuery?.addEventListener('change', this.onWideChange);
     // A related-trip link opens another trip in this same component, so follow the route id.
     let first = true;
@@ -416,7 +474,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
     this.showAllSlots.set(false);
   }
 
-  /** A date tapped in the gallery's departures roll: pick it and open the booking popup on it. */
+  /** A date tapped in the gallery's departures roll or the sidebar list: pick it and open the booking popup on it. */
   bookFromRoll(slot: DateSlot): void {
     if (slot.isSoldOut || slot.isBookingClosed) return;
     this.selectSlot(slot);
@@ -490,8 +548,11 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       .filter((s) => !s.isSoldOut && !s.isBookingClosed && s.startDate >= today)
       .sort((a, b) => a.startDate.localeCompare(b.startDate))[0] ?? t.dateSlots[0];
     if (next) {
-      const days = Math.round((Date.parse(next.endDate) - Date.parse(next.startDate)) / 86_400_000) + 1;
-      const nights = Math.max(0, days - 1);
+      // The admin's own days / nights when set, else counted from the dates (same rule as the API).
+      const counted = Math.round((Date.parse(next.endDate) - Date.parse(next.startDate)) / 86_400_000) + 1;
+      const own = t.durationDays != null && t.durationNights != null;
+      const days = own ? t.durationDays! : counted;
+      const nights = own ? t.durationNights! : Math.max(0, counted - 1);
       facts.push({ icon: 'clock', label: 'Duration', value: `${days} Day${days === 1 ? '' : 's'}${nights ? ` · ${nights} Night${nights === 1 ? '' : 's'}` : ''}` });
       const d = new Date(next.startDate + 'T00:00:00');
       facts.push({ icon: 'calendar', label: 'Next departure', value: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' }).replace('Sept', 'Sep') });
@@ -500,7 +561,7 @@ export class TripDetailComponent implements OnInit, OnDestroy {
       const extra = t.pickupPoints.length - 1;
       facts.push({ icon: 'pin', label: 'Pickup from', value: t.pickupPoints[0].location + (extra > 0 ? ` +${extra} more` : '') });
     }
-    facts.push({ icon: 'tag', label: 'Starting from', value: `₹${t.amountPerPerson.toLocaleString('en-IN')} / person` });
+    facts.push({ icon: 'tag', label: 'Starting from', value: `₹${t.fromPrice.toLocaleString('en-IN')} / person` });
     return facts;
   });
 

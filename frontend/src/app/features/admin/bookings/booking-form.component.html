@@ -60,7 +60,7 @@
       <select class="inp" [(ngModel)]="selectedSlotId" [disabled]="!selectedTripId">
         <option [ngValue]="null">Select a date…</option>
         @for (s of slots(); track s.tripDateSlotId) {
-          <option [ngValue]="s.tripDateSlotId" [disabled]="s.availableSeats <= 0">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }} ({{ s.availableSeats > 0 ? s.availableSeats + ' available' : 'Full' }})</option>
+          <option [ngValue]="s.tripDateSlotId" [disabled]="s.availableSeats <= 0">{{ s.startDate | date:'d MMM y' }} → {{ s.endDate | date:'d MMM y' }} ({{ s.availableSeats > 0 ? s.availableSeats + ' available' : 'Full' }}) · ₹{{ s.pricePerPerson | number:'1.0-0' }}{{ s.earlyBirdEndsOn ? ' early' : '' }}</option>
         }
       </select>
     </div>
@@ -76,6 +76,15 @@
         <option [ngValue]="BookingSource.Offline">Offline</option>
         <option [ngValue]="BookingSource.Website">Website</option>
       </select>
+    </div>
+  </div>
+
+  <h4 style="margin-top:6px">Discount</h4>
+  <div class="sub">Optional. A flat amount off the whole booking</div>
+  <div class="f3" style="margin-bottom:14px">
+    <div class="fld" style="margin:0">
+      <span class="lbl">Discount (₹)</span>
+      <input class="inp" type="number" min="0" [(ngModel)]="discountAmount" placeholder="0" />
     </div>
   </div>
 
@@ -109,7 +118,11 @@
   </div>
 
   <div class="card pad" style="background:var(--canvas)">
-    <div class="row sp" style="padding:6px 0"><span class="mut">₹{{ selectedTripPrice | number:'1.0-0' }} × {{ numberOfSeats }} seat(s)</span><span>₹{{ totalAmount | number:'1.0-0' }}</span></div>
+    <div class="row sp" style="padding:6px 0"><span class="mut">₹{{ selectedTripPrice | number:'1.0-0' }} × {{ numberOfSeats }} seat(s)</span><span>₹{{ tripTotal | number:'1.0-0' }}</span></div>
+    @if (discount > 0) {
+      <div class="row sp" style="padding:6px 0;color:var(--accent)"><span>Discount</span><span>− ₹{{ discount | number:'1.0-2' }}</span></div>
+      <div class="row sp" style="padding:6px 0;font-weight:600"><span>Total</span><span>₹{{ totalAmount | number:'1.0-2' }}</span></div>
+    }
     <div class="row sp" style="padding:6px 0"><span class="mut">Paid</span><span>₹{{ (amountPaid ?? 0) | number:'1.0-0' }}</span></div>
     <div class="row sp" style="font-size:15px;font-weight:700;border-top:1px solid var(--line);margin-top:6px;padding-top:12px"><span>Remaining</span><span>₹{{ remaining | number:'1.0-0' }}</span></div>
     <p class="note" style="margin-top:10px">This is a preview. The server recalculates the total from the stored trip price. Saving confirms the booking and deducts the seats straight away.</p>

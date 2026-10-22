@@ -1,4 +1,4 @@
-import { TripDateSlotStatus, TripStatus } from './enums.model';
+import { TripBookingState, TripDateSlotStatus, TripStatus } from './enums.model';
 
 /** One question and answer, shown on the page and in its FAQPage structured data. */
 export interface FaqItem {
@@ -87,9 +87,17 @@ export interface DateSlot {
   /** Places still open for gents / ladies — no gender cap, so both equal the seats still free. */
   gentsLeft: number;
   ladiesLeft: number;
-  /** Online booking has closed (trip day and the 2 days before) — customers see "Seats filled". */
+  /** Online booking has closed (6 AM India time on the trip day, or the trip is marked Closed) — customers see "Seats filled". */
   isBookingClosed: boolean;
   status: TripDateSlotStatus;
+  /** Per-person price for a booking made today (the departure's price, or its early-booking price) — what checkout charges. */
+  pricePerPerson: number;
+  /** The departure's normal price (struck through while the early-booking price applies). */
+  regularPrice: number;
+  /** Last day of the early-booking price, or null when it doesn't apply today. */
+  earlyBirdEndsOn: string | null;
+  /** This departure's own price set by the admin; null = the trip's price. */
+  slotPrice?: number | null;
 }
 
 export interface TripSummary {
@@ -110,6 +118,15 @@ export interface TripSummary {
   upcomingSlots: UpcomingSlot[];
   /** Bookable departures not already in upcomingSlots — offered when every date on the card is booked. */
   nextOpenSlots?: UpcomingSlot[];
+  /** Lowest per-person price bookable today across open departures — the "From ₹…" price. */
+  fromPrice: number;
+  /** Open, or marked Booked / Closed by the admin. */
+  bookingState: TripBookingState;
+  /** Category keys ("PoolParty", "Beach"…) — see TRIP_CATEGORIES. */
+  categories: string[];
+  /** The admin's own days / nights (null = counted from the dates). */
+  durationDays?: number | null;
+  durationNights?: number | null;
 }
 
 export interface TripDetail {
@@ -136,6 +153,15 @@ export interface TripDetail {
   placesCovered: string[];
   /** "Good to know" questions built by the API from this trip and the booking rules. */
   faqs: FaqItem[];
+  /** Lowest per-person price bookable today across open departures — the "From ₹…" price. */
+  fromPrice: number;
+  /** Open, or marked Booked / Closed by the admin. */
+  bookingState: TripBookingState;
+  /** Category keys ("PoolParty", "Beach"…) — see TRIP_CATEGORIES. */
+  categories: string[];
+  /** The admin's own days / nights (null = counted from the dates). */
+  durationDays?: number | null;
+  durationNights?: number | null;
 }
 
 export interface AdminTripListItem {
@@ -148,6 +174,8 @@ export interface AdminTripListItem {
   nextSlotTotalSeats: number | null;
   nextSlotAvailableSeats: number | null;
   confirmedBookingCount: number;
+  bookingState: TripBookingState;
+  categories: string[];
 }
 
 export interface AdminTripDetail {
@@ -171,6 +199,10 @@ export interface AdminTripDetail {
   itineraryPdfUrl: string | null;
   allowCoupons: boolean;
   placesCovered: string[];
+  bookingState: TripBookingState;
+  categories: string[];
+  durationDays?: number | null;
+  durationNights?: number | null;
 }
 
 export interface CreateTripRequest {
@@ -192,6 +224,10 @@ export interface CreateTripRequest {
   destinationIds?: number[];
   /** Every place the trip visits — shown on the trip page and matched by the site search. */
   placesCovered?: string[];
+  /** Category keys ("PoolParty", "Beach"…) for the home page filter. */
+  categories?: string[];
+  durationDays?: number | null;
+  durationNights?: number | null;
 }
 
 export interface UpdateTripRequest extends CreateTripRequest {
@@ -202,6 +238,8 @@ export interface AddDateSlotRequest {
   startDate: string;
   endDate: string;
   totalSeats: number;
+  /** This date's own price; null = the trip's price. */
+  pricePerPerson?: number | null;
 }
 
 export interface UpdateDateSlotRequest extends AddDateSlotRequest {
@@ -239,4 +277,10 @@ export interface UpdatePickupPointRequest extends AddPickupPointRequest {
 export interface UpcomingSlot {
   startDate: string;
   availableSeats: number;
+}
+
+/** A home page filter chip: category key and how many bookable trips it has. */
+export interface TripCategoryCount {
+  category: string;
+  tripCount: number;
 }

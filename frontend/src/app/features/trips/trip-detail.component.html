@@ -15,17 +15,27 @@
   @case ('ready') {
     @let t = trip()!;
 
-    <!-- Next-departure status shown in the hero, under the title: next bookable date + the 2-day
-         online cutoff (seat counts stay hidden on purpose). Spans only — it sits inside a button. -->
+    <!-- Next-departure status shown in the hero, under the title: next bookable date + the online
+         cutoff (6 AM on the trip day; seat counts stay hidden on purpose). Spans only — it sits inside a button. -->
     <ng-template #departureStatus>
-      @if (nextOpenSlot(); as ns) {
+      @if (t.bookingState !== TripBookingState.Open && upcomingSlots().length > 0) {
+        <span class="tdstatus wait" role="note">
+          <span class="tdstatus-ic" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          </span>
+          <span class="tdstatus-txt">
+            <b>{{ t.bookingState === TripBookingState.Booked ? 'This trip is fully booked' : 'Bookings are closed' }}</b>
+            <small>Message us on WhatsApp to hear about the next departure</small>
+          </span>
+        </span>
+      } @else if (nextOpenSlot(); as ns) {
         <span class="tdstatus" role="note">
           <span class="tdstatus-ic" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
           </span>
           <span class="tdstatus-txt">
             <b>Next departure · {{ ns.startDate | date:'EEE, d MMM' }}</b>
-            <small>Online booking closes 2 days before departure</small>
+            <small>Online booking open till 6 AM on the trip day</small>
           </span>
         </span>
       } @else if (upcomingSlots().length > 0) {
@@ -64,7 +74,7 @@
           @if (wide()) {
             <div class="tdg-title tdg-over">
               <h1>{{ t.title }}</h1>
-              <span class="tdg-price">From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</span>
+              <span class="tdg-price">From ₹{{ t.fromPrice | number:'1.0-0' }} per person</span>
               <ng-container *ngTemplateOutlet="departureStatus"></ng-container>
             </div>
           }
@@ -131,7 +141,7 @@
           } @else {
             <h1>{{ t.title }}</h1>
           }
-          <p>From ₹{{ t.amountPerPerson | number:'1.0-0' }} per person</p>
+          <p>From ₹{{ t.fromPrice | number:'1.0-0' }} per person</p>
           <ng-container *ngTemplateOutlet="departureStatus"></ng-container>
         </div>
       </section>
@@ -475,17 +485,6 @@
             <p class="tdsafe-note">Bigger groups always travel with both a lady coordinator and a gents coordinator.</p>
           </section>
 
-          @if (t.destinations.length > 0) {
-            <section class="tdsec">
-              <div class="tdsec-head"><div><h2><span class="up-g">Destinations </span><span class="up-o">on this trip</span></h2><p>Best time to visit, distance from Bhubaneswar and every trip there.</p></div></div>
-              <ul class="tddest">
-                @for (d of t.destinations; track d.slug) {
-                  <li><a [routerLink]="['/destinations', d.slug]">{{ d.name }}<span aria-hidden="true">→</span></a></li>
-                }
-              </ul>
-            </section>
-          }
-
           @if (t.faqs.length > 0) {
             <section class="tdsec">
               <div class="tdsec-head"><div><h2><span class="up-g">Good </span><span class="up-o">to know</span></h2><p>Booking, pickup, cancellation and what to carry. Full details in the <a routerLink="/terms">Terms &amp; Conditions</a>.</p></div></div>
@@ -513,7 +512,7 @@
                       <b class="place">{{ r.title }}</b>
                     </div>
                     <div class="body">
-                      <span class="morecard-price">From ₹{{ r.amountPerPerson | number:'1.0-0' }}</span>
+                      <span class="morecard-price">From ₹{{ r.fromPrice | number:'1.0-0' }}</span>
                       @if (r.durationLabel) { <span class="morecard-dur">{{ r.durationLabel }}</span> }
                     </div>
                   </a>
@@ -558,9 +557,15 @@
           } @else {
             <div class="card pad bookpanel">
               <div class="bp-top">
-                <div class="bp-price"><b>₹{{ t.amountPerPerson | number:'1.0-0' }}</b><small>per person</small></div>
+                <div class="bp-price">
+                  @if (selectedSlot()?.earlyBirdEndsOn) { <s class="bp-was">₹{{ selectedSlot()!.regularPrice | number:'1.0-0' }}</s> }
+                  <b>₹{{ pricePerPerson() | number:'1.0-0' }}</b><small>per person</small>
+                </div>
                 @if (selectedSlot()) { <span class="bp-open">Seats open</span> }
               </div>
+              @if (selectedSlot()?.earlyBirdEndsOn) {
+                <div class="bp-early">Early booking price until {{ selectedSlot()!.earlyBirdEndsOn | date: 'd MMM' }}</div>
+              }
 
               @if (t.itineraryPdfUrl) {
                 <a class="btn soft block bp-pdf" [href]="t.itineraryPdfUrl | imageUrl" target="_blank">
@@ -578,7 +583,7 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
                 <h3>Upcoming Departures</h3>
               </div>
-              <ng-container [ngTemplateOutlet]="departureList"></ng-container>
+              <ng-container [ngTemplateOutlet]="departureList" [ngTemplateOutletContext]="{ openOnPick: true }"></ng-container>
 
               @if (selectedSlot()) {
                 <div class="hr"></div>
@@ -687,8 +692,9 @@
       </div>
     }
 
-    <!-- Departure picker: shown in the sidebar and again in the booking popup ("Confirm your date"). -->
-    <ng-template #departureList>
+    <!-- Departure picker: shown in the sidebar and again in the booking popup ("Confirm your date").
+         In the sidebar a tap picks the date and opens the booking popup on it; in the popup it just picks. -->
+    <ng-template #departureList let-openOnPick="openOnPick">
               @if (upcomingSlots().length === 0) {
                 <p class="note">No upcoming dates yet — check back soon.</p>
               } @else {
@@ -699,7 +705,7 @@
                 </div>
 
                 @for (s of visibleSlots(); track s.tripDateSlotId) {
-                  <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut || s.isBookingClosed" [disabled]="s.isSoldOut || s.isBookingClosed" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="selectSlot(s)">
+                  <button type="button" class="depcard" [attr.data-tone]="$index % 4" [class.on]="s.tripDateSlotId === selectedSlotId()" [class.out]="s.isSoldOut || s.isBookingClosed" [disabled]="s.isSoldOut || s.isBookingClosed" [attr.aria-pressed]="s.tripDateSlotId === selectedSlotId()" (click)="openOnPick ? bookFromRoll(s) : selectSlot(s)">
                     <!-- Who's going, not how many seats are left: gents / ladies booked so far. -->
                     <span class="depseats" [class.bad]="s.isSoldOut || s.isBookingClosed">
                       @if (s.isSoldOut || s.isBookingClosed) {
@@ -936,7 +942,7 @@
             }
 
             <div class="bkprice">
-              <div><span>₹{{ t.amountPerPerson | number:'1.0-0' }} × {{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</span><b>₹{{ totalAmount() | number:'1.0-0' }}</b></div>
+              <div><span>₹{{ pricePerPerson() | number:'1.0-0' }} × {{ seats() }} {{ seats() === 1 ? 'traveller' : 'travellers' }}</span><b>₹{{ totalAmount() | number:'1.0-0' }}</b></div>
               <div class="bkprice-now"><span>Pay now to confirm</span><b>₹{{ bookingAdvance() | number:'1.0-0' }}</b></div>
             </div>
 

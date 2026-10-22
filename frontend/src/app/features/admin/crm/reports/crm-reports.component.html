@@ -1,0 +1,189 @@
+<div class="ahead">
+  <div>
+    <h2>Reports</h2>
+    <div class="sub">Leads are trip enquiries; bookings and money come from real bookings and payments</div>
+  </div>
+</div>
+
+<!-- Monthly report -->
+<div class="panel" style="margin-bottom:14px">
+  <div class="crm-head">
+    <div>
+      <h4>Monthly report · {{ monthLabel }}</h4>
+      <div class="note">Bookings confirmed in the month, payments received in it, and trips that finished in it</div>
+    </div>
+    <div class="row wrap" style="gap:6px">
+      <button type="button" class="btn sm ghost" (click)="stepMonth(-1)" aria-label="Previous month">‹</button>
+      <select class="inp sm" [(ngModel)]="month" (ngModelChange)="loadMonth()" aria-label="Month">
+        @for (m of monthNames; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+      </select>
+      <select class="inp sm" [(ngModel)]="year" (ngModelChange)="loadMonth()" aria-label="Year">
+        @for (y of years; track y) { <option [ngValue]="y">{{ y }}</option> }
+      </select>
+      <button type="button" class="btn sm ghost" (click)="stepMonth(1)" aria-label="Next month">›</button>
+    </div>
+  </div>
+
+  @switch (monthState()) {
+    @case ('loading') { <app-state-panel kind="loading" message="Loading the month…"></app-state-panel> }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load this month."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="loadMonth()">Try again</button></div>
+    }
+    @case ('ready') {
+      @let r = monthly()!;
+      <div class="crm-rkpis">
+        <div><span>Leads</span><b>{{ r.totalLeads | number }}</b></div>
+        <div><span>Bookings</span><b>{{ r.totalBookings | number }}</b><small>{{ r.seatsBooked | number }} seats</small></div>
+        <div><span>Conversion</span><b class="acc">{{ r.conversionRate | number: '1.0-2' }}%</b></div>
+        <div><span>Booked value</span><b>₹{{ r.bookedValue | number: '1.0-0' }}</b></div>
+        <div><span>Revenue received</span><b>₹{{ r.paymentsReceived | number: '1.0-0' }}</b><small>before refunds</small></div>
+        <div><span>Cancelled</span><b>{{ r.cancelled | number }}</b></div>
+        <div><span>Completed trips</span><b>{{ r.completed | number }}</b></div>
+      </div>
+
+      <div class="panels" style="margin:14px 0 0">
+        <div>
+          <h5 class="crm-rh">Top trips</h5>
+          @if (r.topTrips.length === 0) {
+            <p class="note">No bookings confirmed this month.</p>
+          } @else {
+            <div class="tblwrap">
+            <table class="tbl">
+              <thead><tr><th>Trip</th><th class="num">Bookings</th><th class="num">Seats</th><th class="num">Value</th></tr></thead>
+              <tbody>
+                @for (t of r.topTrips; track t.tripId) {
+                  <tr>
+                    <td><a class="linkbtn" style="padding:0;font-size:12px" routerLink="/admin/crm/departures" [queryParams]="{ tripId: t.tripId }">{{ t.tripTitle }}</a></td>
+                    <td class="num">{{ t.bookings }}</td>
+                    <td class="num">{{ t.seats }}</td>
+                    <td class="num">₹{{ t.bookedValue | number: '1.0-0' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            </div>
+          }
+        </div>
+        <div>
+          <h5 class="crm-rh">Top lead sources</h5>
+          @if (r.topSources.length === 0) {
+            <p class="note">No leads or bookings this month.</p>
+          } @else {
+            <div class="tblwrap">
+            <table class="tbl">
+              <thead><tr><th>Source</th><th class="num">Leads</th><th class="num">Bookings</th><th class="num">Conversion</th></tr></thead>
+              <tbody>
+                @for (s of r.topSources; track s.source) {
+                  <tr>
+                    <td>{{ sourceLabels[s.source] }}</td>
+                    <td class="num">{{ s.leads }}</td>
+                    <td class="num">{{ s.bookings }}</td>
+                    <td class="num">{{ s.leads ? (s.conversionRate | number: '1.0-2') + '%' : '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Lead sources -->
+<div class="panel" style="margin-bottom:14px">
+  <div class="crm-head">
+    <div>
+      <h4>Lead sources</h4>
+      <div class="note">Which channel brings leads, and which turns them into bookings</div>
+    </div>
+    <div class="row wrap" style="gap:6px">
+      <button type="button" class="btn sm" [class.ghost]="preset !== 'month'" (click)="setPreset('month')">This month</button>
+      <button type="button" class="btn sm" [class.ghost]="preset !== '3months'" (click)="setPreset('3months')">3 months</button>
+      <button type="button" class="btn sm" [class.ghost]="preset !== 'year'" (click)="setPreset('year')">This year</button>
+      <button type="button" class="btn sm" [class.ghost]="preset !== 'all'" (click)="setPreset('all')">All time</button>
+      <button type="button" class="btn sm" [class.ghost]="preset !== 'custom'" (click)="preset = 'custom'">Custom</button>
+    </div>
+  </div>
+  @if (preset === 'custom') {
+    <div class="filters">
+      <label class="crm-date"><span>From</span><input class="inp sm" type="date" [(ngModel)]="from" (ngModelChange)="loadSources()" /></label>
+      <label class="crm-date"><span>To</span><input class="inp sm" type="date" [(ngModel)]="to" (ngModelChange)="loadSources()" /></label>
+    </div>
+  }
+
+  @switch (sourceState()) {
+    @case ('loading') { <app-state-panel kind="loading" message="Loading sources…"></app-state-panel> }
+    @case ('error') {
+      <app-state-panel kind="error" message="Could not load the source report."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="loadSources()">Try again</button></div>
+    }
+    @case ('ready') {
+      @if (sourceRows().length === 0) {
+        <app-state-panel kind="empty" message="No leads or bookings in this period."></app-state-panel>
+      } @else {
+        @if (bestSource(); as best) {
+          <div class="crm-best">Best converting: <b>{{ sourceLabels[best.source] }}</b> — {{ best.bookings }} bookings from {{ best.leads }} leads ({{ best.conversionRate | number: '1.0-2' }}%)</div>
+        }
+        <div class="tblwrap">
+          <table class="tbl crm-src">
+            <thead><tr><th>Source</th><th>Leads</th><th class="num">Bookings</th><th class="num">Conversion</th><th class="num">Booked value</th></tr></thead>
+            <tbody>
+              @for (s of sourceRows(); track s.source) {
+                <tr>
+                  <td><b>{{ sourceLabels[s.source] }}</b></td>
+                  <td>
+                    <div class="crm-bar"><span [style.width.%]="(s.leads * 100) / maxLeads()"></span></div>
+                    <small>{{ s.leads | number }}</small>
+                  </td>
+                  <td class="num">{{ s.bookings | number }}</td>
+                  <td class="num"><b [class.acc]="bestSource()?.source === s.source">{{ s.leads ? (s.conversionRate | number: '1.0-2') + '%' : '—' }}</b></td>
+                  <td class="num">₹{{ s.bookedValue | number: '1.0-0' }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td><b>Total</b></td>
+                <td><small>{{ sourceTotals().leads | number }}</small></td>
+                <td class="num"><b>{{ sourceTotals().bookings | number }}</b></td>
+                <td class="num"><b>{{ sourceTotals().conversion | number: '1.0-2' }}%</b></td>
+                <td class="num"><b>₹{{ sourceTotals().value | number: '1.0-0' }}</b></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <p class="note" style="margin-top:8px">Bookings include website bookings, which count under the customer's source (Website unless set otherwise).</p>
+      }
+    }
+  }
+</div>
+
+<!-- Last six months -->
+<div class="panel">
+  <h4>Last six months</h4>
+  <div class="sub">Leads and bookings per month — click a month to open its report</div>
+  @if (trend().length === 0) {
+    <app-state-panel kind="loading" message="Loading…"></app-state-panel>
+  } @else {
+    <div class="crm-trend">
+      @for (m of trend(); track m.year + '-' + m.month) {
+        <button type="button" class="crm-trend-col" [class.on]="m.year === year && m.month === month" (click)="openMonth(m)">
+          <div class="crm-trend-bars">
+            <span class="l" [style.height.%]="(m.totalLeads * 100) / maxTrendValue()" [attr.title]="m.totalLeads + ' leads'"></span>
+            <span class="b" [style.height.%]="(m.totalBookings * 100) / maxTrendValue()" [attr.title]="m.totalBookings + ' bookings'"></span>
+          </div>
+          <b>{{ shortMonth(m) }}</b>
+          <small>{{ m.totalLeads }} · {{ m.totalBookings }}</small>
+          <small>{{ m.conversionRate | number: '1.0-1' }}%</small>
+        </button>
+      }
+    </div>
+    <div class="row" style="gap:14px;margin-top:8px">
+      <span class="note"><b class="crm-key l"></b> Leads</span>
+      <span class="note"><b class="crm-key b"></b> Bookings</span>
+    </div>
+  }
+</div>

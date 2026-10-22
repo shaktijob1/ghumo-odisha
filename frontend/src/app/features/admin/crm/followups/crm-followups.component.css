@@ -1,0 +1,33 @@
+/* Follow-up tabs with counts and a coloured dot per list; overdue turns red when it isn't empty. */
+.crm-fu-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.crm-fu-tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: 600 12.5px var(--font-body); color: var(--muted); cursor: pointer; }
+.crm-fu-tab.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.crm-fu-tab.alert:not(.on) { border-color: #F0CFC9; color: var(--danger); }
+.crm-fu-count { min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--canvas); color: var(--ink); font-size: 11.5px; text-align: center; }
+.crm-fu-tab.on .crm-fu-count { background: rgba(255,255,255,.18); color: #fff; }
+.crm-dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+.crm-dot.today { background: var(--accent); }
+.crm-dot.overdue { background: var(--danger); }
+.crm-dot.upcoming { background: var(--wait); }
+
+.crm-fu-day { margin: 14px 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.crm-fu-day:first-child { margin-top: 0; }
+.crm-fu-list { list-style: none; margin: 0; padding: 0; }
+.crm-fu-list li { display: flex; gap: 10px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.crm-fu-list li:last-child { border-bottom: none; }
+.crm-fu-list li.overdue { box-shadow: inset 3px 0 0 var(--danger); padding-left: 10px; }
+.crm-fu-list .crm-flame { margin-top: 2px; }
+.crm-fu-main { flex: 1; min-width: 0; display: grid; gap: 3px; font-size: 12.5px; }
+.crm-fu-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.crm-fu-name:hover { color: var(--accent); }
+.crm-fu-main a[href^="tel:"] { color: var(--accent); font-weight: 600; }
+.crm-fu-note { padding: 6px 10px; border-radius: 8px; background: var(--canvas); font-size: 12.5px; }
+.crm-fu-note.done { background: var(--accent-soft); color: var(--accent); }
+.crm-fu-actions { display: grid; gap: 6px; justify-items: end; flex-shrink: 0; }
+.crm-fu-actions .btn.sm { min-width: 104px; }
+
+@media (max-width: 640px) {
+  .crm-fu-list li { flex-wrap: wrap; }
+  .crm-fu-actions { width: 100%; grid-template-columns: 1fr 1fr; justify-items: stretch; padding-left: 28px; }
+  .crm-fu-actions .row { grid-column: 1 / -1; justify-content: flex-end; }
+}

@@ -4,7 +4,9 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminBookingService } from '../../../core/services/admin-booking.service';
+import { AdminTripService } from '../../../core/services/admin-trip.service';
 import { AdminBookingDetail, BookingPayment, TravellerInput } from '../../../core/models/booking.model';
+import { PickupPoint } from '../../../core/models/trip.model';
 import {
   BookingStatus,
   Gender,
@@ -45,6 +47,7 @@ type LoadState = 'loading' | 'ready' | 'error';
 export class BookingDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly bookingService = inject(AdminBookingService);
+  private readonly tripService = inject(AdminTripService);
   private readonly toast = inject(ToastService);
 
   readonly BookingStatus = BookingStatus;
@@ -272,6 +275,45 @@ export class BookingDetailComponent implements OnInit {
     });
   }
 
+  // ---------- Pickup point ----------
+
+  readonly showPickupModal = signal(false);
+  readonly pickupOptions = signal<PickupPoint[] | null>(null);
+  readonly pickupError = signal<string | null>(null);
+  selectedPickupPointId: number | null = null;
+
+  openPickupModal(): void {
+    const b = this.booking();
+    if (!b) return;
+    this.selectedPickupPointId = b.pickupPointId;
+    this.pickupError.set(null);
+    this.pickupOptions.set(null);
+    this.showPickupModal.set(true);
+    this.tripService.getTrip(b.tripId).subscribe({
+      next: (t) => this.pickupOptions.set(t.pickupPoints),
+      error: (err: HttpErrorResponse) => {
+        this.pickupOptions.set([]);
+        this.pickupError.set(this.errorMessage(err, 'Could not load the pickup points.'));
+      },
+    });
+  }
+
+  submitPickupPoint(): void {
+    this.submitting.set(true);
+    this.bookingService.changePickupPoint(this.bookingId, this.selectedPickupPointId).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.showPickupModal.set(false);
+        this.toast.success('Pickup point updated.');
+        this.load();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.pickupError.set(this.errorMessage(err, 'Could not change the pickup point.'));
+      },
+    });
+  }
+
   // ---------- Male / female ----------
 
   openGenderModal(): void {
@@ -312,8 +354,8 @@ export class BookingDetailComponent implements OnInit {
     return body?.errors?.join(' ') || body?.message || fallback;
   }
 
-  /** Same as BookingService.UnpaidRequestExpiryHours on the API. */
-  readonly requestExpiryHours = 24;
+  /** Same as BookingService.UnpaidRequestExpiryMinutes on the API. */
+  readonly requestExpiryMinutes = 60;
 
   /** An unpaid checkout ("Requested") — listed for follow-up, holds no seats, expires on its own. */
   get isRequested(): boolean {
@@ -323,7 +365,7 @@ export class BookingDetailComponent implements OnInit {
 
   get requestExpiresAt(): Date | null {
     const b = this.booking();
-    return b ? new Date(new Date(b.requestedAt).getTime() + this.requestExpiryHours * 3600_000) : null;
+    return b ? new Date(new Date(b.requestedAt).getTime() + this.requestExpiryMinutes * 60_000) : null;
   }
 
   get canTakePayments(): boolean {

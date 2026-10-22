@@ -1,0 +1,95 @@
+<div class="ahead">
+  <div>
+    <h2>Trips / Campaigns</h2>
+    <div class="sub">Every departure: seats booked, leads waiting and early-booking prices</div>
+  </div>
+  <button type="button" class="btn sm" (click)="dialogOpen.set(true)">+ New departure</button>
+</div>
+
+<div class="filters crm-filters">
+  <select class="inp sm" [(ngModel)]="tripId" (ngModelChange)="apply()" aria-label="Trip">
+    <option [ngValue]="null">All trips</option>
+    @for (t of trips(); track t.tripId) { <option [ngValue]="t.tripId">{{ t.title }}</option> }
+  </select>
+  <select class="inp sm" [(ngModel)]="year" (ngModelChange)="month = year ? month : null; apply()" aria-label="Year">
+    <option [ngValue]="null">Upcoming</option>
+    @for (y of years; track y) { <option [ngValue]="y">Departing in {{ y }}</option> }
+  </select>
+  @if (year) {
+    <select class="inp sm" [(ngModel)]="month" (ngModelChange)="apply()" aria-label="Month">
+      <option [ngValue]="null">Whole year</option>
+      @for (m of monthNames; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+    </select>
+  } @else {
+    <label class="crm-check"><input type="checkbox" [(ngModel)]="includePast" (ngModelChange)="apply()" /> Include past departures</label>
+  }
+</div>
+
+@switch (state()) {
+  @case ('loading') { <app-state-panel kind="loading" message="Loading departures…"></app-state-panel> }
+  @case ('error') {
+    <div class="panel">
+      <app-state-panel kind="error" message="Could not load departures."></app-state-panel>
+      <div class="row" style="justify-content:center"><button type="button" class="btn sm ghost" (click)="load()">Try again</button></div>
+    </div>
+  }
+  @case ('ready') {
+    @if (items().length === 0) {
+      <div class="panel"><app-state-panel kind="empty" message="No departures for these filters. Create one with “+ New departure”."></app-state-panel></div>
+    } @else {
+      <div class="crm-depgrid">
+        @for (d of items(); track d.tripDateSlotId) {
+          <a class="panel crm-depcard" [routerLink]="['/admin/crm/departures', d.tripDateSlotId]">
+            <div class="row sp" style="align-items:flex-start;gap:8px">
+              <div style="min-width:0">
+                <b class="crm-deptitle">{{ d.tripTitle }}</b>
+                <div class="note">{{ d.startDate | date: 'EEE, d MMM y' }} → {{ d.endDate | date: 'd MMM' }}{{ d.vehicle ? ' · ' + d.vehicle : '' }}</div>
+              </div>
+              <span class="badge" [class]="'badge ' + statusTone[d.campaignStatus]">{{ statusLabels[d.campaignStatus] }}</span>
+            </div>
+
+            <div class="crm-price">
+              @if (d.isEarlyBird) {
+                <span class="crm-early">Early booking</span>
+                <b>₹{{ d.currentPrice | number: '1.0-0' }}</b> <s class="mut">₹{{ d.regularPrice | number: '1.0-0' }}</s>
+                <span class="note">until {{ d.earlyBirdEndsOn | date: 'd MMM' }}</span>
+              } @else {
+                <b>₹{{ d.currentPrice | number: '1.0-0' }}</b><span class="note">/person · ₹{{ d.bookingAmountPerSeat }} to reserve</span>
+              }
+            </div>
+
+            <div class="crm-seats">
+              <span class="fill" [style.width.%]="seatShare(d)"></span>
+              @if (minimumMark(d); as mark) { <span class="min" [style.left.%]="mark"></span> }
+            </div>
+            <div class="row sp note">
+              <span><b class="crm-ink">{{ d.bookedSeats }}</b>/{{ d.totalSeats }} booked · {{ d.availableSeats }} left</span>
+              @if (d.minimumBookedSeats) {
+                <span>{{ d.minimumReached ? 'Minimum reached' : (d.minimumBookedSeats - d.bookedSeats) + ' more to confirm' }}</span>
+              }
+            </div>
+
+            <div class="crm-demand">
+              <span><b>{{ d.leads }}</b>leads</span>
+              <span><b>{{ d.interested }}</b>interested</span>
+              <span class="hot"><b>{{ d.hotLeads }}</b>hot</span>
+              <span><b>{{ d.bookingPending }}</b>pending</span>
+              <span class="ok"><b>{{ d.booked }}</b>booked</span>
+            </div>
+          </a>
+        }
+      </div>
+      @if (totalPages > 1) {
+        <div class="pager">
+          <span>Page {{ page }} of {{ totalPages }} · {{ total() }} departures</span>
+          <div class="pg">
+            <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1" aria-label="Previous page">‹</button>
+            <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages" aria-label="Next page">›</button>
+          </div>
+        </div>
+      }
+    }
+  }
+}
+
+<app-crm-departure-dialog [open]="dialogOpen()" [tripId]="tripId" (closed)="dialogOpen.set(false)" (saved)="onCreated($event)"></app-crm-departure-dialog>
